@@ -799,6 +799,69 @@ index c7c218422c..cd2172eca5 100644
  
      // Update label.
      group_header_label_->SetEnabledColor(foreground_color);
+diff --git i/chrome/browser/ui/views/tabs/common/tab_group_view.cc w/chrome/browser/ui/views/tabs/common/tab_group_view.cc
+index cb782286ee..e71afa0132 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_group_view.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_group_view.cc
+@@ -35,7 +35,13 @@
+ #include "content/public/browser/navigation_controller.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/list_selection_model.h"
++#include "cc/paint/paint_flags.h"
++#include "ui/color/color_id.h"
++#include "ui/color/color_provider.h"
++#include "ui/gfx/canvas.h"
++#include "ui/gfx/color_utils.h"
+ #include "ui/gfx/geometry/rect.h"
++#include "ui/views/background.h"
+ #include "ui/views/controls/button/label_button.h"
+ #include "ui/views/controls/scroll_view.h"
+ #include "ui/views/layout/delegating_layout_manager.h"
+@@ -57,6 +63,33 @@ const TabGroup* GetTabGroupFromNode(TabCollectionNode* node) {
+ 
+ }  // namespace
+ 
++namespace {
++
++// navegador: no escuro, o Dia põe o grupo inteiro (cabeçalho + abas) num
++// bloco de fundo próprio, cantos 8. No claro, e num espaço (grupo focado,
++// que ocupa a lateral toda), sem bloco.
++class BlocoDoGrupo : public views::Background {
++ public:
++  explicit BlocoDoGrupo(TabGroupView* grupo) : grupo_(grupo) {}
++
++  void Paint(gfx::Canvas* canvas, views::View* view) const override {
++    const ui::ColorProvider* cores = view->GetColorProvider();
++    if (!cores || grupo_->IsGroupFocused() ||
++        !color_utils::IsDark(cores->GetColor(ui::kColorFrameActive))) {
++      return;
++    }
++    cc::PaintFlags flags;
++    flags.setAntiAlias(true);
++    flags.setColor(SkColorSetA(SK_ColorWHITE, 0x0D));
++    canvas->DrawRoundRect(view->GetLocalBounds(), 8, flags);
++  }
++
++ private:
++  raw_ptr<TabGroupView> grupo_;
++};
++
++}  // namespace
++
+ TabGroupView::TabGroupView(TabCollectionNode* collection_node)
+     : DraggedTabsContainer(
+           static_cast<views::View&>(*this),
+@@ -109,6 +142,10 @@ TabGroupView::TabGroupView(TabCollectionNode* collection_node)
+           base::BindRepeating(&TabGroupView::OnDataChanged,
+                               base::Unretained(this)));
+   OnDataChanged();
++
++  if (orientation_ == TabStripOrientation::kVertical) {
++    SetBackground(std::make_unique<BlocoDoGrupo>(this));
++  }
+ }
+ 
+ TabGroupView::~TabGroupView() = default;
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
 index ffb1fdda20..3d8d92c6bf 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
