@@ -19,6 +19,22 @@ O Chrome 155 já tem abas verticais nativas (Views, C++): `chrome/browser/ui/vie
 
 As medidas vêm das telas do Dia decodificadas (`docs/dia-medidas.md`) e, quando a máquina virtual com Windows estiver de pé, de capturas do Dia rodando, comparadas lado a lado com as nossas.
 
+## O que o Chromium mudou de padrão no navegador
+
+- Abas sempre na lateral (190 de largura), sem opção de voltar pra cima.
+- Barra de cima na cor do site: `navegador/browser/ui/cor_da_pagina.*` amostra 64x2 pixels do topo da página (como o `ColorSampleControllerV2` do Dia) e a janela recalcula as cores com um fornecedor de cor na chave (`BrowserWidget::GetColorProviderKey`).
+- Lateral e moldura: cor escolhida no "Personalizar" tinge a moldura; vidro com a moldura translúcida pintada uma vez na janela inteira (`OpaqueBrowserFrameView::OnPaint`) e a lateral transparente por cima.
+- Barra de endereço parada mostra só o domínio (`ShouldTrimDisplayUrlAfterHostName` ligado); caixa só aparece com o mouse em cima.
+- Nova aba: página simples (degradê e logo), sempre, com qualquer busca.
+- Sem IA: flags `AimEnabled`, `Aim3pEntrypoint`, `NtpComposebox`, `Compose`, `LensOverlay`, `Glic`, `GlicRollout`, `HistoryEmbeddings` desligadas na criação da FeatureList (`navegador/browser/sem_ia`).
+- Sem login na conta Google (`signin.allowed` falso) e sem convite no botão de perfil.
+- Sem barra de grupos salvos na nova aba; sem o botão "tudo" (grupos) no cabeçalho da lateral.
+- Texto da lateral em 13; logo vetorial do navegador (`kProductIcon`) no botão de recolher.
+
+## Testar
+
+`tools/testar.sh` abre o navegador compilado com perfil em /tmp numa janela flutuante, tira captura (`foto`), abre endereço (`url`, pelo DevTools na porta 9333), lista abas e manda teclas (`teclas`, só se a janela ativa for a de teste). `tools/cdp.mjs` roda JavaScript numa aba. Exemplo de teste de container: `--navegador-container-padrao=trabalho` + cookies comparados entre abas.
+
 ## Perfis
 
 Perfis do Chromium como estão (cada um com cookies, histórico, extensões e janela próprios). Muda só a aparência do seletor, no estilo do Dia, no menu lateral.
