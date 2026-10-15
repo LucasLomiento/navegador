@@ -1,0 +1,10 @@
+# Notas locais do Claude (detalhes do ambiente do dono)
+CLAUDE.md
+.mcp.json
+__pycache__/
+*.log
+
+# Saídas de build e pacotes
+out/
+pkg/
+*.pkg.tar.*

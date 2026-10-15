@@ -1,0 +1,2 @@
+# <arquivo>.patch <caminhos no src do Chromium>
+# Um patch por área; o que não estiver listado cai no 9999-resto.patch.

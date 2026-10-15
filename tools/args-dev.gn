@@ -1,0 +1,18 @@
+# Compilação de desenvolvimento: rápida de religar, sem símbolos.
+is_debug = false
+is_component_build = true
+symbol_level = 0
+blink_symbol_level = 0
+v8_symbol_level = 0
+dcheck_always_on = false
+treat_warnings_as_errors = false
+chrome_pgo_phase = 0
+use_remoteexec = false
+
+# Vídeo e DRM (Netflix): codecs proprietários + Widevine baixado pelo component updater.
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+enable_widevine = true
+
+# Sem chaves de API do Google.
+use_official_google_api_keys = false
