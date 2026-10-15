@@ -1,0 +1,31 @@
+diff --git i/chrome/browser/profiles/profiles_state.cc w/chrome/browser/profiles/profiles_state.cc
+index d1fcd93ded..be593c5dcb 100644
+--- i/chrome/browser/profiles/profiles_state.cc
++++ w/chrome/browser/profiles/profiles_state.cc
+@@ -83,8 +83,10 @@ void RegisterPrefs(PrefRegistrySimple* registry) {
+   registry->RegisterBooleanPref(prefs::kBrowserGuestModeEnforced, false);
+   registry->RegisterBooleanPref(prefs::kBrowserAddPersonEnabled, true);
+   registry->RegisterBooleanPref(prefs::kForceBrowserSignin, false);
++  // navegador: como o Dia, abre direto no último perfil usado; o seletor
++  // fica no menu (Perfil > Gerenciar perfis), com a opção de ligar de novo.
+   registry->RegisterBooleanPref(prefs::kBrowserShowProfilePickerOnStartup,
+-                                true);
++                                false);
+   registry->RegisterIntegerPref(
+       prefs::kBrowserProfilePickerAvailabilityOnStartup,
+       static_cast<int>(ProfilePicker::AvailabilityOnStartup::kEnabled));
+diff --git i/chrome/browser/resources/signin/profile_picker/profile_picker_app.css w/chrome/browser/resources/signin/profile_picker/profile_picker_app.css
+index 71c1edf585..a64c5b4fd9 100644
+--- i/chrome/browser/resources/signin/profile_picker/profile_picker_app.css
++++ w/chrome/browser/resources/signin/profile_picker/profile_picker_app.css
+@@ -103,3 +103,10 @@ cr-view-manager > [slot='view'] {
+   min-height: var(--view-min-size);
+   min-width: var(--view-min-size);
+ }
++
++/* navegador: sem as formas coloridas do Google nos cantos; o seletor fica
++ * só com o logo, o título e os perfis, como o resto do navegador. */
++#banner-right,
++#banner-left {
++  display: none;
++}
