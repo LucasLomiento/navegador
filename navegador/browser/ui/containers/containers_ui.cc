@@ -125,6 +125,47 @@ class SubmenuDaAba : public ui::SimpleMenuModel,
   std::vector<Container> containers_;
 };
 
+// "Abrir link em container" no menu de contexto da página.
+class SubmenuDoLink : public ui::SimpleMenuModel,
+                      public ui::SimpleMenuModel::Delegate {
+ public:
+  SubmenuDoLink(TabStripModel* tab_strip,
+                content::WebContents* origem,
+                const GURL& link)
+      : ui::SimpleMenuModel(this),
+        tab_strip_(tab_strip),
+        origem_(origem),
+        link_(link),
+        containers_(GetAll(tab_strip->profile())) {
+    for (size_t i = 0; i < containers_.size(); ++i) {
+      AddItemWithIcon(kPrimeiro + i, base::UTF8ToUTF16(containers_[i].name),
+                      Bolinha(containers_[i].color));
+    }
+  }
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override {
+    const size_t i = command_id - kPrimeiro;
+    if (i >= containers_.size()) {
+      return;
+    }
+    int index = tab_strip_->GetIndexOfWebContents(origem_);
+    if (index == TabStripModel::kNoTab) {
+      index = tab_strip_->count() - 1;
+    }
+    AbrirEmContainer(tab_strip_, link_, containers_[i].id, index,
+                     /*ativar=*/false);
+  }
+
+ private:
+  static constexpr int kPrimeiro = 1000;
+
+  raw_ptr<TabStripModel> tab_strip_;
+  raw_ptr<content::WebContents> origem_;
+  GURL link_;
+  std::vector<Container> containers_;
+};
+
 }  // namespace
 
 SkColor Cor(std::string_view nome) {
@@ -184,6 +225,13 @@ void AbrirEmContainer(TabStripModel* tab_strip,
 std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDaAba(TabStripModel* tab_strip,
                                                        int index) {
   return std::make_unique<SubmenuDaAba>(tab_strip, index);
+}
+
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDoLink(
+    TabStripModel* tab_strip,
+    content::WebContents* origem,
+    const GURL& link) {
+  return std::make_unique<SubmenuDoLink>(tab_strip, origem, link);
 }
 
 }  // namespace navegador::containers

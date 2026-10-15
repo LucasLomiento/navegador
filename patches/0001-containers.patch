@@ -30,6 +30,65 @@ index 2653e37bec..b726815ec5 100644
    AccessibilityLabelsService::RegisterProfilePrefs(registry);
    registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
    AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
+diff --git i/chrome/browser/renderer_context_menu/BUILD.gn w/chrome/browser/renderer_context_menu/BUILD.gn
+index b2e9ee838f..083cd94bb3 100644
+--- i/chrome/browser/renderer_context_menu/BUILD.gn
++++ w/chrome/browser/renderer_context_menu/BUILD.gn
+@@ -78,6 +78,7 @@ source_set("impl") {
+   sources = [ "context_menu_content_type_factory.cc" ]
+ 
+   deps = [
++    "//navegador/browser/ui/containers:containers_ui",  # navegador
+     ":renderer_context_menu",
+     "//base",
+     "//base:i18n",
+diff --git i/chrome/browser/renderer_context_menu/render_view_context_menu.cc w/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+index 1a4de31b32..c4d9849635 100644
+--- i/chrome/browser/renderer_context_menu/render_view_context_menu.cc
++++ w/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
+ 
++#include "navegador/browser/ui/containers/containers_ui.h"
++
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -2146,6 +2148,20 @@ void RenderViewContextMenu::AppendLinkItems() {
+     }
+ #endif  // !BUILDFLAG(IS_CHROMEOS)
+ 
++    // navegador: "Abrir link em container". O id do item é o do submenu de
++    // perfis (habilitado quando o link é válido); os itens têm delegate
++    // próprio.
++    if (GetBrowser() && !GetProfile()->IsOffTheRecord()) {
++      navegador_containers_submenu_ = navegador::containers::CriarSubmenuDoLink(
++          GetBrowser()->GetTabStripModel(), source_web_contents_,
++          params_.link_url);
++      if (navegador_containers_submenu_->GetItemCount() > 0) {
++        menu_model_.AddSubMenu(IDC_CONTENT_CONTEXT_OPENLINKINPROFILE,
++                               u"Abrir link em container",
++                               navegador_containers_submenu_.get());
++      }
++    }
++
+     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+     // Send-Tab-To-Self (user's other devices), link level.
+diff --git i/chrome/browser/renderer_context_menu/render_view_context_menu.h w/chrome/browser/renderer_context_menu/render_view_context_menu.h
+index cbf156d81c..9844fedb18 100644
+--- i/chrome/browser/renderer_context_menu/render_view_context_menu.h
++++ w/chrome/browser/renderer_context_menu/render_view_context_menu.h
+@@ -535,6 +535,8 @@ class RenderViewContextMenu
+   GURL main_frame_url_;
+ 
+   ui::SimpleMenuModel profile_link_submenu_model_;
++  // navegador: "Abrir link em container".
++  std::unique_ptr<ui::SimpleMenuModel> navegador_containers_submenu_;
+   std::vector<base::FilePath> profile_link_paths_;
+   bool multiple_profiles_open_;
+ 
 diff --git i/chrome/browser/sessions/BUILD.gn w/chrome/browser/sessions/BUILD.gn
 index 3c44e7f7a5..56c864ee98 100644
 --- i/chrome/browser/sessions/BUILD.gn

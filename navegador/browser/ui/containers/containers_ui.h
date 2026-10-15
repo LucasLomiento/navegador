@@ -13,6 +13,10 @@
 class GURL;
 class TabStripModel;
 
+namespace content {
+class WebContents;
+}  // namespace content
+
 namespace gfx {
 class Canvas;
 }  // namespace gfx
@@ -56,6 +60,14 @@ void AbrirEmContainer(TabStripModel* tab_strip,
 // escolhido e fecha a original.
 std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDaAba(TabStripModel* tab_strip,
                                                        int index);
+
+// Menu de contexto de um link: "Abrir link em container". Abre o link numa
+// aba nova (em segundo plano, como "abrir link em nova aba") ao lado da aba
+// de origem.
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDoLink(
+    TabStripModel* tab_strip,
+    content::WebContents* origem,
+    const GURL& link);
 
 }  // namespace navegador::containers
 
