@@ -75,6 +75,19 @@ std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDeEspacos(
     TabStripModel* tab_strip,
     int index);
 
+// Menu de contexto da aba: "Fixar no espaço" (solto, numa pasta do espaço
+// ou numa pasta nova; ou "Desafixar", se a aba já é de um site fixado). Quem
+// fixa é a área dos fixados (navegador/browser/ui/fixos.cc), registrada com
+// DefinirFixarAba; `destino` é o id da pasta, vazio (solto) ou um dos dois
+// abaixo.
+inline constexpr char kFixarNovaPasta[] = "*nova*";
+inline constexpr char kFixarDesafixar[] = "*desafixar*";
+using FixarAba = base::RepeatingCallback<
+    void(TabStripModel* tab_strip, int index, const std::string& destino)>;
+void DefinirFixarAba(FixarAba fixar);
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuFixar(TabStripModel* tab_strip,
+                                                       int index);
+
 // "Configurações do Navegador…" no menu do logo (o AppMenuModel também não
 // enxerga o //chrome/browser/ui:ui): espacos.cc registra quem abre.
 using AbrirConfiguracoes =

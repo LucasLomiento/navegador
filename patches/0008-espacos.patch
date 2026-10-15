@@ -1,8 +1,17 @@
 diff --git i/chrome/browser/ui/tabs/tab_strip_model.cc w/chrome/browser/ui/tabs/tab_strip_model.cc
-index 01f863a9f4..db0320bd3e 100644
+index 01f863a9f4..3892443aa9 100644
 --- i/chrome/browser/ui/tabs/tab_strip_model.cc
 +++ w/chrome/browser/ui/tabs/tab_strip_model.cc
-@@ -1114,15 +1114,24 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ 
++#include "navegador/browser/containers/fixos.h"
++
+ #include <algorithm>
+ #include <cstddef>
+ #include <cstdint>
+@@ -1114,15 +1116,24 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
  
    // If this tab was activated, eg. by an extension, but is not in the focused
    // group, unfocus the focused group (unless it is a pinned tab).
@@ -28,3 +37,56 @@ index 01f863a9f4..db0320bd3e 100644
    SetSelection(
        new_model,
        user_gesture.type != TabStripUserGestureDetails::GestureType::kNone
+@@ -2815,6 +2826,11 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
+     }
+ 
+     case CommandTogglePinned: {
++      // navegador: "Adicionar aos favoritos" põe o site nos favoritos do
++      // espaço (navegador/browser/containers/fixos.h) em vez de fixar a aba.
++      if (navegador::fixos::AlternarFavorito(GetWebContentsAt(context_index))) {
++        break;
++      }
+       base::UmaHistogramCounts1000(
+           "Tab.ContextMenu.TogglePinned.SelectedTabsCount",
+           selection_model_.size());
+diff --git i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
+index cd90578d55..39a8129552 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_view_layout.h"
+ 
++#include "navegador/browser/ui/visual.h"
++
+ #include <algorithm>
+ 
+ #include "base/logging.h"
+@@ -291,6 +293,27 @@ views::ProposedLayout TabStripViewLayout::CalculateVerticalLayout(
+     }
+   }
+ 
++  // navegador: os fixados do espaço (sites e pastas, como no Zen) entre os
++  // favoritos e as abas; somem com a lateral recolhida.
++  for (views::View* child : tab_strip_view->children()) {
++    if (child->GetID() != navegador::visual::kIdAreaDeFixos) {
++      continue;
++    }
++    const int largura =
++        size_bounds.width().value() - 2 * region_horizontal_padding;
++    int altura = is_collapsed
++                     ? 0
++                     : child->GetHeightForWidth(std::max(largura, 0));
++    if (size_bounds.height().is_bounded()) {
++      altura = std::min(altura, remaining_height);
++      remaining_height -= altura;
++    }
++    layouts.child_layouts.emplace_back(
++        child, altura > 0,
++        gfx::Rect(region_horizontal_padding, y, largura, altura));
++    y += altura;
++  }
++
+   // Place the tabs separator if visible.
+   gfx::Rect separator_bounds;
+   if (should_show_separator) {

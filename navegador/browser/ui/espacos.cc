@@ -37,6 +37,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "navegador/browser/containers/containers.h"
 #include "navegador/browser/containers/espacos_dados.h"
+#include "navegador/browser/containers/fixos.h"
 #include "navegador/browser/ui/atalhos.h"
 #include "navegador/browser/ui/configuracoes.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
@@ -1126,6 +1127,7 @@ void Excluir(Profile* profile, const std::string& espaco) {
     faixa->FecharEspaco(espaco);
   }
   Remover(profile, espaco);
+  fixos::RemoverEspaco(profile, espaco);
 }
 
 }  // namespace navegador::espacos

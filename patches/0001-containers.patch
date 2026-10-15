@@ -102,18 +102,19 @@ index 3c44e7f7a5..56c864ee98 100644
        "//chrome/browser/content_settings:content_settings_factory",
        "//chrome/browser/devtools",
 diff --git i/chrome/browser/sessions/session_service_base.cc w/chrome/browser/sessions/session_service_base.cc
-index 0fdde07d4d..bd944ddb7e 100644
+index 0fdde07d4d..0f07632865 100644
 --- i/chrome/browser/sessions/session_service_base.cc
 +++ w/chrome/browser/sessions/session_service_base.cc
-@@ -58,6 +58,7 @@
+@@ -58,6 +58,8 @@
  #include "content/public/browser/navigation_details.h"
  #include "content/public/browser/navigation_entry.h"
  #include "content/public/browser/session_storage_namespace_handle.h"
 +#include "navegador/browser/containers/containers.h"
++#include "navegador/browser/containers/fixos.h"
  #include "ui/base/mojom/window_show_state.mojom.h"
  
  #if BUILDFLAG(IS_MAC)
-@@ -285,6 +286,12 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
+@@ -285,6 +287,18 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
      SetTabExtensionAppID(session_tab_helper->window_id(),
                           session_tab_helper->session_id(), app_id);
    }
@@ -123,10 +124,16 @@ index 0fdde07d4d..bd944ddb7e 100644
 +        session_tab_helper->session_id(),
 +        navegador::containers::kSessionExtraDataKey, *container));
 +  }
++  // navegador: site fixado do espaço ligado à aba.
++  if (auto fixo = navegador::fixos::SiteDaAba(contents)) {
++    ScheduleCommand(sessions::CreateAddTabExtraDataCommand(
++        session_tab_helper->session_id(), navegador::fixos::kSessionKey,
++        *fixo));
++  }
  
    // Record the association between the SessionStorageNamespaceHandle and the
    // tab.
-@@ -672,6 +679,14 @@ void SessionServiceBase::BuildCommandsForTab(
+@@ -672,6 +686,20 @@ void SessionServiceBase::BuildCommandsForTab(
          sessions::CreatePinnedStateCommand(session_id, true));
    }
  
@@ -136,6 +143,12 @@ index 0fdde07d4d..bd944ddb7e 100644
 +        sessions::CreateAddTabExtraDataCommand(
 +            session_id, navegador::containers::kSessionExtraDataKey,
 +            *container));
++  }
++  // navegador: site fixado do espaço ligado à aba.
++  if (auto fixo = navegador::fixos::SiteDaAba(tab)) {
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddTabExtraDataCommand(
++            session_id, navegador::fixos::kSessionKey, *fixo));
 +  }
 +
    // Record the association between the sessionStorage namespace and the tab.
@@ -163,18 +176,19 @@ index b220ba6c8f..d4d95562e6 100644
    return extra_data;
  }
 diff --git i/chrome/browser/ui/browser_tabrestore.cc w/chrome/browser/ui/browser_tabrestore.cc
-index 6aca93a450..b2d794a525 100644
+index 6aca93a450..e2d275898b 100644
 --- i/chrome/browser/ui/browser_tabrestore.cc
 +++ w/chrome/browser/ui/browser_tabrestore.cc
-@@ -36,6 +36,7 @@
+@@ -36,6 +36,8 @@
  #include "content/public/browser/restore_type.h"
  #include "content/public/browser/session_storage_namespace_handle.h"
  #include "content/public/browser/web_contents.h"
 +#include "navegador/browser/containers/containers.h"
++#include "navegador/browser/containers/fixos.h"
  #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
  #include "ui/gfx/geometry/size.h"
  #include "ui/gfx/range/range.h"
-@@ -70,7 +71,10 @@ std::unique_ptr<WebContents> CreateRestoredTab(
+@@ -70,7 +72,10 @@ std::unique_ptr<WebContents> CreateRestoredTab(
    content::SessionStorageNamespaceHandleMap session_storage_namespace_map =
        content::CreateMapWithDefaultSessionStorageNamespace(
            browser->GetProfile(), session_storage_namespace);
@@ -186,6 +200,15 @@ index 6aca93a450..b2d794a525 100644
    create_params.initially_hidden = initially_hidden;
    create_params.desired_renderer_state =
        WebContents::CreateParams::kNoRendererProcess;
+@@ -83,6 +88,8 @@ std::unique_ptr<WebContents> CreateRestoredTab(
+                                extension_app_id);
+ 
+   glic::RestoreGlicStateFromExtraData(web_contents.get(), extra_data);
++  // navegador: aba ligada a um site fixado do espaço.
++  navegador::fixos::RestaurarDaSessao(web_contents.get(), extra_data);
+   send_tab_to_self::SendTabToSelfActivationTracker::RestoreFromExtraData(
+       web_contents.get(), extra_data);
+ 
 diff --git i/chrome/browser/ui/navigator/BUILD.gn w/chrome/browser/ui/navigator/BUILD.gn
 index 812ea8e40e..4fe077a98d 100644
 --- i/chrome/browser/ui/navigator/BUILD.gn
@@ -236,39 +259,50 @@ index 5029e26405..95cf66678a 100644
    WebContents::CreateParams create_params(
        params.browser->GetProfile(), initial_site_instance_for_new_contents);
 diff --git i/chrome/browser/ui/tabs/BUILD.gn w/chrome/browser/ui/tabs/BUILD.gn
-index 3396b27000..d83f6ad5c9 100644
+index 3396b27000..0a140cef0b 100644
 --- i/chrome/browser/ui/tabs/BUILD.gn
 +++ w/chrome/browser/ui/tabs/BUILD.gn
-@@ -157,6 +157,7 @@ if (!is_android) {
+@@ -157,6 +157,8 @@ if (!is_android) {
      ]
  
      deps = [
++      "//navegador/browser/containers",  # navegador
 +      "//navegador/browser/ui/containers:containers_ui",  # navegador
        ":tab_menu",
        ":tab_model",
        ":tab_strip",
+@@ -365,6 +367,7 @@ if (!is_android) {
+     ]
+ 
+     deps = [
++      "//navegador/browser/containers",  # navegador
+       ":tab_group",
+       ":tab_model",
+       ":tab_strip",
 diff --git i/chrome/browser/ui/tabs/tab_menu_model.h w/chrome/browser/ui/tabs/tab_menu_model.h
-index f0b718e6ba..b76beed49a 100644
+index f0b718e6ba..731585d05a 100644
 --- i/chrome/browser/ui/tabs/tab_menu_model.h
 +++ w/chrome/browser/ui/tabs/tab_menu_model.h
-@@ -101,6 +101,9 @@ class TabMenuModel : public ui::SimpleMenuModel {
+@@ -101,6 +101,10 @@ class TabMenuModel : public ui::SimpleMenuModel {
    std::unique_ptr<ui::SimpleMenuModel>
        add_to_existing_comparison_table_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> swap_with_split_submenu_;
 +  // navegador: "Abrir em container" e "Mover para o espaço".
 +  std::unique_ptr<ui::SimpleMenuModel> navegador_containers_submenu_;
 +  std::unique_ptr<ui::SimpleMenuModel> navegador_espacos_submenu_;
++  std::unique_ptr<ui::SimpleMenuModel> navegador_fixar_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> split_layout_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> arrange_split_view_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> glic_tab_sub_menu_model_;
 diff --git i/chrome/browser/ui/views/tabs/common/BUILD.gn w/chrome/browser/ui/views/tabs/common/BUILD.gn
-index 2494eac3f3..c9290707a8 100644
+index 2494eac3f3..5a9760c0fe 100644
 --- i/chrome/browser/ui/views/tabs/common/BUILD.gn
 +++ w/chrome/browser/ui/views/tabs/common/BUILD.gn
-@@ -87,6 +87,8 @@ source_set("impl") {
+@@ -87,6 +87,9 @@ source_set("impl") {
    ]
  
    deps = [
++    "//navegador/browser/containers",  # navegador
 +    "//navegador/browser/ui/abas",  # navegador
 +    "//navegador/browser/ui/containers:containers_ui",  # navegador
      "//base:i18n",

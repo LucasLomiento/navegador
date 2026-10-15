@@ -592,22 +592,23 @@ index cd6fa39dad..6b9401874b 100644
    // BrowserFrameView:
    BoundsAndMargins GetCaptionButtonBounds() const override;
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..341c9264dd 100644
+index b7cdb8f557..e053753069 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,11 @@
+@@ -4,6 +4,12 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
 +#include "navegador/browser/ui/cor_da_pagina.h"
 +#include "navegador/browser/ui/espacos.h"
++#include "navegador/browser/ui/fixos.h"
 +#include "navegador/browser/ui/menu_do_logo.h"
 +#include "ui/views/window/non_client_view.h"
 +
  #include <algorithm>
  #include <optional>
  
-@@ -110,6 +115,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -110,6 +116,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
    SetPaintToLayer();
    // Because corners may be transparent, this must be set to false.
    layer()->SetFillsBoundsOpaquely(false);
@@ -617,7 +618,7 @@ index b7cdb8f557..341c9264dd 100644
  
    const int region_horizontal_padding =
        GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
-@@ -136,6 +144,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -136,6 +145,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
    top_button_separator_ = AddChildView(std::make_unique<views::Separator>());
@@ -626,7 +627,7 @@ index b7cdb8f557..341c9264dd 100644
    // The TopContainer handles the padding distance to the separator so that we
    // can control how far it is in the various states.
    top_button_separator_->SetProperty(
-@@ -147,10 +157,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -147,10 +158,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -640,7 +641,7 @@ index b7cdb8f557..341c9264dd 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +172,16 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +173,16 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
@@ -657,7 +658,7 @@ index b7cdb8f557..341c9264dd 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
-@@ -375,6 +397,15 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+@@ -375,6 +398,15 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
  void VerticalTabStripRegionView::Layout(PassKey) {
    LayoutSuperclass<views::AccessiblePaneView>(this);
  
@@ -673,6 +674,17 @@ index b7cdb8f557..341c9264dd 100644
    // Manually position the resize area as it overlaps views handled by the flex
    // layout.
    resize_area_->SetBoundsRect(gfx::Rect(bounds().right() - resize_area_width_,
+@@ -744,6 +776,10 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+   CHECK(separator_index.has_value());
+   ReorderChildView(tab_strip_view(), separator_index.value() + 1);
+ 
++  // navegador: sites e pastas fixados do espaço, entre os favoritos e as
++  // abas.
++  navegador::fixos::AdicionarArea(tab_strip_view(), browser_view()->browser());
++
+   OnCollapseStateChanged(state_controller_->GetCollapseState());
+ }
+ 
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 index 76f8e997d6..6aa66a5753 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
@@ -965,29 +977,39 @@ index cb782286ee..e71afa0132 100644
  
  TabGroupView::~TabGroupView() = default;
 diff --git i/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
-index c3035d4826..1c5065ecdf 100644
+index c3035d4826..e082783f57 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
 +++ w/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/ui/views/tabs/common/tab_group_view_layout.h"
  
++#include "navegador/browser/containers/fixos.h"
 +#include "navegador/browser/ui/visual.h"
 +
  #include <algorithm>
  #include <vector>
  
-@@ -25,7 +27,8 @@
+@@ -25,7 +28,17 @@
  #include "ui/views/view_utils.h"
  
  namespace {
 -constexpr int kTabVerticalPadding = 2;
++// navegador: aba ligada a um site fixado do espaço: aparece no lugar do site,
++// no alto da lateral (navegador/browser/ui/fixos.h), e não na lista.
++bool NoAltoDaLateral(const views::View* child) {
++  const auto* tab_view = views::AsViewClass<TabView>(child);
++  const tabs::TabInterface* tab =
++      tab_view ? tab_view->GetTabInterface() : nullptr;
++  return tab && navegador::fixos::SiteDaAba(tab->GetContents()).has_value();
++}
++
 +// navegador: uma aba a cada 35 (30 + 5 de folga), como no Dia.
 +constexpr int kTabVerticalPadding = navegador::visual::kEspacoEntreAbas;
  constexpr int kGroupLineWidth = 2;
  constexpr int kGroupLineCollapsedLeadingPadding = 6;
  constexpr int kGroupHeaderHeight = 26;
-@@ -92,12 +95,20 @@ views::ProposedLayout TabGroupViewLayout::CalculateVerticalLayout(
+@@ -92,12 +105,20 @@ views::ProposedLayout TabGroupViewLayout::CalculateVerticalLayout(
      header_bounds.set_width(size_bounds.width().value() - header_bounds.x());
    }
  
@@ -1011,6 +1033,23 @@ index c3035d4826..1c5065ecdf 100644
    width = std::max(width, header_bounds.width());
  
    // If the tab strip is not collapsed then the group line is below and left
+@@ -119,6 +140,16 @@ views::ProposedLayout TabGroupViewLayout::CalculateVerticalLayout(
+   // Layout children in order. Children will have their preferred height and
+   // fill available width.
+   for (auto* child : children) {
++    // navegador: sem altura (some da lista, mas segue na árvore de views).
++    if (NoAltoDaLateral(child)) {
++      layouts.child_layouts.emplace_back(
++          child, child->GetVisible(),
++          gfx::Rect(0, height, size_bounds.width().is_bounded()
++                                   ? size_bounds.width().value()
++                                   : 0,
++                    0));
++      continue;
++    }
+     gfx::Rect bounds = gfx::Rect(child->GetPreferredSize(size_bounds));
+ 
+     auto drag_data = tab_group_view->GetVisualDataForDraggedView(*child);
 diff --git i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
 index 5dd9f7ef1a..a5bcaed325 100644
 --- i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc

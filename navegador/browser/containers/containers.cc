@@ -1,6 +1,7 @@
 #include "navegador/browser/containers/containers.h"
 
 #include "navegador/browser/containers/espacos_dados.h"
+#include "navegador/browser/containers/fixos.h"
 
 #include <utility>
 
@@ -80,6 +81,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   // em perfil que já tinha.
   registry->RegisterDictionaryPref(kEspacosPref);
   espacos::RegisterProfilePrefs(registry);
+  fixos::RegisterProfilePrefs(registry);
 }
 
 std::optional<std::string> ContainerDoEspaco(Profile* profile,

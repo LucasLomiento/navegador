@@ -40,6 +40,7 @@
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/canvas.h"
 #include "ui/views/animation/ink_drop.h"
+#include "ui/views/background.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
@@ -69,6 +70,17 @@ gfx::NativeWindow JanelaDe(BrowserWindowInterface* browser) {
   BrowserView* view = BrowserView::GetBrowserViewForBrowser(browser);
   return view && view->GetWidget() ? view->GetWidget()->GetNativeWindow()
                                    : gfx::NativeWindow();
+}
+
+// No Wayland o diálogo é uma subsuperfície da janela: só aparece quando a
+// janela manda um quadro novo. Aberto por atalho (sem menu fechando por
+// cima), nada redesenha a janela e o diálogo ficava invisível com o foco.
+void MostrarSobre(views::Widget* dialogo, BrowserWindowInterface* browser) {
+  dialogo->Show();
+  BrowserView* view = BrowserView::GetBrowserViewForBrowser(browser);
+  if (view && view->GetWidget() && view->GetWidget()->GetRootView()) {
+    view->GetWidget()->GetRootView()->SchedulePaint();
+  }
 }
 
 // "+ Algo" como linha de texto, como o "+ Nova guia" da lateral.
@@ -364,7 +376,34 @@ class PainelDeEspacos : public views::View,
     espacos::Mover(perfil_, id, posicao + sentido);
   }
 
-  void Excluir(std::string id) { espacos::Excluir(perfil_, id); }
+  // Como no Zen, pergunta antes: as abas e os fixados do espaço vão junto.
+  void Excluir(std::string id) {
+    std::optional<espacos::Espaco> espaco = espacos::Get(perfil_, id);
+    if (!espaco) {
+      return;
+    }
+    auto dialogo = std::make_unique<views::DialogDelegate>();
+    dialogo->SetTitle(u"Excluir o espaço \u201C" +
+                      base::UTF8ToUTF16(espaco->nome) + u"\u201D?");
+    dialogo->SetModalType(ui::mojom::ModalType::kWindow);
+    dialogo->SetShowCloseButton(true);
+    dialogo->SetButtonLabel(ui::mojom::DialogButton::kOk, u"Excluir");
+    dialogo->SetButtonLabel(ui::mojom::DialogButton::kCancel, u"Cancelar");
+    dialogo->set_fixed_width(380);
+    auto aviso = std::make_unique<views::Label>(
+        u"As abas dele fecham em todas as janelas, e os favoritos, sites "
+        u"fixados e pastas dele são apagados. O container continua.");
+    aviso->SetMultiLine(true);
+    aviso->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+    aviso->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(4, 20, 8, 20)));
+    dialogo->SetContentsView(std::move(aviso));
+    dialogo->SetAcceptCallback(base::BindOnce(
+        [](Profile* perfil, std::string id) { espacos::Excluir(perfil, id); },
+        perfil_.get(), id));
+    MostrarSobre(constrained_window::CreateBrowserModalDialogViews(
+                     std::move(dialogo), JanelaDe(browser_)),
+                 browser_);
+  }
 
   raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<Profile> perfil_;
@@ -396,8 +435,11 @@ class BotaoDeAtalho : public views::LabelButton {
         acao_(std::move(acao)),
         mudou_(std::move(mudou)) {
     SetFocusBehavior(FocusBehavior::ALWAYS);
-    SetMinSize(gfx::Size(150, 0));
+    SetMinSize(gfx::Size(130, 28));
     SetHorizontalAlignment(gfx::ALIGN_CENTER);
+    // Cara de tecla: um chip arredondado.
+    SetBackground(views::CreateRoundedRectBackground(
+        ui::kColorSysSurfaceVariant, 6));
     views::InkDrop::Get(this)->SetMode(views::InkDropHost::InkDropMode::ON);
     views::InkDrop::Get(this)->SetBaseColor(ui::kColorSysOnSurface);
     views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 6);
@@ -706,7 +748,7 @@ void Mostrar(BrowserWindowInterface* browser, Aba aba) {
   auto rolavel = [](std::unique_ptr<views::View> painel) {
     auto rolagem = std::make_unique<views::ScrollView>();
     rolagem->SetContents(std::move(painel));
-    rolagem->ClipHeightTo(320, 460);
+    rolagem->ClipHeightTo(320, 540);
     rolagem->SetBackgroundColor(std::nullopt);
     return rolagem;
   };
@@ -722,7 +764,7 @@ void Mostrar(BrowserWindowInterface* browser, Aba aba) {
   views::Widget* widget = constrained_window::CreateBrowserModalDialogViews(
       std::move(dialogo), JanelaDe(browser));
   abertas[browser] = widget->GetWeakPtr();
-  widget->Show();
+  MostrarSobre(widget, browser);
 }
 
 void EditarEspaco(BrowserWindowInterface* browser,
@@ -732,7 +774,7 @@ void EditarEspaco(BrowserWindowInterface* browser,
       std::make_unique<EditorDeEspaco>(browser->GetProfile(), espaco,
                                        std::move(pronto)),
       JanelaDe(browser));
-  widget->Show();
+  MostrarSobre(widget, browser);
 }
 
 }  // namespace navegador::configuracoes

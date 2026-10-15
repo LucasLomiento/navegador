@@ -255,6 +255,11 @@ void MostrarGerenciador(content::WebContents* aba) {
   views::Widget* widget = constrained_window::CreateBrowserModalDialogViews(
       std::move(dialogo), aba->GetTopLevelNativeWindow());
   widget->Show();
+  // Subsuperfície no Wayland: só aparece com um quadro novo da janela.
+  if (views::Widget* janela = views::Widget::GetWidgetForNativeWindow(
+          aba->GetTopLevelNativeWindow())) {
+    janela->GetRootView()->SchedulePaint();
+  }
 }
 
 }  // namespace navegador::containers

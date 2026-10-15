@@ -8,4 +8,4 @@
 0005-sem-ia.patch chrome/browser/metrics/chrome_feature_list_creator.cc chrome/browser/metrics/BUILD.gn components/signin/internal/identity_manager/primary_account_manager.cc chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc chrome/browser/ui/webui/settings/settings_ui.cc chrome/browser/ui/webui/history/browsing_history_handler.cc
 0006-menu-no-logo.patch chrome/browser/ui/browser_command_controller.cc chrome/browser/ui/views/frame/browser_view.cc chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h chrome/browser/ui/views/toolbar/app_menu.cc chrome/browser/ui/views/toolbar/app_menu.h chrome/browser/ui/views/toolbar/toolbar_view.cc
 0007-perfis.patch chrome/browser/profiles/profiles_state.cc chrome/browser/resources/signin/profile_picker/profile_picker_app.css
-0008-espacos.patch chrome/browser/ui/tabs/tab_strip_model.cc
+0008-espacos.patch chrome/browser/ui/tabs/tab_strip_model.cc chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc

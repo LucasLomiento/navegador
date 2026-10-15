@@ -143,7 +143,43 @@ std::u16string Mostrar(std::string_view texto) {
   if (!atalho) {
     return u"Sem atalho";
   }
-  return atalho->GetShortcutText();
+  // Na ordem de sempre (Ctrl+Alt+Shift) e com setas e símbolos, como no
+  // Dia e no Zen; o GetShortcutText do Chromium escreve "Alt+Ctrl+Seta
+  // para a direita".
+  std::u16string resultado;
+  if (atalho->IsCtrlDown()) {
+    resultado += u"Ctrl+";
+  }
+  if (atalho->IsAltDown()) {
+    resultado += u"Alt+";
+  }
+  if (atalho->IsShiftDown()) {
+    resultado += u"Shift+";
+  }
+  if (atalho->IsCmdDown()) {
+    resultado += u"Super+";
+  }
+  struct Simbolo {
+    ui::KeyboardCode codigo;
+    const char16_t* texto;
+  };
+  static constexpr Simbolo kSimbolos[] = {
+      {ui::VKEY_LEFT, u"←"},         {ui::VKEY_RIGHT, u"→"},
+      {ui::VKEY_UP, u"↑"},           {ui::VKEY_DOWN, u"↓"},
+      {ui::VKEY_OEM_COMMA, u","},    {ui::VKEY_OEM_PERIOD, u"."},
+      {ui::VKEY_OEM_2, u"/"},        {ui::VKEY_OEM_MINUS, u"-"},
+      {ui::VKEY_OEM_PLUS, u"="},     {ui::VKEY_SPACE, u"Espaço"},
+      {ui::VKEY_OEM_1, u";"},        {ui::VKEY_OEM_7, u"'"},
+      {ui::VKEY_OEM_4, u"["},        {ui::VKEY_OEM_6, u"]"},
+      {ui::VKEY_PRIOR, u"PgUp"},     {ui::VKEY_NEXT, u"PgDn"},
+      {ui::VKEY_BACK, u"Backspace"}, {ui::VKEY_RETURN, u"Enter"},
+  };
+  for (const Simbolo& simbolo : kSimbolos) {
+    if (simbolo.codigo == atalho->key_code()) {
+      return resultado + simbolo.texto;
+    }
+  }
+  return resultado + base::UTF8ToUTF16(NomeDe(atalho->key_code()));
 }
 
 }  // namespace navegador::atalhos

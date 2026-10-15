@@ -47,7 +47,7 @@ index 63c3090b4c..ab42fd2ab6 100644
    if (!control) {
      return;
 diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
-index d69e4dd30f..dbd66f15ce 100644
+index d69e4dd30f..29715bca1f 100644
 --- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 +++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 @@ -95,8 +95,9 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
@@ -89,7 +89,7 @@ index d69e4dd30f..dbd66f15ce 100644
      }
  
      int right_alignment = host_size.width();
-@@ -268,6 +275,19 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+@@ -268,6 +275,20 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
        layout.child_layouts.emplace_back(combo_button_.get(),
                                          combo_button_->GetVisible(), bounds);
      }
@@ -101,15 +101,16 @@ index d69e4dd30f..dbd66f15ce 100644
 +      const int largura = right_alignment - 2 - x;
 +      const bool cabe = !wrap_during_animation && !wrapped_due_to_overflow &&
 +                        largura > 24;
++      // Sem GetVisible(): recolhida, o layout de cima esconde o título.
 +      layout.child_layouts.emplace_back(
-+          titulo_do_espaco_.get(), cabe && titulo_do_espaco_->GetVisible(),
++          titulo_do_espaco_.get(), cabe,
 +          gfx::Rect(x, std::max(0, y_baseline - altura / 2),
 +                    std::max(0, largura), altura));
 +    }
    }
  
    layout.host_size = host_size;
-@@ -292,6 +312,15 @@ views::LabelButton* VerticalTabStripTopContainer::AddChildButtonFor(
+@@ -292,6 +313,15 @@ views::LabelButton* VerticalTabStripTopContainer::AddChildButtonFor(
    return container_button_ptr;
  }
  
@@ -125,7 +126,7 @@ index d69e4dd30f..dbd66f15ce 100644
  TabStripComboButton* VerticalTabStripTopContainer::GetComboButton() {
    return combo_button_.get();
  }
-@@ -314,6 +343,11 @@ bool VerticalTabStripTopContainer::IsPositionInWindowCaption(
+@@ -314,6 +344,11 @@ bool VerticalTabStripTopContainer::IsPositionInWindowCaption(
      return false;
    }
  
@@ -137,7 +138,7 @@ index d69e4dd30f..dbd66f15ce 100644
    return true;
  }
  
-@@ -333,6 +367,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
+@@ -333,6 +368,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
      context_menu_runner_.reset();
  
      context_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
@@ -150,7 +151,7 @@ index d69e4dd30f..dbd66f15ce 100644
      context_menu_model_->AddCheckItem(
          IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER,
          l10n_util::GetStringUTF16(
-@@ -375,7 +415,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
+@@ -375,7 +416,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
  }
  
  bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
@@ -160,7 +161,7 @@ index d69e4dd30f..dbd66f15ce 100644
      return true;
    }
    return false;
-@@ -383,7 +424,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
+@@ -383,7 +425,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
  
  void VerticalTabStripTopContainer::ExecuteCommand(int command_id,
                                                    int event_flags) {

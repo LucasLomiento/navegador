@@ -15,7 +15,7 @@ O Chrome 155 já tem abas verticais nativas (Views, C++): `chrome/browser/ui/vie
 
 1. **Abas verticais ligadas por padrão e sem opção de voltar pra cima.**
 2. **Visual do Dia por cima do nativo**: cores num mixer de cores nosso (`ColorProvider`), medidas e raios nas constantes de layout, desenho próprio onde o Chrome não deixa configurar.
-3. **Partes que o Chrome não tem** (troca de espaços, seletor de container, cabeçalho do menu lateral do Dia) como Views nossas em `navegador/`, encaixadas por ganchos pequenos.
+3. **Partes que o Chrome não tem** (espaços, fixados e pastas, seletor de container, configurações, cabeçalho do menu lateral do Dia) como Views nossas em `navegador/`, encaixadas por ganchos pequenos.
 
 As medidas vêm das telas do Dia decodificadas (`docs/dia-medidas.md`) e, quando a máquina virtual com Windows estiver de pé, de capturas do Dia rodando, comparadas lado a lado com as nossas.
 
@@ -61,13 +61,34 @@ Ganchos (uma linha cada no Chromium, o resto em `navegador/containers/`):
 
 Os containers aparecem como cor e ícone na aba, com "Abrir em container" no menu de contexto e uma tela pra gerenciar.
 
-## Espaços (do Dia)
+## Espaços (como o Zen, com a cara do Dia)
 
-Cada espaço é um **grupo de abas focado** (`features::kTabGroupsFocusing`, que o Chrome 155 tem mas vem desligado; o navegador liga). Com um grupo focado, a lateral mostra só as abas dele e o `SetFocusedGroup` já ativa a primeira aba do grupo. "Início" é sem foco (todas as abas).
+O espaço é **dado do perfil** (`navegador/browser/containers/espacos_dados.*`): pref `navegador.espacos.lista` (`[{id, nome, icone, cor, container}]`), `navegador.espacos.grupos` (token do grupo de abas → espaço; o token se mantém entre sessões) e `navegador.espacos.ativo` (último usado). Não existe "Início": toda aba é de um espaço.
 
-- **Faixa no pé da lateral** (`navegador/browser/ui/espacos.*`, compilado dentro de `//chrome/browser/ui:ui`): nome do espaço atual, uma bolinha por espaço na cor do grupo, "+" pra criar. A rodinha do mouse passa de um pro outro. Some com a lateral recolhida. Medidas do seletor do Dia (38 de altura, título até 160, bolinhas a 3).
-- **Clique direito na faixa**: "Editar espaço…" (o balão de grupo do próprio Chrome: nome e cor), "Container do espaço", "Novo espaço".
-- **Container padrão do espaço**: pref `navegador.espacos_container` (`{ id do grupo: id do container }`; o id do grupo se mantém entre sessões). Ctrl+T e "Nova aba" num espaço com container nascem nele; link aberto de uma aba herda o container da aba.
+Na janela, cada espaço é um **grupo de abas focado** (`features::kTabGroupsFocusing`, que o Chrome 155 tem desligado; o navegador liga). A janela sempre tem um grupo focado e a lateral mostra só as abas dele. O controle da janela é a `FaixaDeEspacos` (`navegador/browser/ui/espacos.*`, dentro de `//chrome/browser/ui:ui`):
+
+- Grupo sem espaço (sessão antiga, aba vinda de outra janela) vira espaço pelo nome, ou entra no espaço atual se não tem nome; aba solta entra no espaço atual.
+- Aba nova nasce no espaço e no container dele (`EspacoPendente` + `CreateTargetContents`); link herda o container da aba de origem.
+- Ativar uma aba de outro grupo foca o grupo dela (patch em `TabStripModel::ActivateTab`, 0008-espacos.patch): a janela vai pro espaço da aba, como no Zen. A faixa lembra a última aba de cada espaço.
+- A última aba do espaço fechou: a janela fica no espaço, com aba nova.
+- **Troca**: botões laterais do mouse (voltar/avançar) com o ponteiro na lateral, rolagem horizontal ou Ctrl+rodinha na lateral (200 ms entre trocas, como o Zen), deslizar de lado no touchpad, bolinhas no pé, atalhos e o nome no cabeçalho.
+- **Cabeçalho**: o nome do espaço entre o logo e a seta (`SetTituloDoEspaco` no `VerticalTabStripTopContainer`); clicar abre a lista como o seletor de perfis do Dia (✓ no atual, bolinha da cor nos outros, "Novo espaço…", "Editar espaços…"). O cabeçalho do grupo focado some da lista (`TabGroupViewLayout`).
+- **Menu da aba**: "Mover para o espaço ›" no lugar dos itens de grupo do Chromium.
+
+## Configurações e atalhos
+
+`navegador/browser/ui/configuracoes.*`: janela "Configurações do Navegador" (Ctrl+, ou menu do logo), diálogo do Chromium centralizado no alto da janela (`constrained_window`), com três abas: **Espaços** (cor, emoji, nome, container, ordem, excluir, novo), **Containers** (o painel de `containers/gerenciador`) e **Atalhos** (botão que captura a tecla; Esc cancela, Backspace tira; atalho repetido sai da outra ação). Atalhos em `navegador.atalhos` (só os trocados; padrões em `espacos::Atalhos()`), lidos por `navegador/browser/ui/atalhos.*` e registrados no FocusManager da janela em prioridade alta.
+
+O menu da aba (`//chrome/browser/ui/tabs`) e o do logo (`toolbar:impl`) não enxergam o `ui:ui`: chamam por **pontes** em `containers_ui` (`DefinirMoverAba`, `DefinirFixarAba`, `DefinirAbrirConfiguracoes`), que o código da janela registra.
+
+## Fixados, pastas e favoritos (do Zen)
+
+`navegador/browser/containers/fixos.*` (dados) e `navegador/browser/ui/fixos.*` (lateral). Pref `navegador.espacos.fixos`: `{ "<espaço>": [site | pasta], "favoritos:<espaço>": [site] }`, com site `{id, url, titulo}` e pasta `{id, nome, aberta, itens}`. São do espaço, não da janela: toda janela no espaço mostra a mesma lista, e ela sobrevive a fechar o navegador.
+
+- **Área no alto da lateral** (`AreaDeFixos`, filha do `TabStripView`, posta pelo `TabStripViewLayout` pelo id `visual::kIdAreaDeFixos`): favoritos em ladrilhos 3 por linha (54×41, cantos 8, como no Dia; sem favoritos, o quadro tracejado com alfinete), sites soltos e pastas (ícone, nome em cinza, seta; sites recuados 12), e uma linha antes das abas.
+- **Aba ligada**: clicar num site abre (ou ativa) uma aba ligada a ele (user data na `WebContents`). A aba ligada some da lista (altura zero no `TabGroupViewLayout`) e aparece no lugar do site, destacada quando ativa; o "x" fecha a aba e o site fica. A ligação vai pra sessão (`extra_data` "navegador_fixo", em `session_service_base.cc` e `browser_tabrestore.cc`), então volta ligada ao reabrir. Aba ligada a site que sumiu, ou movida pra outro espaço, vira aba comum.
+- **Menu da aba**: "Fixar no espaço ›" (fora das pastas, numa pasta, "Nova pasta…"; "Desafixar" se já é fixada) e "Adicionar aos favoritos" (gancho no `CommandTogglePinned` do `TabStripModel`; aba fixada do Chromium, de antes, segue o caminho antigo).
+- **Menus da área**: site (renomear, usar o endereço atual, fechar a aba, mover, mover pra pasta, desafixar), pasta (renomear, abrir todos, fechar as abas, mover, excluir: as abas abertas viram comuns) e ladrilho (usar o endereço atual, fechar, mover, tirar dos favoritos).
 
 ## Interface dos containers
 

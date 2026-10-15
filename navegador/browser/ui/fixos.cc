@@ -1,0 +1,1276 @@
+#include "navegador/browser/ui/fixos.h"
+
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
+#include "base/no_destructor.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/task/cancelable_task_tracker.h"
+#include "base/task/single_thread_task_runner.h"
+#include "cc/paint/paint_flags.h"
+#include "cc/paint/path_effect.h"
+#include "chrome/app/vector_icons/vector_icons.h"
+#include "chrome/browser/favicon/favicon_service_factory.h"
+#include "chrome/browser/favicon/favicon_utils.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/sessions/session_service.h"
+#include "chrome/browser/sessions/session_service_factory.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tab_ui_helper.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "components/constrained_window/constrained_window_views.h"
+#include "components/favicon/core/favicon_service.h"
+#include "components/keyed_service/core/service_access_type.h"
+#include "components/prefs/pref_change_registrar.h"
+#include "components/prefs/pref_service.h"
+#include "components/sessions/content/session_tab_helper.h"
+#include "components/tab_groups/tab_group_id.h"
+#include "components/tabs/public/tab_interface.h"
+#include "components/vector_icons/vector_icons.h"
+#include "content/public/browser/web_contents.h"
+#include "navegador/browser/containers/espacos_dados.h"
+#include "navegador/browser/containers/fixos.h"
+#include "navegador/browser/ui/containers/containers_ui.h"
+#include "navegador/browser/ui/visual.h"
+#include "ui/base/metadata/metadata_header_macros.h"
+#include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/models/image_model.h"
+#include "ui/base/mojom/dialog_button.mojom.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/base/mojom/ui_base_types.mojom-shared.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
+#include "ui/color/color_provider.h"
+#include "ui/events/event.h"
+#include "ui/gfx/canvas.h"
+#include "ui/gfx/color_utils.h"
+#include "ui/gfx/font_list.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/transform.h"
+#include "ui/menus/simple_menu_model.h"
+#include "ui/views/accessibility/view_accessibility.h"
+#include "ui/views/border.h"
+#include "ui/views/context_menu_controller.h"
+#include "ui/views/controls/button/button.h"
+#include "ui/views/controls/button/image_button.h"
+#include "ui/views/controls/button/image_button_factory.h"
+#include "ui/views/controls/image_view.h"
+#include "ui/views/controls/label.h"
+#include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/controls/textfield/textfield.h"
+#include "ui/views/layout/box_layout.h"
+#include "ui/views/layout/fill_layout.h"
+#include "ui/views/view.h"
+#include "ui/views/vector_icons.h"
+#include "ui/views/view_class_properties.h"
+#include "ui/views/widget/widget.h"
+#include "ui/views/window/dialog_delegate.h"
+#include "url/gurl.h"
+
+namespace navegador::fixos {
+
+namespace {
+
+// Medidas das abas da lateral (docs/dia-medidas.md): destaque de 30, uma
+// linha a cada 35, cantos 8; ícone 16 a 8 da borda e texto a 32.
+constexpr int kAlturaLinha = 30;
+constexpr int kRaio = 8;
+constexpr int kRecuoDaPasta = 12;
+// Linha embaixo dos fixados: 1 de altura, 5 em cima e embaixo, 12 dos lados.
+constexpr int kAlturaDivisor = 11;
+constexpr int kMargemDivisor = 12;
+
+constexpr const char* kNovaPasta = containers::kFixarNovaPasta;
+constexpr const char* kDesafixar = containers::kFixarDesafixar;
+
+std::u16string NomeDoSite(const Site& site) {
+  if (!site.titulo.empty()) {
+    return base::UTF8ToUTF16(site.titulo);
+  }
+  return base::UTF8ToUTF16(site.url.host().empty() ? site.url.spec()
+                                                   : site.url.host());
+}
+
+GURL EnderecoDaAba(content::WebContents* contents) {
+  return contents->GetLastCommittedURL().is_empty()
+             ? contents->GetVisibleURL()
+             : contents->GetLastCommittedURL();
+}
+
+// Liga a aba ao site e grava na sessão (pra voltar ligada ao reabrir).
+void Ligar(content::WebContents* contents, const std::string& id) {
+  LigarAba(contents, id);
+  Profile* perfil = Profile::FromBrowserContext(contents->GetBrowserContext());
+  if (SessionService* sessao =
+          SessionServiceFactory::GetForProfileIfExisting(perfil)) {
+    sessao->AddTabExtraData(
+        sessions::SessionTabHelper::IdForWindowContainingTab(contents),
+        sessions::SessionTabHelper::IdForTab(contents), kSessionKey, id);
+  }
+}
+
+// Janelinha que pede um nome (pasta nova, renomear).
+void PedirNome(BrowserWindowInterface* browser,
+               std::u16string titulo,
+               std::u16string inicial,
+               base::OnceCallback<void(const std::string&)> pronto) {
+  auto dialogo = std::make_unique<views::DialogDelegate>();
+  dialogo->SetTitle(titulo);
+  dialogo->SetModalType(ui::mojom::ModalType::kWindow);
+  dialogo->SetShowCloseButton(true);
+  dialogo->SetButtonLabel(ui::mojom::DialogButton::kOk, u"Salvar");
+  dialogo->SetButtonLabel(ui::mojom::DialogButton::kCancel, u"Cancelar");
+  dialogo->set_fixed_width(360);
+  auto conteudo = std::make_unique<views::View>();
+  conteudo->SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kVertical,
+      gfx::Insets::TLBR(4, 20, 8, 20)));
+  auto* campo = conteudo->AddChildView(std::make_unique<views::Textfield>());
+  campo->SetText(inicial);
+  campo->SelectAll(false);
+  campo->GetViewAccessibility().SetName(titulo);
+  dialogo->SetInitiallyFocusedView(campo);
+  dialogo->SetAcceptCallback(base::BindOnce(
+      [](views::Textfield* campo,
+         base::OnceCallback<void(const std::string&)> pronto) {
+        std::string nome = base::UTF16ToUTF8(campo->GetText());
+        if (!nome.empty()) {
+          std::move(pronto).Run(nome);
+        }
+      },
+      base::Unretained(campo), std::move(pronto)));
+  dialogo->SetContentsView(std::move(conteudo));
+  BrowserView* view = BrowserView::GetBrowserViewForBrowser(browser);
+  if (!view || !view->GetWidget()) {
+    return;
+  }
+  constrained_window::CreateBrowserModalDialogViews(
+      std::move(dialogo), view->GetWidget()->GetNativeWindow())
+      ->Show();
+  // Subsuperfície no Wayland: só aparece com um quadro novo da janela.
+  view->GetWidget()->GetRootView()->SchedulePaint();
+}
+
+class AreaDeFixos;
+
+std::map<BrowserWindowInterface*, AreaDeFixos*>& Areas() {
+  static base::NoDestructor<std::map<BrowserWindowInterface*, AreaDeFixos*>>
+      areas;
+  return *areas;
+}
+
+// Fundo arredondado das linhas (como a aba): ativa ou com o mouse em cima.
+void PintarFundo(gfx::Canvas* canvas,
+                 const views::View& linha,
+                 bool ativa,
+                 bool hover) {
+  const ui::ColorProvider* cores = linha.GetColorProvider();
+  if (!cores || (!ativa && !hover)) {
+    return;
+  }
+  cc::PaintFlags flags;
+  flags.setAntiAlias(true);
+  flags.setColor(cores->GetColor(
+      ativa ? kColorTabBackgroundActiveFrameActive
+            : kColorTabBackgroundInactiveHoverFrameActive));
+  canvas->DrawRoundRect(gfx::RectF(linha.GetLocalBounds()), kRaio, flags);
+}
+
+// Um site fixado: ícone, nome e o "x" (com a aba aberta e o mouse em cima).
+class LinhaDoSite : public views::Button {
+  METADATA_HEADER(LinhaDoSite, views::Button)
+
+ public:
+  LinhaDoSite(const Site& site,
+              int recuo,
+              base::RepeatingClosure abrir,
+              base::RepeatingClosure fechar)
+      : views::Button(std::move(abrir)), site_(site) {
+    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kHorizontal,
+        gfx::Insets::TLBR(0, 8 + recuo, 0, 4), 8));
+    layout->set_cross_axis_alignment(
+        views::BoxLayout::CrossAxisAlignment::kCenter);
+    icone_ = AddChildView(std::make_unique<views::ImageView>());
+    icone_->SetImageSize(gfx::Size(16, 16));
+    icone_->SetCanProcessEventsWithinSubtree(false);
+    titulo_ = AddChildView(std::make_unique<views::Label>(NomeDoSite(site)));
+    titulo_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+    titulo_->SetElideBehavior(gfx::ELIDE_TAIL);
+    titulo_->SetFontList(gfx::FontList().DeriveWithSizeDelta(
+        13 - gfx::FontList().GetFontSize()));
+    titulo_->SetCanProcessEventsWithinSubtree(false);
+    layout->SetFlexForView(titulo_, 1);
+    fechar_ = AddChildView(views::CreateVectorImageButtonWithNativeTheme(
+        std::move(fechar), vector_icons::kCloseSmallIcon, 16));
+    fechar_->SetTooltipText(u"Fechar a aba (o site continua aqui)");
+    fechar_->SetVisible(false);
+    SetPreferredSize(gfx::Size(0, kAlturaLinha));
+    SetTooltipText(base::UTF8ToUTF16(site.url.spec()));
+    GetViewAccessibility().SetName(NomeDoSite(site));
+    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+  }
+
+  const Site& site() const { return site_; }
+
+  void Mostrar(bool aberta, bool ativa, const ui::ImageModel& icone) {
+    aberta_ = aberta;
+    ativa_ = ativa;
+    icone_->SetImage(icone);
+    fechar_->SetVisible(aberta_ && (ativa_ || IsMouseHovered()));
+    AtualizarCor();
+    SchedulePaint();
+  }
+
+  void OnThemeChanged() override {
+    views::Button::OnThemeChanged();
+    AtualizarCor();
+  }
+
+  void PaintButtonContents(gfx::Canvas* canvas) override {
+    PintarFundo(canvas, *this, ativa_, IsMouseHovered());
+  }
+
+  void OnMouseEntered(const ui::MouseEvent& event) override {
+    views::Button::OnMouseEntered(event);
+    fechar_->SetVisible(aberta_);
+    SchedulePaint();
+  }
+
+  void OnMouseExited(const ui::MouseEvent& event) override {
+    views::Button::OnMouseExited(event);
+    fechar_->SetVisible(aberta_ && ativa_);
+    SchedulePaint();
+  }
+
+ private:
+  // Site sem aba aberta fica um pouco apagado.
+  void AtualizarCor() {
+    if (const ui::ColorProvider* cores = GetColorProvider()) {
+      SkColor cor = cores->GetColor(kColorTabForegroundActiveFrameActive);
+      titulo_->SetEnabledColor(aberta_ ? cor : SkColorSetA(cor, 0xB3));
+    }
+  }
+
+  Site site_;
+  bool aberta_ = false;
+  bool ativa_ = false;
+  raw_ptr<views::ImageView> icone_ = nullptr;
+  raw_ptr<views::Label> titulo_ = nullptr;
+  raw_ptr<views::ImageButton> fechar_ = nullptr;
+};
+
+BEGIN_METADATA(LinhaDoSite)
+END_METADATA
+
+// Cabeçalho de uma pasta: ícone, nome em cinza e a seta, como o grupo no Dia.
+class CabecalhoDaPasta : public views::Button {
+  METADATA_HEADER(CabecalhoDaPasta, views::Button)
+
+ public:
+  CabecalhoDaPasta(const Entrada& pasta, base::RepeatingClosure alternar)
+      : views::Button(std::move(alternar)), aberta_(pasta.aberta) {
+    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kHorizontal,
+        gfx::Insets::TLBR(0, 8, 0, 8), 8));
+    layout->set_cross_axis_alignment(
+        views::BoxLayout::CrossAxisAlignment::kCenter);
+    icone_ = AddChildView(std::make_unique<views::ImageView>());
+    icone_->SetCanProcessEventsWithinSubtree(false);
+    nome_ = AddChildView(
+        std::make_unique<views::Label>(base::UTF8ToUTF16(pasta.nome)));
+    nome_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+    nome_->SetElideBehavior(gfx::ELIDE_TAIL);
+    nome_->SetFontList(gfx::FontList().DeriveWithSizeDelta(
+        13 - gfx::FontList().GetFontSize()));
+    nome_->SetCanProcessEventsWithinSubtree(false);
+    layout->SetFlexForView(nome_, 1);
+    seta_ = AddChildView(std::make_unique<views::ImageView>());
+    seta_->SetCanProcessEventsWithinSubtree(false);
+    SetPreferredSize(gfx::Size(0, kAlturaLinha));
+    GetViewAccessibility().SetName(u"Pasta " +
+                                   base::UTF8ToUTF16(pasta.nome));
+    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+  }
+
+  void OnThemeChanged() override {
+    views::Button::OnThemeChanged();
+    const ui::ColorId cor = kColorTabForegroundInactiveFrameActive;
+    nome_->SetEnabledColor(GetColorProvider()->GetColor(cor));
+    icone_->SetImage(ui::ImageModel::FromVectorIcon(
+        aberta_ ? vector_icons::kFolderOpenIcon
+                : vector_icons::kFolderFlippableIcon,
+        cor, 16));
+    seta_->SetImage(ui::ImageModel::FromVectorIcon(
+        aberta_ ? vector_icons::kKeyboardArrowDownIcon
+                : kKeyboardArrowRightIcon,
+        cor, 14));
+  }
+
+  void PaintButtonContents(gfx::Canvas* canvas) override {
+    PintarFundo(canvas, *this, /*ativa=*/false, IsMouseHovered());
+  }
+
+  void OnMouseEntered(const ui::MouseEvent& event) override {
+    views::Button::OnMouseEntered(event);
+    SchedulePaint();
+  }
+
+  void OnMouseExited(const ui::MouseEvent& event) override {
+    views::Button::OnMouseExited(event);
+    SchedulePaint();
+  }
+
+ private:
+  bool aberta_;
+  raw_ptr<views::ImageView> icone_ = nullptr;
+  raw_ptr<views::Label> nome_ = nullptr;
+  raw_ptr<views::ImageView> seta_ = nullptr;
+};
+
+BEGIN_METADATA(CabecalhoDaPasta)
+END_METADATA
+
+// Um favorito: ladrilho com o ícone do site (54x41, cantos 8, um pouco mais
+// claro que a lateral e borda fina; medido no Dia).
+class Ladrilho : public views::Button {
+  METADATA_HEADER(Ladrilho, views::Button)
+
+ public:
+  Ladrilho(const Site& site, base::RepeatingClosure abrir)
+      : views::Button(std::move(abrir)), site_(site) {
+    SetLayoutManager(std::make_unique<views::FillLayout>());
+    icone_ = AddChildView(std::make_unique<views::ImageView>());
+    icone_->SetImageSize(gfx::Size(18, 18));
+    icone_->SetCanProcessEventsWithinSubtree(false);
+    SetTooltipText(NomeDoSite(site));
+    GetViewAccessibility().SetName(NomeDoSite(site));
+    SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
+  }
+
+  const Site& site() const { return site_; }
+
+  void Mostrar(bool aberta, bool ativa, const ui::ImageModel& icone) {
+    aberta_ = aberta;
+    ativa_ = ativa;
+    icone_->SetImage(icone);
+    SchedulePaint();
+  }
+
+  void PaintButtonContents(gfx::Canvas* canvas) override {
+    const ui::ColorProvider* cores = GetColorProvider();
+    if (!cores) {
+      return;
+    }
+    const bool escuro =
+        color_utils::IsDark(cores->GetColor(ui::kColorFrameActive));
+    SkColor fundo = escuro ? SkColorSetARGB(0x10, 0xFF, 0xFF, 0xFF)
+                           : SkColorSetARGB(0x99, 0xFF, 0xFF, 0xFF);
+    if (ativa_) {
+      fundo = cores->GetColor(kColorTabBackgroundActiveFrameActive);
+    } else if (IsMouseHovered()) {
+      fundo = escuro ? SkColorSetARGB(0x1F, 0xFF, 0xFF, 0xFF)
+                     : SkColorSetARGB(0xCC, 0xFF, 0xFF, 0xFF);
+    }
+    const gfx::RectF caixa(GetLocalBounds());
+    cc::PaintFlags flags;
+    flags.setAntiAlias(true);
+    flags.setColor(fundo);
+    canvas->DrawRoundRect(caixa, kRaio, flags);
+    flags.setStyle(cc::PaintFlags::kStroke_Style);
+    flags.setStrokeWidth(1);
+    flags.setColor(escuro ? SkColorSetARGB(0x14, 0xFF, 0xFF, 0xFF)
+                          : SkColorSetARGB(0x14, 0x00, 0x00, 0x00));
+    gfx::RectF borda = caixa;
+    borda.Inset(0.5f);
+    canvas->DrawRoundRect(borda, kRaio, flags);
+  }
+
+  void OnMouseEntered(const ui::MouseEvent& event) override {
+    views::Button::OnMouseEntered(event);
+    SchedulePaint();
+  }
+
+  void OnMouseExited(const ui::MouseEvent& event) override {
+    views::Button::OnMouseExited(event);
+    SchedulePaint();
+  }
+
+ private:
+  Site site_;
+  bool aberta_ = false;
+  bool ativa_ = false;
+  raw_ptr<views::ImageView> icone_ = nullptr;
+};
+
+BEGIN_METADATA(Ladrilho)
+END_METADATA
+
+// Sem favoritos no espaço: o quadro tracejado com o alfinete do Dia. Clicar
+// põe a aba atual nos favoritos.
+class SemFavoritos : public views::Button {
+  METADATA_HEADER(SemFavoritos, views::Button)
+
+ public:
+  explicit SemFavoritos(base::RepeatingClosure favoritar)
+      : views::Button(std::move(favoritar)) {
+    SetLayoutManager(std::make_unique<views::FillLayout>());
+    icone_ = AddChildView(std::make_unique<views::ImageView>());
+    icone_->SetCanProcessEventsWithinSubtree(false);
+    SetPreferredSize(gfx::Size(0, 40));
+    SetTooltipText(u"Adicionar a aba atual aos favoritos");
+    GetViewAccessibility().SetName(u"Adicionar a aba atual aos favoritos");
+  }
+
+  void OnThemeChanged() override {
+    views::Button::OnThemeChanged();
+    icone_->SetImage(ui::ImageModel::FromVectorIcon(
+        views::kKeepIcon, kColorTabForegroundInactiveFrameActive, 16));
+  }
+
+  void PaintButtonContents(gfx::Canvas* canvas) override {
+    const SkColor cor = GetColorProvider()->GetColor(
+        kColorTabForegroundInactiveFrameActive);
+    gfx::RectF caixa(GetLocalBounds());
+    caixa.Inset(0.5f);
+    cc::PaintFlags flags;
+    flags.setAntiAlias(true);
+    if (IsMouseHovered()) {
+      flags.setColor(SkColorSetA(cor, 0x10));
+      canvas->DrawRoundRect(caixa, kRaio, flags);
+    }
+    flags.setStyle(cc::PaintFlags::kStroke_Style);
+    flags.setStrokeWidth(1);
+    flags.setColor(SkColorSetA(cor, 0x66));
+    const SkScalar tracos[] = {3, 3};
+    flags.setPathEffect(cc::PathEffect::MakeDash(tracos, 2, 0));
+    canvas->DrawRoundRect(caixa, kRaio, flags);
+  }
+
+  void OnMouseEntered(const ui::MouseEvent& event) override {
+    views::Button::OnMouseEntered(event);
+    SchedulePaint();
+  }
+
+  void OnMouseExited(const ui::MouseEvent& event) override {
+    views::Button::OnMouseExited(event);
+    SchedulePaint();
+  }
+
+ private:
+  raw_ptr<views::ImageView> icone_ = nullptr;
+};
+
+BEGIN_METADATA(SemFavoritos)
+END_METADATA
+
+// Os favoritos em grade de 3 colunas (como no Dia), 6 entre eles.
+class GradeDeFavoritos : public views::View {
+  METADATA_HEADER(GradeDeFavoritos, views::View)
+
+ public:
+  static constexpr int kColunas = 3;
+  static constexpr int kAltura = 41;
+  static constexpr int kFolga = 6;
+
+  gfx::Size CalculatePreferredSize(
+      const views::SizeBounds& available_size) const override {
+    const int linhas = (static_cast<int>(children().size()) + kColunas - 1) /
+                       kColunas;
+    return gfx::Size(
+        kColunas * 54 + (kColunas - 1) * kFolga,
+        linhas == 0 ? 0 : linhas * kAltura + (linhas - 1) * kFolga);
+  }
+
+  void Layout(PassKey) override {
+    const int largura = (width() - (kColunas - 1) * kFolga) / kColunas;
+    int i = 0;
+    for (views::View* filho : children()) {
+      const int linha = i / kColunas;
+      const int coluna = i % kColunas;
+      filho->SetBounds(coluna * (largura + kFolga), linha * (kAltura + kFolga),
+                       largura, kAltura);
+      ++i;
+    }
+  }
+};
+
+BEGIN_METADATA(GradeDeFavoritos)
+END_METADATA
+
+// A linha fina entre os fixados e as abas.
+class Divisor : public views::View {
+  METADATA_HEADER(Divisor, views::View)
+
+ public:
+  Divisor() { SetPreferredSize(gfx::Size(0, kAlturaDivisor)); }
+
+  void OnPaint(gfx::Canvas* canvas) override {
+    const SkColor cor = GetColorProvider()->GetColor(
+        kColorTabForegroundInactiveFrameActive);
+    canvas->FillRect(gfx::Rect(kMargemDivisor, kAlturaDivisor / 2,
+                               width() - 2 * kMargemDivisor, 1),
+                     SkColorSetA(cor, 0x33));
+  }
+};
+
+BEGIN_METADATA(Divisor)
+END_METADATA
+
+class AreaDeFixos : public views::View,
+                    public TabStripModelObserver,
+                    public views::ContextMenuController,
+                    public ui::SimpleMenuModel::Delegate {
+  METADATA_HEADER(AreaDeFixos, views::View)
+
+ public:
+  explicit AreaDeFixos(BrowserWindowInterface* browser)
+      : browser_(browser), model_(browser->GetTabStripModel()) {
+    SetID(visual::kIdAreaDeFixos);
+    SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kVertical, gfx::Insets(),
+        visual::kEspacoEntreAbas));
+    set_context_menu_controller(this);
+    model_->AddObserver(this);
+    Areas()[browser_] = this;
+    prefs_.Init(Perfil()->GetPrefs());
+    prefs_.Add(kFixosPref,
+               base::BindRepeating(&AreaDeFixos::ReconstruirDepois,
+                                   base::Unretained(this)));
+    prefs_.Add(espacos::kListaPref,
+               base::BindRepeating(&AreaDeFixos::ReconstruirDepois,
+                                   base::Unretained(this)));
+    Reconstruir();
+  }
+
+  ~AreaDeFixos() override {
+    model_->RemoveObserver(this);
+    auto it = Areas().find(browser_);
+    if (it != Areas().end() && it->second == this) {
+      Areas().erase(it);
+    }
+  }
+
+  // Do menu da aba ("Fixar no espaço"): `destino` vazio = solto; id de
+  // pasta; kNovaPasta; kDesafixar.
+  void FixarAba(int index, const std::string& destino) {
+    if (index < 0 || index >= model_->count()) {
+      return;
+    }
+    content::WebContents* aba = model_->GetWebContentsAt(index);
+    if (destino == kDesafixar) {
+      if (std::optional<std::string> id = SiteDaAba(aba)) {
+        Desligar(aba);
+        Remover(Perfil(), *id);
+      }
+      return;
+    }
+    if (destino == kNovaPasta) {
+      PedirNome(browser_, u"Nova pasta", u"Pasta",
+                base::BindOnce(&AreaDeFixos::FixarNaPastaNova,
+                               weak_factory_.GetWeakPtr(),
+                               model_->GetTabAtIndex(index)->GetHandle()));
+      return;
+    }
+    if (model_->IsTabPinned(index)) {
+      index = model_->SetTabPinned(index, false);
+    }
+    const std::string id =
+        Fixar(Perfil(), EspacoAtual(), EnderecoDaAba(aba),
+              base::UTF16ToUTF8(aba->GetTitle()), destino);
+    if (!destino.empty()) {
+      AbrirPasta(Perfil(), destino, true);
+    }
+    Ligar(aba, id);
+    InvalidarLista();
+    Reconstruir();
+  }
+
+  // "Adicionar aos favoritos" / "Tirar dos favoritos" do menu da aba. Aba
+  // fixada do Chromium (ladrilho antigo) segue o caminho do Chromium.
+  bool AlternarFavoritoDaAba(content::WebContents* aba) {
+    const int index = model_->GetIndexOfWebContents(aba);
+    if (index == TabStripModel::kNoTab || model_->IsTabPinned(index)) {
+      return false;
+    }
+    if (std::optional<std::string> id = SiteDaAba(aba);
+        id && EFavorito(Perfil(), *id)) {
+      Desligar(aba);
+      Remover(Perfil(), *id);
+      return true;
+    }
+    const std::string id =
+        Favoritar(Perfil(), EspacoAtual(), EnderecoDaAba(aba),
+                  base::UTF16ToUTF8(aba->GetTitle()));
+    Ligar(aba, id);
+    InvalidarLista();
+    Reconstruir();
+    return true;
+  }
+
+  bool TemAba(content::WebContents* aba) const {
+    return model_->GetIndexOfWebContents(aba) != TabStripModel::kNoTab;
+  }
+
+  // --- views::View ---------------------------------------------------------
+
+  void OnThemeChanged() override {
+    views::View::OnThemeChanged();
+    AtualizarEstados();
+  }
+
+  // --- views::ContextMenuController ----------------------------------------
+
+  void ShowContextMenuForViewImpl(
+      views::View* source,
+      const gfx::Point& point,
+      ui::mojom::MenuSourceType source_type) override {
+    menu_ = std::make_unique<ui::SimpleMenuModel>(this);
+    submenu_ = nullptr;
+    alvo_.clear();
+    pastas_.clear();
+    const std::string id = IdDaLinha(source);
+    std::string pasta_do_alvo;
+    std::optional<Site> site =
+        id.empty() ? std::nullopt
+                   : SitePorId(Perfil(), id, nullptr, &pasta_do_alvo);
+    alvo_ = id;
+    if (site && EFavorito(Perfil(), id)) {
+      content::WebContents* aba = AbaDoSite(id);
+      if (aba && EnderecoDaAba(aba) != site->url) {
+        menu_->AddItem(kUsarEndereco, u"Usar o endereço atual");
+      }
+      if (aba) {
+        menu_->AddItem(kFecharAba, u"Fechar a aba");
+      }
+      menu_->AddItem(kSubir, u"Mover pra esquerda");
+      menu_->AddItem(kDescer, u"Mover pra direita");
+      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+      menu_->AddItem(kDesafixarCmd, u"Tirar dos favoritos");
+    } else if (site) {
+      content::WebContents* aba = AbaDoSite(id);
+      menu_->AddItem(kRenomear, u"Renomear…");
+      if (aba && EnderecoDaAba(aba) != site->url) {
+        menu_->AddItem(kUsarEndereco, u"Usar o endereço atual");
+      }
+      if (aba) {
+        menu_->AddItem(kFecharAba, u"Fechar a aba");
+      }
+      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+      menu_->AddItem(kSubir, u"Mover pra cima");
+      menu_->AddItem(kDescer, u"Mover pra baixo");
+      submenu_ = std::make_unique<ui::SimpleMenuModel>(this);
+      if (!pasta_do_alvo.empty()) {
+        submenu_->AddItem(kForaDaPasta, u"Fora das pastas");
+      }
+      for (const Entrada& entrada : Do(Perfil(), EspacoAtual())) {
+        if (entrada.pasta && entrada.id != pasta_do_alvo) {
+          submenu_->AddItemWithIcon(
+              kPrimeiraPasta + pastas_.size(), base::UTF8ToUTF16(entrada.nome),
+              ui::ImageModel::FromVectorIcon(vector_icons::kFolderFlippableIcon,
+                                             ui::kColorMenuIcon, 16));
+          pastas_.push_back(entrada.id);
+        }
+      }
+      if (submenu_->GetItemCount() > 0) {
+        menu_->AddSubMenu(kMoverParaPasta, u"Mover para a pasta",
+                          submenu_.get());
+      }
+      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+      menu_->AddItem(kNovaPastaCmd, u"Nova pasta…");
+      menu_->AddItem(kDesafixarCmd, u"Desafixar");
+    } else if (!id.empty()) {
+      // Pasta.
+      menu_->AddItem(kRenomear, u"Renomear pasta…");
+      menu_->AddItem(kAbrirTodas, u"Abrir todos os sites");
+      menu_->AddItem(kFecharTodas, u"Fechar as abas da pasta");
+      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+      menu_->AddItem(kSubir, u"Mover pra cima");
+      menu_->AddItem(kDescer, u"Mover pra baixo");
+      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+      menu_->AddItem(kNovaPastaCmd, u"Nova pasta…");
+      menu_->AddItem(kExcluirPasta, u"Excluir a pasta");
+    } else {
+      menu_->AddItem(kNovaPastaCmd, u"Nova pasta…");
+    }
+    runner_ = std::make_unique<views::MenuRunner>(
+        menu_.get(), views::MenuRunner::CONTEXT_MENU);
+    runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+                       views::MenuAnchorPosition::kTopLeft, source_type);
+  }
+
+  // --- ui::SimpleMenuModel::Delegate ---------------------------------------
+
+  void ExecuteCommand(int command_id, int event_flags) override {
+    Profile* perfil = Perfil();
+    const std::string id = alvo_;
+    switch (command_id) {
+      case kRenomear: {
+        std::optional<Site> site = SitePorId(perfil, id);
+        std::u16string atual;
+        if (site) {
+          atual = NomeDoSite(*site);
+        } else {
+          for (const Entrada& entrada : Do(perfil, EspacoAtual())) {
+            if (entrada.id == id) {
+              atual = base::UTF8ToUTF16(entrada.nome);
+            }
+          }
+        }
+        PedirNome(browser_, site ? u"Renomear" : u"Renomear pasta", atual,
+                  base::BindOnce(
+                      [](Profile* perfil, std::string id, bool e_site,
+                         const std::string& nome) {
+                        if (e_site) {
+                          RenomearSite(perfil, id, nome);
+                        } else {
+                          RenomearPasta(perfil, id, nome);
+                        }
+                      },
+                      perfil, id, site.has_value()));
+        return;
+      }
+      case kUsarEndereco:
+        if (content::WebContents* aba = AbaDoSite(id)) {
+          TrocarEndereco(perfil, id, EnderecoDaAba(aba));
+        }
+        return;
+      case kFecharAba:
+        FecharAbaDoSite(id);
+        return;
+      case kSubir:
+        Mover(perfil, id, -1);
+        return;
+      case kDescer:
+        Mover(perfil, id, 1);
+        return;
+      case kForaDaPasta:
+        MoverParaPasta(perfil, id, "");
+        return;
+      case kNovaPastaCmd:
+        PedirNome(browser_, u"Nova pasta", u"Pasta",
+                  base::BindOnce(
+                      [](Profile* perfil, std::string espaco,
+                         const std::string& nome) {
+                        CriarPasta(perfil, espaco, nome);
+                      },
+                      perfil, EspacoAtual()));
+        return;
+      case kDesafixarCmd:
+        if (content::WebContents* aba = AbaDoSite(id)) {
+          Desligar(aba);
+        }
+        Remover(perfil, id);
+        return;
+      case kAbrirTodas:
+      case kFecharTodas:
+        for (const Entrada& entrada : Do(perfil, EspacoAtual())) {
+          if (entrada.id != id) {
+            continue;
+          }
+          for (const Site& site : entrada.itens) {
+            if (command_id == kFecharTodas) {
+              FecharAbaDoSite(site.id);
+            } else if (!AbaDoSite(site.id)) {
+              AbrirSite(site, /*ativar=*/false);
+            }
+          }
+        }
+        return;
+      case kExcluirPasta:
+        // As abas abertas dos sites da pasta continuam, como abas comuns.
+        for (const Entrada& entrada : Do(perfil, EspacoAtual())) {
+          if (entrada.id == id) {
+            for (const Site& site : entrada.itens) {
+              if (content::WebContents* aba = AbaDoSite(site.id)) {
+                Desligar(aba);
+              }
+            }
+          }
+        }
+        Remover(perfil, id);
+        return;
+    }
+    const size_t i = command_id - kPrimeiraPasta;
+    if (i < pastas_.size()) {
+      MoverParaPasta(perfil, id, pastas_[i]);
+      AbrirPasta(perfil, pastas_[i], true);
+    }
+  }
+
+  // --- TabStripModelObserver -----------------------------------------------
+
+  void OnTabStripModelChanged(
+      TabStripModel* tab_strip_model,
+      const TabStripModelChange& change,
+      const TabStripSelectionChange& selection) override {
+    if (change.type() != TabStripModelChange::kSelectionOnly ||
+        selection.active_tab_changed()) {
+      AtualizarDepois();
+    }
+    // Pasta fechada mostra o site da aba ativa: muda com ela.
+    if (selection.active_tab_changed() && tem_pasta_fechada_) {
+      ReconstruirDepois();
+    }
+  }
+
+  void OnTabChangedAt(tabs::TabInterface* tab,
+                      TabChangeType change_type) override {
+    if (tab && SiteDaAba(tab->GetContents())) {
+      AtualizarDepois();
+    }
+  }
+
+  void OnTabGroupFocusChanged(
+      std::optional<tab_groups::TabGroupId> new_focused_group_id,
+      std::optional<tab_groups::TabGroupId> old_focused_group_id) override {
+    ReconstruirDepois();
+  }
+
+  void OnTabPinnedStateChanged(tabs::TabInterface* tab, int index) override {
+    AtualizarDepois();
+  }
+
+  void TabGroupedStateChanged(TabStripModel* tab_strip_model,
+                              std::optional<tab_groups::TabGroupId> old_group,
+                              std::optional<tab_groups::TabGroupId> new_group,
+                              tabs::TabInterface* tab,
+                              int index) override {
+    AtualizarDepois();
+  }
+
+ private:
+  Profile* Perfil() const { return browser_->GetProfile(); }
+
+  std::string EspacoAtual() const {
+    if (std::optional<tab_groups::TabGroupId> grupo =
+            model_->GetFocusedGroup()) {
+      if (std::optional<std::string> espaco =
+              espacos::EspacoDoGrupo(Perfil(), grupo->ToString())) {
+        return *espaco;
+      }
+    }
+    return espacos::Ativo(Perfil());
+  }
+
+  std::string IdDaLinha(views::View* linha) const {
+    auto it = ids_.find(linha);
+    return it == ids_.end() ? std::string() : it->second;
+  }
+
+  // Aba desta janela ligada ao site.
+  content::WebContents* AbaDoSite(const std::string& id) const {
+    for (int i = 0; i < model_->count(); ++i) {
+      content::WebContents* aba = model_->GetWebContentsAt(i);
+      if (SiteDaAba(aba) == id) {
+        return aba;
+      }
+    }
+    return nullptr;
+  }
+
+  void Desligar(content::WebContents* aba) {
+    Ligar(aba, std::string());
+    InvalidarLista();
+  }
+
+  void FecharAbaDoSite(const std::string& id) {
+    if (content::WebContents* aba = AbaDoSite(id)) {
+      const int index = model_->GetIndexOfWebContents(aba);
+      if (index != TabStripModel::kNoTab) {
+        model_->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
+      }
+    }
+  }
+
+  void FixarNaPastaNova(tabs::TabHandle aba, const std::string& nome) {
+    tabs::TabInterface* tab = aba.Get();
+    const int index = tab ? model_->GetIndexOfTab(tab) : TabStripModel::kNoTab;
+    if (index == TabStripModel::kNoTab) {
+      return;
+    }
+    FixarAba(index, CriarPasta(Perfil(), EspacoAtual(), nome));
+  }
+
+  // Clique no site: a aba dele (se aberta) ou uma aba nova ligada a ele, no
+  // espaço atual (e no container do espaço).
+  void Abrir(const std::string& id) {
+    if (content::WebContents* aba = AbaDoSite(id)) {
+      const int index = model_->GetIndexOfWebContents(aba);
+      if (index != TabStripModel::kNoTab) {
+        model_->ActivateTabAt(
+            index, TabStripUserGestureDetails(
+                       TabStripUserGestureDetails::GestureType::kOther));
+      }
+      return;
+    }
+    if (std::optional<Site> site = SitePorId(Perfil(), id)) {
+      AbrirSite(*site, /*ativar=*/true);
+    }
+  }
+
+  void AbrirSite(const Site& site, bool ativar) {
+    NavigateParams params(browser_, site.url,
+                          ui::PAGE_TRANSITION_AUTO_BOOKMARK);
+    params.disposition = ativar ? WindowOpenDisposition::NEW_FOREGROUND_TAB
+                                : WindowOpenDisposition::NEW_BACKGROUND_TAB;
+    Navigate(&params);
+    content::WebContents* aba = params.navigated_or_inserted_contents;
+    if (!aba) {
+      return;
+    }
+    // Liga antes do próximo layout: a aba já nasce fora da lista.
+    Ligar(aba, site.id);
+    // No grupo do espaço atual (o Navigate pode pôr a aba solta).
+    const int index = model_->GetIndexOfWebContents(aba);
+    if (index != TabStripModel::kNoTab) {
+      if (std::optional<tab_groups::TabGroupId> grupo =
+              model_->GetFocusedGroup();
+          grupo && model_->GetTabGroupForTab(index) != grupo) {
+        model_->AddToExistingGroup({index}, *grupo, /*add_to_end=*/true);
+      }
+    }
+    InvalidarLista();
+    AtualizarDepois();
+  }
+
+  // A lista de abas (TabGroupView do espaço) esconde as abas ligadas: depois
+  // de ligar ou desligar, refaz o layout dela.
+  void InvalidarLista() {
+    views::View* raiz = parent() ? parent() : this;
+    std::vector<views::View*> pilha = {raiz};
+    while (!pilha.empty()) {
+      views::View* view = pilha.back();
+      pilha.pop_back();
+      view->InvalidateLayout();
+      for (views::View* filho : view->children()) {
+        pilha.push_back(filho);
+      }
+    }
+  }
+
+  void ReconstruirDepois() {
+    if (reconstrucao_pendente_) {
+      return;
+    }
+    reconstrucao_pendente_ = true;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&AreaDeFixos::Reconstruir,
+                                  weak_factory_.GetWeakPtr()));
+  }
+
+  void AtualizarDepois() {
+    if (atualizacao_pendente_) {
+      return;
+    }
+    atualizacao_pendente_ = true;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&AreaDeFixos::AtualizarEstados,
+                                  weak_factory_.GetWeakPtr()));
+  }
+
+  void Reconstruir() {
+    reconstrucao_pendente_ = false;
+    RemoveAllChildViews();
+    linhas_.clear();
+    ladrilhos_.clear();
+    ids_.clear();
+    const std::vector<Site> favoritos = Favoritos(Perfil(), EspacoAtual());
+    if (favoritos.empty()) {
+      AddChildView(std::make_unique<SemFavoritos>(base::BindRepeating(
+          [](AreaDeFixos* area) {
+            if (content::WebContents* aba =
+                    area->model_->GetActiveWebContents()) {
+              area->AlternarFavoritoDaAba(aba);
+            }
+          },
+          base::Unretained(this))));
+    } else {
+      auto* grade = AddChildView(std::make_unique<GradeDeFavoritos>());
+      grade->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 3, 0));
+      for (const Site& site : favoritos) {
+        auto* ladrilho = grade->AddChildView(std::make_unique<Ladrilho>(
+            site, base::BindRepeating(&AreaDeFixos::Abrir,
+                                      base::Unretained(this), site.id)));
+        ladrilho->set_context_menu_controller(this);
+        ladrilhos_.push_back(ladrilho);
+        ids_[ladrilho] = site.id;
+      }
+    }
+    const std::vector<Entrada> entradas = Do(Perfil(), EspacoAtual());
+    tem_pasta_fechada_ = false;
+    for (const Entrada& entrada : entradas) {
+      tem_pasta_fechada_ |= entrada.pasta && !entrada.aberta;
+      if (!entrada.pasta) {
+        AdicionarSite(entrada.site, /*recuo=*/0);
+        continue;
+      }
+      auto* cabecalho = AddChildView(std::make_unique<CabecalhoDaPasta>(
+          entrada,
+          base::BindRepeating(
+              [](Profile* perfil, std::string id, bool aberta) {
+                AbrirPasta(perfil, id, !aberta);
+              },
+              Perfil(), entrada.id, entrada.aberta)));
+      cabecalho->set_context_menu_controller(this);
+      ids_[cabecalho] = entrada.id;
+      for (const Site& site : entrada.itens) {
+        // Pasta fechada: só o site da aba ativa fica à vista (como no Zen).
+        if (entrada.aberta || SiteDaAba(model_->GetActiveWebContents()) ==
+                                  site.id) {
+          AdicionarSite(site, kRecuoDaPasta);
+        }
+      }
+    }
+    if (!entradas.empty()) {
+      AddChildView(std::make_unique<Divisor>());
+    }
+    // Sem a linha no fim, a folga de uma aba até a lista.
+    SetBorder(entradas.empty() ? views::CreateEmptyBorder(gfx::Insets::TLBR(
+                                     0, 0, visual::kEspacoEntreAbas, 0))
+                               : nullptr);
+    AtualizarEstados();
+    PreferredSizeChanged();
+  }
+
+  void AdicionarSite(const Site& site, int recuo) {
+    auto* linha = AddChildView(std::make_unique<LinhaDoSite>(
+        site, recuo,
+        base::BindRepeating(&AreaDeFixos::Abrir, base::Unretained(this),
+                            site.id),
+        base::BindRepeating(&AreaDeFixos::FecharAbaDoSite,
+                            base::Unretained(this), site.id)));
+    linha->set_context_menu_controller(this);
+    linhas_.push_back(linha);
+    ids_[linha] = site.id;
+  }
+
+  // Aba aberta/ativa e ícone de cada site; e arruma as ligações: aba ligada
+  // a site que não existe mais (ou que é de outro espaço) vira aba comum, e
+  // duas abas no mesmo site ficam só com a primeira.
+  void AtualizarEstados() {
+    atualizacao_pendente_ = false;
+    Profile* perfil = Perfil();
+    if (ConverterFixadasDoChromium()) {
+      Reconstruir();
+      return;
+    }
+    std::map<std::string, content::WebContents*> abertas;
+    bool mudou = false;
+    for (int i = 0; i < model_->count(); ++i) {
+      content::WebContents* aba = model_->GetWebContentsAt(i);
+      std::optional<std::string> id = SiteDaAba(aba);
+      if (!id) {
+        continue;
+      }
+      std::string espaco;
+      const bool existe = SitePorId(perfil, *id, &espaco).has_value();
+      std::optional<std::string> espaco_da_aba;
+      if (std::optional<tab_groups::TabGroupId> grupo =
+              model_->GetTabGroupForTab(i)) {
+        espaco_da_aba = espacos::EspacoDoGrupo(perfil, grupo->ToString());
+      }
+      if (!existe || abertas.contains(*id) ||
+          (espaco_da_aba && *espaco_da_aba != espaco)) {
+        Ligar(aba, std::string());
+        mudou = true;
+        continue;
+      }
+      abertas[*id] = aba;
+    }
+    if (mudou) {
+      InvalidarLista();
+    }
+
+    content::WebContents* ativa = model_->GetActiveWebContents();
+    for (LinhaDoSite* linha : linhas_) {
+      auto it = abertas.find(linha->site().id);
+      content::WebContents* aba = it == abertas.end() ? nullptr : it->second;
+      linha->Mostrar(aba != nullptr, aba && aba == ativa,
+                     IconeDe(linha->site(), aba));
+    }
+    for (Ladrilho* ladrilho : ladrilhos_) {
+      auto it = abertas.find(ladrilho->site().id);
+      content::WebContents* aba = it == abertas.end() ? nullptr : it->second;
+      ladrilho->Mostrar(aba != nullptr, aba && aba == ativa,
+                        IconeDe(ladrilho->site(), aba));
+    }
+  }
+
+  // Aba fixada do jeito do Chromium (sessão do pacote anterior, ou aba
+  // arrastada pra área dos ladrilhos) vira favorito do espaço atual: assim os
+  // ladrilhos são sempre do espaço e iguais em todas as janelas.
+  bool ConverterFixadasDoChromium() {
+    std::vector<content::WebContents*> fixadas;
+    for (int i = 0; i < model_->IndexOfFirstNonPinnedTab(); ++i) {
+      fixadas.push_back(model_->GetWebContentsAt(i));
+    }
+    for (content::WebContents* aba : fixadas) {
+      int index = model_->GetIndexOfWebContents(aba);
+      if (index == TabStripModel::kNoTab) {
+        continue;
+      }
+      std::string id;
+      if (std::optional<std::string> atual = SiteDaAba(aba);
+          atual && EFavorito(Perfil(), *atual)) {
+        id = *atual;
+      } else {
+        id = Favoritar(Perfil(), EspacoAtual(), EnderecoDaAba(aba),
+                       base::UTF16ToUTF8(aba->GetTitle()));
+      }
+      Ligar(aba, id);
+      index = model_->SetTabPinned(index, false);
+      if (std::optional<tab_groups::TabGroupId> grupo =
+              model_->GetFocusedGroup();
+          grupo && model_->GetTabGroupForTab(index) != grupo) {
+        model_->AddToExistingGroup({index}, *grupo, /*add_to_end=*/true);
+      }
+    }
+    if (!fixadas.empty()) {
+      InvalidarLista();
+    }
+    return !fixadas.empty();
+  }
+
+  // Ícone da aba aberta, ou o guardado no histórico de favicons.
+  ui::ImageModel IconeDe(const Site& site, content::WebContents* aba) {
+    ui::ImageModel icone;
+    if (aba) {
+      if (tabs::TabInterface* tab =
+              tabs::TabInterface::MaybeGetFromContents(aba)) {
+        if (TabUIHelper* ajudante = TabUIHelper::From(tab)) {
+          icone = ajudante->GetFavicon();
+        }
+      }
+    } else {
+      auto guardado = icones_.find(site.url);
+      if (guardado != icones_.end()) {
+        icone = guardado->second;
+      } else {
+        BuscarIcone(site.url);
+      }
+    }
+    if (icone.IsEmpty()) {
+      icone = favicon::GetDefaultFaviconModel();
+    }
+    return icone;
+  }
+
+  // Ícone de site sem aba aberta: do histórico de favicons.
+  void BuscarIcone(const GURL& url) {
+    if (buscando_.contains(url)) {
+      return;
+    }
+    favicon::FaviconService* servico = FaviconServiceFactory::GetForProfile(
+        Perfil(), ServiceAccessType::EXPLICIT_ACCESS);
+    if (!servico) {
+      return;
+    }
+    buscando_.insert(url);
+    servico->GetFaviconImageForPageURL(
+        url,
+        base::BindOnce(
+            [](base::WeakPtr<AreaDeFixos> area, GURL url,
+               const favicon_base::FaviconImageResult& resultado) {
+              if (!area || resultado.image.IsEmpty()) {
+                return;
+              }
+              area->icones_[url] =
+                  ui::ImageModel::FromImage(resultado.image);
+              area->AtualizarDepois();
+            },
+            weak_factory_.GetWeakPtr(), url),
+        &rastreador_);
+  }
+
+  static constexpr int kRenomear = 1;
+  static constexpr int kUsarEndereco = 2;
+  static constexpr int kFecharAba = 3;
+  static constexpr int kSubir = 4;
+  static constexpr int kDescer = 5;
+  static constexpr int kMoverParaPasta = 6;
+  static constexpr int kForaDaPasta = 7;
+  static constexpr int kNovaPastaCmd = 8;
+  static constexpr int kDesafixarCmd = 9;
+  static constexpr int kAbrirTodas = 10;
+  static constexpr int kFecharTodas = 11;
+  static constexpr int kExcluirPasta = 12;
+  static constexpr int kPrimeiraPasta = 100;
+
+  raw_ptr<BrowserWindowInterface> browser_;
+  raw_ptr<TabStripModel> model_;
+  PrefChangeRegistrar prefs_;
+  std::vector<raw_ptr<LinhaDoSite>> linhas_;
+  std::vector<raw_ptr<Ladrilho>> ladrilhos_;
+  std::map<views::View*, std::string> ids_;
+  std::map<GURL, ui::ImageModel> icones_;
+  std::set<GURL> buscando_;
+  base::CancelableTaskTracker rastreador_;
+  std::string alvo_;
+  std::vector<std::string> pastas_;
+  std::unique_ptr<ui::SimpleMenuModel> menu_;
+  std::unique_ptr<ui::SimpleMenuModel> submenu_;
+  std::unique_ptr<views::MenuRunner> runner_;
+  bool reconstrucao_pendente_ = false;
+  bool atualizacao_pendente_ = false;
+  bool tem_pasta_fechada_ = false;
+  base::WeakPtrFactory<AreaDeFixos> weak_factory_{this};
+};
+
+BEGIN_METADATA(AreaDeFixos)
+END_METADATA
+
+}  // namespace
+
+void AdicionarArea(views::View* tab_strip_view,
+                   BrowserWindowInterface* browser) {
+  // "Fixar no espaço" no menu da aba (containers_ui não enxerga daqui).
+  static bool ponte_ligada = false;
+  if (!ponte_ligada) {
+    ponte_ligada = true;
+    containers::DefinirFixarAba(base::BindRepeating(
+        [](TabStripModel* tab_strip, int index, const std::string& destino) {
+          for (const auto& [janela, area] : Areas()) {
+            if (janela->GetTabStripModel() == tab_strip) {
+              area->FixarAba(index, destino);
+              return;
+            }
+          }
+        }));
+  }
+  static bool ponte_dos_favoritos = false;
+  if (!ponte_dos_favoritos) {
+    ponte_dos_favoritos = true;
+    DefinirAlternarFavorito(base::BindRepeating([](content::WebContents* aba) {
+      for (const auto& [janela, area] : Areas()) {
+        if (area->TemAba(aba)) {
+          return area->AlternarFavoritoDaAba(aba);
+        }
+      }
+      return false;
+    }));
+  }
+  for (views::View* filho : tab_strip_view->children()) {
+    if (filho->GetID() == visual::kIdAreaDeFixos) {
+      return;
+    }
+  }
+  tab_strip_view->AddChildView(std::make_unique<AreaDeFixos>(browser));
+}
+
+}  // namespace navegador::fixos

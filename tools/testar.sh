@@ -25,11 +25,11 @@ CLASSE=navegador-teste
 janela() {
   hyprctl clients -j | python3 -c '
 import json, sys
-for c in json.load(sys.stdin):
-    if c.get("class") == sys.argv[1]:
-        x, y = c["at"]; w, h = c["size"]
-        print(f"{x},{y} {w}x{h}")
-        break
+janelas = [c for c in json.load(sys.stdin) if c.get("class") == sys.argv[1]]
+janelas.sort(key=lambda c: c["focusHistoryID"])
+if janelas:
+    x, y = janelas[0]["at"]; w, h = janelas[0]["size"]
+    print(f"{x},{y} {w}x{h}")
 ' "$CLASSE"
 }
 
@@ -73,9 +73,11 @@ case "${1:-abrir}" in
     shift
     endereco="$(hyprctl clients -j | python3 -c '
 import json, sys
-for c in json.load(sys.stdin):
-    if c.get("class") == sys.argv[1]:
-        print(c["address"]); break' "$CLASSE")"
+# Com várias janelas de teste, a usada por último.
+janelas = [c for c in json.load(sys.stdin) if c.get("class") == sys.argv[1]]
+janelas.sort(key=lambda c: c["focusHistoryID"])
+if janelas:
+    print(janelas[0]["address"])' "$CLASSE")"
     [ -n "$endereco" ] || { echo "sem janela de teste" >&2; exit 1; }
     hyprctl dispatch "hl.dsp.focus({ window = \"address:$endereco\" })" >/dev/null
     sleep 0.3

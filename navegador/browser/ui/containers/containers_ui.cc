@@ -14,11 +14,13 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/tab_interface.h"
+#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/web_contents.h"
 #include "navegador/browser/containers/containers.h"
 #include "navegador/browser/containers/espacos_dados.h"
+#include "navegador/browser/containers/fixos.h"
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/canvas.h"
@@ -140,6 +142,80 @@ MoverAba& PonteMoverAba() {
   static base::NoDestructor<MoverAba> ponte;
   return *ponte;
 }
+
+FixarAba& PonteFixar() {
+  static base::NoDestructor<FixarAba> ponte;
+  return *ponte;
+}
+
+// "Fixar no espaço" no menu de contexto da aba.
+class SubmenuFixar : public ui::SimpleMenuModel,
+                     public ui::SimpleMenuModel::Delegate {
+ public:
+  SubmenuFixar(TabStripModel* tab_strip, int index)
+      : ui::SimpleMenuModel(this),
+        tab_strip_(tab_strip),
+        alvo_(tab_strip->GetWebContentsAt(index)) {
+    if (PonteFixar().is_null()) {
+      return;
+    }
+    if (fixos::SiteDaAba(alvo_)) {
+      AddItem(kDesafixar, u"Desafixar");
+      return;
+    }
+    std::string espaco = espacos::Ativo(tab_strip->profile());
+    if (std::optional<tab_groups::TabGroupId> grupo =
+            tab_strip->GetTabGroupForTab(index)) {
+      espaco = espacos::EspacoDoGrupo(tab_strip->profile(), grupo->ToString())
+                   .value_or(espaco);
+    }
+    AddItem(kSolto, u"Fora das pastas");
+    for (const fixos::Entrada& entrada :
+         fixos::Do(tab_strip->profile(), espaco)) {
+      if (entrada.pasta) {
+        AddItemWithIcon(kPrimeiraPasta + pastas_.size(),
+                        base::UTF8ToUTF16(entrada.nome),
+                        ui::ImageModel::FromVectorIcon(
+                            vector_icons::kFolderFlippableIcon, ui::kColorMenuIcon,
+                            16));
+        pastas_.push_back(entrada.id);
+      }
+    }
+    AddSeparator(ui::NORMAL_SEPARATOR);
+    AddItem(kNovaPasta, u"Nova pasta…");
+  }
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override {
+    const int index = tab_strip_->GetIndexOfWebContents(alvo_);
+    if (index == TabStripModel::kNoTab || PonteFixar().is_null()) {
+      return;
+    }
+    std::string destino;
+    if (command_id == kDesafixar) {
+      destino = kFixarDesafixar;
+    } else if (command_id == kNovaPasta) {
+      destino = kFixarNovaPasta;
+    } else if (command_id != kSolto) {
+      const size_t i = command_id - kPrimeiraPasta;
+      if (i >= pastas_.size()) {
+        return;
+      }
+      destino = pastas_[i];
+    }
+    PonteFixar().Run(tab_strip_, index, destino);
+  }
+
+ private:
+  static constexpr int kSolto = 1;
+  static constexpr int kNovaPasta = 2;
+  static constexpr int kDesafixar = 3;
+  static constexpr int kPrimeiraPasta = 1000;
+
+  raw_ptr<TabStripModel> tab_strip_;
+  raw_ptr<content::WebContents> alvo_;
+  std::vector<std::string> pastas_;
+};
 
 AbrirConfiguracoes& PonteConfiguracoes() {
   static base::NoDestructor<AbrirConfiguracoes> ponte;
@@ -343,6 +419,15 @@ std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDaAba(TabStripModel* tab_strip,
 
 void DefinirMoverAba(MoverAba mover) {
   PonteMoverAba() = std::move(mover);
+}
+
+void DefinirFixarAba(FixarAba fixar) {
+  PonteFixar() = std::move(fixar);
+}
+
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuFixar(TabStripModel* tab_strip,
+                                                       int index) {
+  return std::make_unique<SubmenuFixar>(tab_strip, index);
 }
 
 void DefinirAbrirConfiguracoes(AbrirConfiguracoes abrir) {
