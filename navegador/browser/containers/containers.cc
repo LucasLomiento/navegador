@@ -2,6 +2,9 @@
 
 #include <utility>
 
+#include "base/functional/callback.h"
+#include "base/time/time.h"
+
 #include "base/command_line.h"
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
@@ -12,7 +15,9 @@
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/security_principal.h"
 #include "content/public/browser/site_instance.h"
+#include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
+#include "services/network/public/mojom/cookie_manager.mojom.h"
 #include "url/gurl.h"
 
 namespace navegador::containers {
@@ -143,6 +148,23 @@ void Remove(Profile* profile, std::string_view id) {
     const std::string* value_id = dict ? dict->FindString(kId) : nullptr;
     return value_id && *value_id == id;
   });
+}
+
+void ApagarDados(Profile* profile,
+                 std::string_view id,
+                 base::OnceClosure feito) {
+  content::StoragePartition* particao = profile->GetStoragePartition(
+      PartitionConfig(profile, id), /*can_create=*/false);
+  if (!particao) {
+    std::move(feito).Run();
+    return;
+  }
+  particao->ClearData(content::StoragePartition::REMOVE_DATA_MASK_ALL,
+                      /*filter_builder=*/nullptr,
+                      content::StoragePartition::StorageKeyPolicyMatcherFunction(),
+                      network::mojom::CookieDeletionFilter::New(),
+                      /*perform_storage_cleanup=*/true, base::Time(),
+                      base::Time::Max(), std::move(feito));
 }
 
 content::StoragePartitionConfig PartitionConfig(Profile* profile,

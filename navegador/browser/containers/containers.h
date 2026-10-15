@@ -17,6 +17,7 @@
 #include <string_view>
 #include <vector>
 
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "content/public/browser/storage_partition_config.h"
 
@@ -64,9 +65,14 @@ Container Add(Profile* profile,
               std::string_view icon);
 // Atualiza nome, cor e ícone do container com o mesmo id.
 void Update(Profile* profile, const Container& container);
-// Tira da lista. Os dados da partição são apagados por quem chamou
-// (StoragePartition::ClearData), porque pode ter aba aberta nela.
+// Tira da lista. Os dados ficam até alguém chamar ApagarDados.
 void Remove(Profile* profile, std::string_view id);
+
+// Apaga tudo o que o container guardou (cookies, armazenamento, cache).
+// Abas abertas nele perdem o login. `feito` roda no fim.
+void ApagarDados(Profile* profile,
+                 std::string_view id,
+                 base::OnceClosure feito);
 
 // Container padrão do espaço (id do grupo de abas, TabGroupId::ToString()).
 std::optional<std::string> ContainerDoEspaco(Profile* profile,

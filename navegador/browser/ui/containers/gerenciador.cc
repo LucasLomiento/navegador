@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "cc/paint/paint_flags.h"
@@ -168,10 +169,10 @@ class Gerenciador : public views::DialogDelegate,
     }
   }
 
-  // Tira o container da lista. As abas abertas nele continuam como estão
-  // até fechar; os dados guardados na partição ficam no disco (o Chromium
-  // não tem um "apagar partição" simples; ver docs/ARQUITETURA.md).
+  // Apaga os dados do container (cookies, armazenamento, cache) e tira da
+  // lista. Abas abertas nele continuam abertas, sem login.
   void Excluir(std::string id) {
+    ApagarDados(profile_, id, base::DoNothing());
     Remove(profile_, id);
     Reconstruir();
   }

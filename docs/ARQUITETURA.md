@@ -54,7 +54,7 @@ Cada espaço é um **grupo de abas focado** (`features::kTabGroupsFocusing`, que
 `navegador/browser/ui/containers/`:
 - Barrinha de 3 px na esquerda da aba, na cor do container (gancho em `TabView::OnPaint`).
 - "Abrir em container" no menu da aba (reabre a aba ao lado e fecha a original), "Abrir link em container" no menu da página, "Nova aba em container" no menu do botão "Nova aba". Os submenus têm delegate próprio; o item que abre cada submenu usa um id que o Chromium já aceita (id desconhecido derruba o navegador no `IsContextMenuCommandEnabled`).
-- Janela "Containers" (gerenciar): criar, renomear, trocar a cor, excluir. Excluir só tira da lista; os dados da partição ficam no disco (falta apagar com `StoragePartition::ClearData`).
+- Janela "Containers" (gerenciar): criar, renomear, trocar a cor, excluir. Excluir apaga os dados da partição (`StoragePartition::ClearData`, tudo) e tira da lista; abas abertas nele ficam sem login.
 
 ## Pacote
 
