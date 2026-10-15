@@ -2,6 +2,7 @@
 # Prepara a árvore do Chromium com as nossas mudanças:
 #   1. liga navegador/ dentro dela como src/navegador
 #   2. aplica patches/*.patch em ordem (pula os que já estão aplicados)
+#   3. troca "Chromium" por "Navegador" nos textos (tools/marca.py)
 #
 #   tools/fonte.sh            -> prepara
 #   tools/fonte.sh --gerar    -> regrava patches/ a partir do que mudou no src
@@ -32,7 +33,11 @@ if [ "${1:-}" = "--gerar" ]; then
   done < "$RAIZ/patches/SERIES"
   excl=()
   for c in "${usados[@]}"; do excl+=(":(exclude)$c"); done
-  git diff --binary -- . ':(exclude)navegador' "${excl[@]}" > "$RAIZ/patches/9999-resto.patch"
+  # Os textos com o nome do produto são gerados pelo tools/marca.py.
+  git diff --binary -- . ':(exclude)navegador' \
+    ':(exclude)chrome/app/chromium_strings.grd' \
+    ':(exclude)chrome/app/resources/chromium_strings_*.xtb' \
+    "${excl[@]}" > "$RAIZ/patches/9999-resto.patch"
   [ -s "$RAIZ/patches/9999-resto.patch" ] || rm -f "$RAIZ/patches/9999-resto.patch"
   ls -1 "$RAIZ/patches"
   exit 0
@@ -50,3 +55,5 @@ for p in "$RAIZ"/patches/*.patch; do
     exit 1
   fi
 done
+
+python3 -I "$RAIZ/tools/marca.py" --src "$SRC"

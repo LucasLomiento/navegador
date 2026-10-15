@@ -1,0 +1,76 @@
+diff --git i/chrome/app/theme/chromium/BRANDING w/chrome/app/theme/chromium/BRANDING
+index f8363d5b29..50d326fa01 100644
+--- i/chrome/app/theme/chromium/BRANDING
++++ w/chrome/app/theme/chromium/BRANDING
+@@ -1,10 +1,10 @@
+ COMPANY_FULLNAME=The Chromium Authors
+ COMPANY_SHORTNAME=The Chromium Authors
+-PRODUCT_FULLNAME=Chromium
+-PRODUCT_SHORTNAME=Chromium
+-PRODUCT_INSTALLER_FULLNAME=Chromium Installer
+-PRODUCT_INSTALLER_SHORTNAME=Chromium Installer
++PRODUCT_FULLNAME=Navegador
++PRODUCT_SHORTNAME=Navegador
++PRODUCT_INSTALLER_FULLNAME=Navegador Installer
++PRODUCT_INSTALLER_SHORTNAME=Navegador Installer
+ COPYRIGHT=Copyright @LASTCHANGE_YEAR@ The Chromium Authors. All rights reserved.
+-MAC_BUNDLE_ID=org.chromium.Chromium
++MAC_BUNDLE_ID=io.github.lucaslomiento.Navegador
+ MAC_CREATOR_CODE=Cr24
+ MAC_TEAM_ID=
+diff --git i/chrome/browser/shell_integration_linux.cc w/chrome/browser/shell_integration_linux.cc
+index 2c071e6ba8..c8df6db6f2 100644
+--- i/chrome/browser/shell_integration_linux.cc
++++ w/chrome/browser/shell_integration_linux.cc
+@@ -471,7 +471,8 @@ std::string GetIconName() {
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   return "google-chrome";
+ #else  // BUILDFLAG(CHROMIUM_BRANDING)
+-  return "chromium-browser";
++  // navegador
++  return "navegador";
+ #endif
+ }
+ 
+diff --git i/chrome/browser/ui/startup/infobar_utils.cc w/chrome/browser/ui/startup/infobar_utils.cc
+index 598e361a29..8635f7dd61 100644
+--- i/chrome/browser/ui/startup/infobar_utils.cc
++++ w/chrome/browser/ui/startup/infobar_utils.cc
+@@ -253,7 +253,8 @@ void AddInfoBarsIfNecessary(BrowserWindowInterface* browser,
+   infobars::ContentInfoBarManager* infobar_manager =
+       infobars::ContentInfoBarManager::FromWebContents(web_contents);
+ 
+-  if (!google_apis::HasAPIKeyConfigured()) {
++  // navegador: sem chaves do Google de propósito; sem o aviso também.
++  if (false && !google_apis::HasAPIKeyConfigured()) {
+     if (infobars::IsInfoBarMigrated(
+             infobars::InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE)) {
+       if (auto* manager =
+diff --git i/chrome/common/channel_info_posix.cc w/chrome/common/channel_info_posix.cc
+index f6bcb3cc8e..2ac508e2b3 100644
+--- i/chrome/common/channel_info_posix.cc
++++ w/chrome/common/channel_info_posix.cc
+@@ -148,7 +148,8 @@ std::string GetDesktopName(base::Environment* env) {
+   if (name.has_value() && !name.value().empty()) {
+     return name.value();
+   }
+-  return "chromium-browser.desktop";
++  // navegador: navegador.desktop (e app_id "navegador" no Wayland).
++  return "navegador.desktop";
+ #endif
+ }
+ #endif  // BUILDFLAG(IS_LINUX)
+diff --git i/chrome/common/chrome_paths_linux.cc w/chrome/common/chrome_paths_linux.cc
+index 5575c049b2..bf3e78ffeb 100644
+--- i/chrome/common/chrome_paths_linux.cc
++++ w/chrome/common/chrome_paths_linux.cc
+@@ -95,7 +95,8 @@ bool GetDefaultUserDataDirectory(base::FilePath* result) {
+ #elif BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   std::string data_dir_basename = "google-chrome";
+ #else
+-  std::string data_dir_basename = "chromium";
++  // navegador: perfil em ~/.config/navegador.
++  std::string data_dir_basename = "navegador";
+ #endif
+   *result = config_dir.Append(data_dir_basename + GetChannelSuffixForDataDir());
+   return true;
