@@ -18,7 +18,17 @@ optdepends=('pipewire: compartilhar tela no Wayland'
             'gnome-keyring: guardar senhas no keyring do GNOME')
 options=(!strip !debug)
 
-_out="${NAVEGADOR_OUT:-$HOME/Work/navegador-chromium/src/out/release}"
+# out/release (binário único) se estiver compilado; senão out/dev, que tem
+# a mesma otimização (is_debug = false, sem DCHECK), só dividido em
+# bibliotecas (component build).
+_arvore="$HOME/Work/navegador-chromium/src/out"
+if [[ -n "${NAVEGADOR_OUT:-}" ]]; then
+  _out="$NAVEGADOR_OUT"
+elif [[ -x "$_arvore/release/chrome" ]]; then
+  _out="$_arvore/release"
+else
+  _out="$_arvore/dev"
+fi
 _repo="$(cd "$startdir/.." && pwd)"
 
 package() {
@@ -30,7 +40,7 @@ package() {
     install -Dm4755 "$_out/chrome_sandbox" "$destino/chrome-sandbox"
   fi
   # Compilação em componentes (out/dev): o programa carrega as bibliotecas
-  # do lado dele (RPATH $ORIGIN). Pacote provisório; o de verdade é o release.
+  # do lado dele (RPATH $ORIGIN).
   if [[ -e "$_out/libbase.so" ]]; then
     cp "$_out"/*.so "$destino/"
   fi

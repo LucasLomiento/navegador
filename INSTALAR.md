@@ -1,7 +1,10 @@
 # Instalar o navegador
 
-O pacote é montado a partir da compilação de release (`out/release`, ver
-[docs/ARQUITETURA.md](docs/ARQUITETURA.md)). Com ela pronta:
+O pacote é montado a partir da compilação já feita: o `out/release`
+(binário único) se existir, senão o `out/dev`. Os dois têm a mesma
+otimização (`is_debug = false`, sem DCHECK, mesmos codecs e Widevine); o
+`out/dev` só vem dividido em bibliotecas e abre a janela em ~0,8 s. Ver
+[docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ```sh
 cd ~/Work/github/pessoal/navegador/pacote

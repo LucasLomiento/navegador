@@ -78,4 +78,4 @@ Cada espaço é um **grupo de abas focado** (`features::kTabGroupsFocusing`, que
 
 ## Pacote
 
-PKGBUILD próprio (`pacote/`), instalando em `/usr/lib/navegador`, com `.desktop`, ícone e o comando `navegador`. Perfil do usuário em `~/.config/navegador`.
+PKGBUILD próprio (`pacote/`), instalando em `/usr/lib/navegador`, com `.desktop`, ícone e o comando `navegador`. Perfil do usuário em `~/.config/navegador`. Empacota o `out/release` (binário único, `tools/args-release.gn`) se estiver compilado, senão o `out/dev` (mesma otimização, em bibliotecas: o PKGBUILD copia os `.so` pro lado do programa, que tem RPATH `$ORIGIN`; sem `chrome-sandbox`, o Chromium usa o sandbox de namespaces do kernel). O launcher (`pacote/navegador.sh`) liga a integração com o sistema: IME no Wayland, chaveiro do GNOME, gesto de voltar e as extensões do Omarchy.
