@@ -339,7 +339,7 @@ index a335e2d5cc..b9f66d3948 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914..9a8c318a1d 100644
+index 29dfbde914..a54fcca405 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -4,6 +4,9 @@
@@ -440,20 +440,79 @@ index 29dfbde914..9a8c318a1d 100644
      } else {
        vertical_tabs_background->SetPrimaryColor(frame_color);
      }
+@@ -1707,6 +1747,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+       break;
+     }
+     case TabStripType::kVertical: {
++      // navegador: a barra é o topo do cartão e pinta o próprio fundo (na cor
++      // do site), por cima dos cantos arredondados do top container.
++      if (!is_fullscreen(layout_data_->window_state)) {
++        const CustomCornersBackground::Corner cartao{
++            CustomCornersBackground::CornerType::kRounded,
++            navegador::visual::kCartaoRaio};
++        toolbar_corners[CornerOrientation::kTopLeading] = cartao;
++        toolbar_corners[CornerOrientation::kTopTrailing] = cartao;
++        break;
++      }
+       // Curve trailing corner when it becomes the top trailing corner of the
+       // browser.
+       if (layout_data_->window_state == WindowState::kNormal &&
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-index 62f69255e0..f54a0e6328 100644
+index 62f69255e0..a40ca8a6ea 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 +++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,14 @@
  
  #include "chrome/browser/ui/views/frame/opaque_browser_frame_view.h"
  
 +#include "navegador/browser/ui/cores.h"
++#include "navegador/browser/ui/visual.h"
++
++#include "cc/paint/paint_filter.h"
++#include "cc/paint/paint_flags.h"
++#include "ui/color/color_id.h"
++#include "ui/gfx/color_utils.h"
 +
  #include <algorithm>
  #include <utility>
  
-@@ -670,6 +672,16 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -629,6 +637,35 @@ int OpaqueBrowserFrameView::WebAppButtonHeight() const {
+ // OpaqueBrowserFrameView, protected:
+ 
+ // views::View:
++// navegador: sombra suave em volta do cartão (barra de navegação + página),
++// como no Dia. Pintada na moldura, atrás do cartão: só aparece na margem.
++void OpaqueBrowserFrameView::PintarSombraDoCartao(gfx::Canvas* canvas) {
++  BrowserView* browser_view = GetBrowserView();
++  views::View* barra = browser_view->toolbar();
++  views::View* pagina = browser_view->contents_container();
++  if (browser_view->IsFullscreen() || !barra || !pagina ||
++      !barra->GetVisible() || !pagina->GetVisible()) {
++    return;
++  }
++  gfx::RectF cartao = views::View::ConvertRectToTarget(
++      barra, this, gfx::RectF(barra->GetLocalBounds()));
++  cartao.Union(views::View::ConvertRectToTarget(
++      pagina, this, gfx::RectF(pagina->GetLocalBounds())));
++  if (cartao.IsEmpty()) {
++    return;
++  }
++  const bool escuro = color_utils::IsDark(
++      GetColorProvider()->GetColor(ui::kColorFrameActive));
++  cc::PaintFlags flags;
++  flags.setAntiAlias(true);
++  flags.setColor(SK_ColorBLACK);
++  flags.setImageFilter(sk_make_sp<cc::DropShadowPaintFilter>(
++      0.0f, 1.0f, 3.0f, 3.0f,
++      SkColor4f::FromColor(SkColorSetA(SK_ColorBLACK, escuro ? 0x66 : 0x2E)),
++      cc::DropShadowPaintFilter::ShadowMode::kDrawShadowOnly, nullptr));
++  canvas->DrawRoundRect(cartao, navegador::visual::kCartaoRaio, flags);
++}
++
+ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+   TRACE_EVENT0("views.frame", "OpaqueBrowserFrameView::OnPaint");
+   if (browser_widget()->IsFullscreen()) {
+@@ -670,6 +707,17 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
      }
    }
  
@@ -464,6 +523,7 @@ index 62f69255e0..f54a0e6328 100644
 +      GetBrowserView()->browser()->GetType() ==
 +          BrowserWindowInterface::Type::TYPE_NORMAL) {
 +    canvas->FillRect(GetLocalBounds(), frame_color);
++    PintarSombraDoCartao(canvas);
 +    return;
 +  }
 +
