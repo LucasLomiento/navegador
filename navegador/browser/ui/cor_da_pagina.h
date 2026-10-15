@@ -1,5 +1,6 @@
-// A barra de navegação na cor do site aberto: observa a aba ativa e a cor da
-// página (theme-color, ou o fundo) e manda a janela recalcular as cores.
+// A barra de navegação na cor do site aberto, como o Dia: amostra os pixels
+// do topo da página ativa (cor dominante de uma faixa fina) e manda a janela
+// recalcular as cores quando muda. Sem pixels, usa o theme-color ou o fundo.
 //
 // Compilado dentro de //chrome/browser/ui:ui.
 
