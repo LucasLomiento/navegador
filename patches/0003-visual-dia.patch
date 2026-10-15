@@ -221,6 +221,36 @@ index 7d1a2d797f..ee4b695e93 100644
    const bool touch_ui = ui::TouchUiController::Get()->touch_ui();
    switch (inset) {
      case DOWNLOAD_ICON:
+diff --git i/chrome/browser/ui/tab_ui_helper.cc w/chrome/browser/ui/tab_ui_helper.cc
+index f469749b3f..25669a416e 100644
+--- i/chrome/browser/ui/tab_ui_helper.cc
++++ w/chrome/browser/ui/tab_ui_helper.cc
+@@ -4,6 +4,10 @@
+ 
+ #include "chrome/browser/ui/tab_ui_helper.h"
+ 
++// navegador: favicon da nova guia (GetFavicon).
++#include "chrome/grit/theme_resources.h"
++#include "ui/base/resource/resource_bundle.h"
++
+ #include <optional>
+ 
+ #include "base/byte_size.h"
+@@ -228,6 +232,14 @@ ui::ImageModel TabUIHelper::GetFavicon() {
+   // the window's active state -- rather than the global color scheme, which can
+   // disagree and render the globe low-contrast ("dim") on some Linux themes
+   // (e.g. the built-in PDF viewer). crbug.com/544891511
++  // navegador: aba de nova guia com a agulha do logo em cinza (o Dia usa a
++  // silhueta do logo), no lugar do globo.
++  if (IsNTP(web_contents()->GetVisibleURL())) {
++    return ui::ImageModel::FromImage(
++        ui::ResourceBundle::GetSharedInstance().GetImageNamed(
++            IDR_NTP_FAVICON));
++  }
++
+   const favicon::FaviconDriver* const favicon_driver =
+       favicon::ContentFaviconDriver::FromWebContents(web_contents());
+   if (!favicon_driver || !favicon_driver->FaviconIsValid()) {
 diff --git i/chrome/browser/ui/tabs/vertical_tab_strip_state.h w/chrome/browser/ui/tabs/vertical_tab_strip_state.h
 index b46ad7ecdf..6c3db54f84 100644
 --- i/chrome/browser/ui/tabs/vertical_tab_strip_state.h

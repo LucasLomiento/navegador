@@ -34,6 +34,12 @@ for escala in 1 2; do
     done
   done
 done
+# Favicon da nova guia: a agulha em cinza (no Dia, a silhueta do logo).
+MONO="$RAIZ/navegador/app/icone-mono.svg"
+rsvg-convert -w 16 -h 16 "$MONO" -o "$TMP"
+por "$SRC/chrome/app/theme/default_100_percent/common/favicon_ntp.png"
+rsvg-convert -w 32 -h 32 "$MONO" -o "$TMP"
+por "$SRC/chrome/app/theme/default_200_percent/common/favicon_ntp.png"
 # Logo das páginas internas no escuro (Configurações, Histórico...).
 cp "$SVG" "$TMP"
 por "$SRC/ui/webui/resources/images/chrome_logo_dark.svg"

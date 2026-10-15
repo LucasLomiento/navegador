@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20">
+  <!-- Logo monocromático (só a agulha), pras abas de nova guia: no Dia elas
+       usam a silhueta do logo em cinza. O desenho do kProductIcon, um pouco mais grosso
+       (a 16 px a agulha fina sumia). -->
+  <path d="M16.2 3.8 12.4 12.4 7.6 7.6Z" fill="#8A8A8A"/>
+  <path d="M3.8 16.2 7.6 7.6 12.4 12.4Z" fill="#8A8A8A" fill-opacity="0.6"/>
+</svg>

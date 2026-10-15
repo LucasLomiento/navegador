@@ -49,6 +49,7 @@ if [ "${1:-}" = "--gerar" ]; then
     ':(exclude)chrome/app/theme/default_*_percent/chromium/*product_logo*' \
     ':(exclude)chrome/app/theme/default_*_percent/chromium/linux/*product_logo*' \
     ':(exclude)ui/webui/resources/images/chrome_logo_dark.svg' \
+    ':(exclude)chrome/app/theme/default_*_percent/common/favicon_ntp.png' \
     "${excl[@]}" > "$RAIZ/patches/9999-resto.patch"
   [ -s "$RAIZ/patches/9999-resto.patch" ] || rm -f "$RAIZ/patches/9999-resto.patch"
   ls -1 "$RAIZ/patches"
