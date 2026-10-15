@@ -85,6 +85,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterIntegerPref(kEsconderDepoisPref, kEsconderDepoisPadrao);
   registry->RegisterIntegerPref(kEsconderForaPref, kEsconderForaPadrao);
   registry->RegisterBooleanPref(kMostrarNaBordaPref, true);
+  registry->RegisterBooleanPref(kAbrirInteiraPref, true);
 }
 
 std::vector<Espaco> Todos(Profile* profile) {
@@ -282,6 +283,10 @@ int Moldura(const Profile* profile) {
 
 bool MostrarNaBorda(const Profile* profile) {
   return profile->GetPrefs()->GetBoolean(kMostrarNaBordaPref);
+}
+
+bool AbrirInteira(const Profile* profile) {
+  return profile->GetPrefs()->GetBoolean(kAbrirInteiraPref);
 }
 
 int EsconderDepoisMs(const Profile* profile) {

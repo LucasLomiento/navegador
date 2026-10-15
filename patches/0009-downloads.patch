@@ -1,0 +1,93 @@
+diff --git i/chrome/browser/ui/views/download/BUILD.gn w/chrome/browser/ui/views/download/BUILD.gn
+index 0f3d97ac4c..173235b942 100644
+--- i/chrome/browser/ui/views/download/BUILD.gn
++++ w/chrome/browser/ui/views/download/BUILD.gn
+@@ -101,6 +101,7 @@ source_set("download") {
+       "//components/safe_browsing/core/common:features",
+       "//components/safe_browsing/core/common:safe_browsing_policy_handler",
+       "//components/safe_browsing/core/common:safe_browsing_prefs",
++      "//navegador/browser/ui/downloads:ponte",  # navegador
+       "//ui/strings:ui_strings_grit",
+     ]
+     if (is_mac) {
+diff --git i/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc w/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+index 68ff793722..30580d9262 100644
+--- i/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
++++ w/chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.h"
+ 
++#include "navegador/browser/ui/downloads/ponte.h"
++
+ #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+ 
+ DEFINE_USER_DATA(DownloadToolbarUIController);
+@@ -476,6 +478,12 @@ void DownloadToolbarUIController::TearDownPreBrowserWindowDestruction() {
+ }
+ 
+ void DownloadToolbarUIController::Show() {
++  // navegador: o botão de downloads mora no pé da lateral, sempre à vista
++  // (navegador/browser/ui/downloads/botao.*); não aparece mais do nada no
++  // canto da barra.
++  if (navegador::downloads::TemBotaoNaLateral()) {
++    return;
++  }
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+     return;
+@@ -560,6 +568,16 @@ void DownloadToolbarUIController::UpdateDownloadIcon(
+     UpdateIcon();
+     redraw_progress_soon_ = false;
+   }
++
++  // navegador: o anel de progresso do botão da lateral.
++  navegador::downloads::Progresso progresso;
++  progresso.quantos = progress_info_.download_count;
++  progresso.porcentagem = progress_info_.progress_percentage;
++  progresso.tamanho_conhecido = progress_info_.progress_certain;
++  progresso.concluido_novo =
++      state_ == DownloadDisplay::IconState::kComplete &&
++      active_ == DownloadDisplay::IconActive::kActive;
++  navegador::downloads::AvisarProgresso(browser_view_->browser(), progresso);
+ }
+ 
+ void DownloadToolbarUIController::AnnounceAccessibleAlertNow(
+@@ -960,6 +978,20 @@ void DownloadToolbarUIController::ShowBubble(
+     return;
+   }
+ 
++  // navegador: a bolha abre ancorada no botão da lateral; com a lateral
++  // escondida, no canto da barra (como antes, mas sem o botão).
++  if (views::View* ancora =
++          navegador::downloads::Ancora(browser_view_->browser())) {
++    pending_bubble_ = true;
++    OnBubbleAnchorAssembled(views::BubbleAnchor(ancora));
++    return;
++  }
++  if (browser_view_->toolbar() && browser_view_->toolbar()->GetVisible()) {
++    pending_bubble_ = true;
++    OnBubbleAnchorAssembled(views::BubbleAnchor(browser_view_->toolbar()));
++    return;
++  }
++
+   auto* container = GetPinnedToolbarActions(browser_view_);
+   if (!container) {
+     return;
+@@ -995,8 +1027,15 @@ void DownloadToolbarUIController::OnBubbleAnchorAssembled(
+           ImmersiveModeController::ANIMATE_REVEAL_YES);
+     }
+   }
++  // navegador: do botão da lateral, a bolha sai pra direita, rente ao pé.
++  const bool da_lateral =
++      anchor.value().GetIfView() &&
++      anchor.value().GetIfView() ==
++          navegador::downloads::Ancora(browser_view_->browser());
+   auto bubble_delegate = std::make_unique<views::BubbleDialogDelegate>(
+-      anchor.value(), views::BubbleBorder::TOP_RIGHT,
++      anchor.value(),
++      da_lateral ? views::BubbleBorder::LEFT_BOTTOM
++                 : views::BubbleBorder::TOP_RIGHT,
+       views::BubbleBorder::DIALOG_SHADOW,
+       /*autosize=*/true);
+   bubble_delegate->SetOwnedByWidget(

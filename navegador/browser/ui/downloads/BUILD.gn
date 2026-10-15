@@ -1,0 +1,10 @@
+# Ponte do controle de downloads do Chromium (//chrome/browser/ui/views/download,
+# que o ui:ui usa e por isso não enxerga) pro botão de downloads da lateral,
+# que fica no ui:ui (navegador/browser/ui/downloads.*).
+source_set("ponte") {
+  sources = [
+    "ponte.cc",
+    "ponte.h",
+  ]
+  deps = [ "//base" ]
+}

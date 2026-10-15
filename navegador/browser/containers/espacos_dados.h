@@ -61,6 +61,9 @@ inline constexpr char kEsconderDepoisPref[] =
 inline constexpr char kEsconderForaPref[] =
     "navegador.lateral.esconder_fora_ms";
 inline constexpr char kMostrarNaBordaPref[] = "navegador.lateral.mostrar_na_borda";
+// Passando o ponteiro rápido pela borda, a lateral abre inteira (e só depois
+// conta o tempo pra esconder); desligado, abre um pedaço e volta.
+inline constexpr char kAbrirInteiraPref[] = "navegador.lateral.abrir_inteira";
 
 struct Espaco {
   std::string id;
@@ -130,6 +133,7 @@ bool MostrarQuadroDeFavoritos(Profile* profile);
 bool MostrarBotoesDaJanela(Profile* profile);
 int Moldura(const Profile* profile);
 bool MostrarNaBorda(const Profile* profile);
+bool AbrirInteira(const Profile* profile);
 int EsconderDepoisMs(const Profile* profile);
 int EsconderForaMs(const Profile* profile);
 // 0-100.

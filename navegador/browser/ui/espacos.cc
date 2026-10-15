@@ -41,6 +41,7 @@
 #include "navegador/browser/ui/atalhos.h"
 #include "navegador/browser/ui/configuracoes.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
+#include "navegador/browser/ui/downloads/botao.h"
 #include "navegador/browser/ui/containers/espaco.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/metadata/metadata_header_macros.h"
@@ -395,10 +396,17 @@ class FaixaDeEspacos : public views::View,
         browser_(browser),
         model_(browser->GetTabStripModel()) {
     layout_ = SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(0, 10),
+        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(0, 6),
         8));
     layout_->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);
+
+    // Downloads à esquerda, sempre à vista; as bolinhas e o "+" no meio da
+    // lateral (um contrapeso do tamanho do botão à direita deixa o meio no
+    // meio de verdade).
+    baixar_ = AddChildView(downloads::CriarBotao(browser));
+    auto* antes = AddChildView(std::make_unique<views::View>());
+    layout_->SetFlexForView(antes, 1);
 
     titulo_ = AddChildView(std::make_unique<views::Label>());
     titulo_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
@@ -408,7 +416,6 @@ class FaixaDeEspacos : public views::View,
         gfx::FontList()
             .DeriveWithSizeDelta(13 - gfx::FontList().GetFontSize())
             .DeriveWithWeight(gfx::Font::Weight::MEDIUM));
-    layout_->SetFlexForView(titulo_, 1);
 
     bolinhas_ = AddChildView(std::make_unique<views::View>());
     bolinhas_->SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -420,6 +427,10 @@ class FaixaDeEspacos : public views::View,
                             base::Unretained(this)),
         kAddIcon, 14));
     novo_->SetTooltipText(u"Novo espaço");
+    auto* depois = AddChildView(std::make_unique<views::View>());
+    layout_->SetFlexForView(depois, 1);
+    AddChildView(std::make_unique<views::View>())
+        ->SetPreferredSize(baixar_->GetPreferredSize());
 
     model_->AddObserver(this);
     set_context_menu_controller(this);
@@ -1073,9 +1084,6 @@ class FaixaDeEspacos : public views::View,
     const bool varios = todos.size() > 1;
     titulo_->SetVisible(false);
     bolinhas_->SetVisible(varios);
-    layout_->set_main_axis_alignment(
-        varios ? views::BoxLayout::MainAxisAlignment::kStart
-               : views::BoxLayout::MainAxisAlignment::kEnd);
     InvalidateLayout();
     SchedulePaint();
   }
@@ -1106,6 +1114,7 @@ class FaixaDeEspacos : public views::View,
   std::vector<containers::Container> containers_;
   raw_ptr<views::BoxLayout> layout_ = nullptr;
   raw_ptr<views::Label> titulo_ = nullptr;
+  raw_ptr<views::View> baixar_ = nullptr;
   raw_ptr<views::View> bolinhas_ = nullptr;
   raw_ptr<views::ImageButton> novo_ = nullptr;
   views::ViewTracker titulo_do_cabecalho_;

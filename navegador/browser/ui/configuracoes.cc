@@ -545,6 +545,18 @@ std::unique_ptr<views::View> PaginaLateral(BrowserWindowInterface* browser) {
                       },
                       perfil))));
   escondida->Adicionar(Linha(
+      u"Abrir inteira mesmo passando rápido",
+      u"Ligado, um toque rápido na borda abre a lateral toda antes de contar "
+      u"o tempo pra esconder. Desligado, ela abre um pedaço e volta.",
+      Interruptor(espacos::AbrirInteira(perfil),
+                  u"Abrir inteira mesmo passando rápido",
+                  base::BindRepeating(
+                      [](Profile* perfil, bool ligado) {
+                        perfil->GetPrefs()->SetBoolean(
+                            espacos::kAbrirInteiraPref, ligado);
+                      },
+                      perfil))));
+  escondida->Adicionar(Linha(
       u"Esconder ao ir pra página",
       u"Quanto ela espera depois que o ponteiro sai dela pra página: folga "
       u"pra tirar sem querer e voltar.",
