@@ -3,6 +3,7 @@
 #   1. liga navegador/ dentro dela como src/navegador
 #   2. aplica patches/*.patch em ordem (pula os que já estão aplicados)
 #   3. troca "Chromium" por "Navegador" nos textos (tools/marca.py)
+#   4. põe os ícones do navegador (tools/icones.sh)
 #
 #   tools/fonte.sh            -> prepara
 #   tools/fonte.sh --gerar    -> regrava patches/ a partir do que mudou no src
@@ -37,6 +38,8 @@ if [ "${1:-}" = "--gerar" ]; then
   git diff --binary -- . ':(exclude)navegador' \
     ':(exclude)chrome/app/chromium_strings.grd' \
     ':(exclude)chrome/app/resources/chromium_strings_*.xtb' \
+    ':(exclude)chrome/app/theme/chromium/*product_logo*' \
+    ':(exclude)chrome/app/theme/chromium/linux/*product_logo*' \
     "${excl[@]}" > "$RAIZ/patches/9999-resto.patch"
   [ -s "$RAIZ/patches/9999-resto.patch" ] || rm -f "$RAIZ/patches/9999-resto.patch"
   ls -1 "$RAIZ/patches"
@@ -57,3 +60,4 @@ for p in "$RAIZ"/patches/*.patch; do
 done
 
 python3 -I "$RAIZ/tools/marca.py" --src "$SRC"
+"$RAIZ/tools/icones.sh"
