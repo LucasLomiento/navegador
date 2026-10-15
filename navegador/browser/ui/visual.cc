@@ -49,6 +49,9 @@ std::optional<gfx::Insets> LayoutInsetsOverride(LayoutInset inset) {
     // Barra do Dia: 4 em cima, embaixo e nas laterais -> 40 de altura.
     case TOOLBAR_INTERIOR_MARGIN:
       return gfx::Insets(4);
+    // "+ Nova guia": o "+" alinhado com os ícones das abas, como no Dia.
+    case VERTICAL_TAB_STRIP_BOTTOM_BUTTON_UNCOLLAPSED:
+      return gfx::Insets::VH(5, 9);
     default:
       return std::nullopt;
   }

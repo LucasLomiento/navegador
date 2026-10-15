@@ -1031,7 +1031,7 @@ index ffb1fdda20..3d8d92c6bf 100644
  }
  
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
-index 52dd469d6d..08968e51d0 100644
+index 52dd469d6d..6fdea3fb0c 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
 +++ w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
 @@ -14,6 +14,7 @@
@@ -1052,6 +1052,53 @@ index 52dd469d6d..08968e51d0 100644
    }
  }
  
+@@ -337,8 +341,20 @@ void TabStripFlatEdgeButton::UpdateLabel(bool should_show) {
+   }
+   if (should_show == GetText().empty()) {
+     SetHorizontalAlignment(should_show ? gfx::ALIGN_LEFT : gfx::ALIGN_CENTER);
+-    SetInsets(should_show ? gfx::Insets::VH(0, kButtonWithLabelPadding)
+-                          : gfx::Insets());
++    // navegador: ao voltar o rótulo, as margens de antes dele sumir (as do
++    // "+ Nova guia" da lateral), não os 5 fixos: depois de recolher e abrir
++    // a lateral o botão ficava recuado.
++    if (!should_show) {
++      margens_com_rotulo_ =
++          GetBorder() ? GetBorder()->GetInsets() : gfx::Insets();
++    }
++    gfx::Insets atuais = GetBorder() ? GetBorder()->GetInsets() : gfx::Insets();
++    SetInsets(should_show
++                  ? margens_com_rotulo_.value_or(
++                        atuais.IsEmpty()
++                            ? gfx::Insets::VH(0, kButtonWithLabelPadding)
++                            : atuais)
++                  : gfx::Insets());
+   }
+   auto label = should_show ? label_text_ : std::u16string();
+   if (label != GetText()) {
+diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h
+index 125f2eed7c..00f08e2b47 100644
+--- i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h
++++ w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h
+@@ -5,6 +5,10 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_TABS_SHARED_TAB_STRIP_FLAT_EDGE_BUTTON_H_
+ #define CHROME_BROWSER_UI_VIEWS_TABS_SHARED_TAB_STRIP_FLAT_EDGE_BUTTON_H_
+ 
++#include <optional>
++
++#include "ui/gfx/geometry/insets.h"
++
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/views/controls/button/label_button.h"
+ #include "ui/views/layout/layout_types.h"
+@@ -89,6 +93,8 @@ class TabStripFlatEdgeButton : public views::LabelButton,
+   // Whether the label should be shown, if there is space.
+   bool should_show_label_ = false;
+   std::u16string label_text_;
++  // navegador: margens de antes do rótulo sumir (ver UpdateLabel).
++  std::optional<gfx::Insets> margens_com_rotulo_;
+   int icon_size_ = 0;
+   float expansion_factor_ = 1.0f;
+   views::LayoutOrientation expansion_orientation_ =
 diff --git i/chrome/browser/ui/views/tabs/tab/tab_title.cc w/chrome/browser/ui/views/tabs/tab/tab_title.cc
 index b0b58ef943..5ae1de1d7b 100644
 --- i/chrome/browser/ui/views/tabs/tab/tab_title.cc
@@ -1075,19 +1122,36 @@ index b0b58ef943..5ae1de1d7b 100644
  
  BEGIN_METADATA(TabTitle)
 diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
-index bc3b0459ed..ef066aecd1 100644
+index bc3b0459ed..ddb8a80bd4 100644
 --- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
 +++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
-@@ -36,6 +36,9 @@ VerticalTabStripBottomContainer::VerticalTabStripBottomContainer(
+@@ -36,6 +36,11 @@ VerticalTabStripBottomContainer::VerticalTabStripBottomContainer(
        &VerticalTabStripBottomContainer::OnNewTabButtonContextMenuClosed,
        base::Unretained(this)));
  
-+  // navegador: "+ Nova aba" como linha de texto, no estilo do Dia.
++  // navegador: "+ Nova aba" como linha de texto, no estilo do Dia, com o
++  // texto alinhado com os títulos das abas.
 +  new_tab_button->SetShouldShowLabel(true);
++  new_tab_button->SetImageLabelSpacing(7);
 +
    new_tab_button_pressed_subscription_ =
        new_tab_button->RegisterWillInvokeActionCallback(
            record_new_tab_button_pressed);
+@@ -69,9 +74,11 @@ bool VerticalTabStripBottomContainer::IsPositionInWindowCaption(
+ 
+ void VerticalTabStripBottomContainer::OnCollapseStateChanged(
+     tabs::VerticalTabStripCollapseState state) {
+-  // Updating the styles immediately at start of the animation by including
+-  // collapsing state.
+-  UpdateButtonStyles(state != tabs::VerticalTabStripCollapseState::kExpanded);
++  // navegador: recolhida, a lateral é só uma borda (kCollapsedWidth) e só
++  // aparece larga, flutuando; o "+ Nova guia" fica sempre como linha de
++  // texto. Com o estilo recolhido ele sobrava recuado ao fixar a lateral
++  // vinda do modo flutuante.
++  UpdateButtonStyles(/*collapsed=*/false);
+ }
+ 
+ void VerticalTabStripBottomContainer::OnNewTabButtonContextMenuWillShow() {
 diff --git i/components/bookmarks/browser/bookmark_utils.cc w/components/bookmarks/browser/bookmark_utils.cc
 index d8f32a1ca6..0f9d4e3d3b 100644
 --- i/components/bookmarks/browser/bookmark_utils.cc
