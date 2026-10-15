@@ -16,6 +16,7 @@
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/web_contents.h"
 #include "navegador/browser/containers/containers.h"
+#include "navegador/browser/ui/containers/gerenciador.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -93,10 +94,16 @@ class SubmenuDaAba : public ui::SimpleMenuModel,
       AddSeparator(ui::NORMAL_SEPARATOR);
       AddItem(kSemContainer, u"Sem container");
     }
+    AddSeparator(ui::NORMAL_SEPARATOR);
+    AddItem(kGerenciar, u"Gerenciar containers…");
   }
 
   // ui::SimpleMenuModel::Delegate:
   void ExecuteCommand(int command_id, int event_flags) override {
+    if (command_id == kGerenciar) {
+      MostrarGerenciador(alvo_);
+      return;
+    }
     const int index = tab_strip_->GetIndexOfWebContents(alvo_);
     if (index == TabStripModel::kNoTab) {
       return;
@@ -119,6 +126,7 @@ class SubmenuDaAba : public ui::SimpleMenuModel,
  private:
   static constexpr int kPrimeiro = 1000;
   static constexpr int kSemContainer = 999;
+  static constexpr int kGerenciar = 998;
 
   raw_ptr<TabStripModel> tab_strip_;
   raw_ptr<content::WebContents> alvo_;
@@ -141,10 +149,16 @@ class SubmenuDoLink : public ui::SimpleMenuModel,
       AddItemWithIcon(kPrimeiro + i, base::UTF8ToUTF16(containers_[i].name),
                       Bolinha(containers_[i].color));
     }
+    AddSeparator(ui::NORMAL_SEPARATOR);
+    AddItem(kGerenciar, u"Gerenciar containers…");
   }
 
   // ui::SimpleMenuModel::Delegate:
   void ExecuteCommand(int command_id, int event_flags) override {
+    if (command_id == kGerenciar) {
+      MostrarGerenciador(origem_);
+      return;
+    }
     const size_t i = command_id - kPrimeiro;
     if (i >= containers_.size()) {
       return;
@@ -159,6 +173,7 @@ class SubmenuDoLink : public ui::SimpleMenuModel,
 
  private:
   static constexpr int kPrimeiro = 1000;
+  static constexpr int kGerenciar = 998;
 
   raw_ptr<TabStripModel> tab_strip_;
   raw_ptr<content::WebContents> origem_;
@@ -178,10 +193,16 @@ class SubmenuNovaAba : public ui::SimpleMenuModel,
       AddItemWithIcon(kPrimeiro + i, base::UTF8ToUTF16(containers_[i].name),
                       Bolinha(containers_[i].color));
     }
+    AddSeparator(ui::NORMAL_SEPARATOR);
+    AddItem(kGerenciar, u"Gerenciar containers…");
   }
 
   // ui::SimpleMenuModel::Delegate:
   void ExecuteCommand(int command_id, int event_flags) override {
+    if (command_id == kGerenciar) {
+      MostrarGerenciador(tab_strip_->GetActiveWebContents());
+      return;
+    }
     const size_t i = command_id - kPrimeiro;
     if (i >= containers_.size()) {
       return;
@@ -192,6 +213,7 @@ class SubmenuNovaAba : public ui::SimpleMenuModel,
 
  private:
   static constexpr int kPrimeiro = 1000;
+  static constexpr int kGerenciar = 998;
 
   raw_ptr<TabStripModel> tab_strip_;
   std::vector<Container> containers_;

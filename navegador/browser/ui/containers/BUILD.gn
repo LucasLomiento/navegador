@@ -3,6 +3,8 @@ source_set("containers_ui") {
   sources = [
     "containers_ui.cc",
     "containers_ui.h",
+    "gerenciador.cc",
+    "gerenciador.h",
   ]
   public_deps = [
     "//skia",
@@ -11,6 +13,7 @@ source_set("containers_ui") {
   deps = [
     "//base",
     "//cc/paint",
+    "//chrome/app/vector_icons",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/tabs:tab_enums",
     "//chrome/browser/ui/tabs:tab_strip",
