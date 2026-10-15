@@ -6,16 +6,19 @@
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
+#include "base/no_destructor.h"
 #include "base/strings/utf_string_conversions.h"
 #include "cc/paint/paint_flags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/web_contents.h"
 #include "navegador/browser/containers/containers.h"
+#include "navegador/browser/containers/espacos_dados.h"
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/canvas.h"
@@ -131,6 +134,64 @@ class SubmenuDaAba : public ui::SimpleMenuModel,
   raw_ptr<TabStripModel> tab_strip_;
   raw_ptr<content::WebContents> alvo_;
   std::vector<Container> containers_;
+};
+
+MoverAba& PonteMoverAba() {
+  static base::NoDestructor<MoverAba> ponte;
+  return *ponte;
+}
+
+AbrirConfiguracoes& PonteConfiguracoes() {
+  static base::NoDestructor<AbrirConfiguracoes> ponte;
+  return *ponte;
+}
+
+// "Mover para o espaço" no menu de contexto da aba.
+class SubmenuDeEspacos : public ui::SimpleMenuModel,
+                         public ui::SimpleMenuModel::Delegate {
+ public:
+  SubmenuDeEspacos(TabStripModel* tab_strip, int index)
+      : ui::SimpleMenuModel(this),
+        tab_strip_(tab_strip),
+        alvo_(tab_strip->GetWebContentsAt(index)) {
+    if (tab_strip->IsTabPinned(index) || PonteMoverAba().is_null()) {
+      return;
+    }
+    std::optional<std::string> atual;
+    if (std::optional<tab_groups::TabGroupId> grupo =
+            tab_strip->GetTabGroupForTab(index)) {
+      atual = espacos::EspacoDoGrupo(tab_strip->profile(), grupo->ToString());
+    }
+    for (const espacos::Espaco& espaco : espacos::Todos(tab_strip->profile())) {
+      if (espaco.id == atual) {
+        continue;
+      }
+      std::u16string nome = base::UTF8ToUTF16(espaco.nome);
+      if (!espaco.icone.empty()) {
+        nome = base::UTF8ToUTF16(espaco.icone) + u" " + nome;
+      }
+      AddItemWithIcon(kPrimeiro + espacos_.size(), nome, Bolinha(espaco.cor));
+      espacos_.push_back(espaco.id);
+    }
+  }
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override {
+    const size_t i = command_id - kPrimeiro;
+    const int index = tab_strip_->GetIndexOfWebContents(alvo_);
+    if (i >= espacos_.size() || index == TabStripModel::kNoTab ||
+        PonteMoverAba().is_null()) {
+      return;
+    }
+    PonteMoverAba().Run(tab_strip_, index, espacos_[i]);
+  }
+
+ private:
+  static constexpr int kPrimeiro = 1000;
+
+  raw_ptr<TabStripModel> tab_strip_;
+  raw_ptr<content::WebContents> alvo_;
+  std::vector<std::string> espacos_;
 };
 
 // "Abrir link em container" no menu de contexto da página.
@@ -278,6 +339,26 @@ void AbrirEmContainer(TabStripModel* tab_strip,
 std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDaAba(TabStripModel* tab_strip,
                                                        int index) {
   return std::make_unique<SubmenuDaAba>(tab_strip, index);
+}
+
+void DefinirMoverAba(MoverAba mover) {
+  PonteMoverAba() = std::move(mover);
+}
+
+void DefinirAbrirConfiguracoes(AbrirConfiguracoes abrir) {
+  PonteConfiguracoes() = std::move(abrir);
+}
+
+void MostrarConfiguracoes(BrowserWindowInterface* browser) {
+  if (!PonteConfiguracoes().is_null()) {
+    PonteConfiguracoes().Run(browser);
+  }
+}
+
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDeEspacos(
+    TabStripModel* tab_strip,
+    int index) {
+  return std::make_unique<SubmenuDeEspacos>(tab_strip, index);
 }
 
 std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDoLink(

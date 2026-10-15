@@ -1,5 +1,7 @@
 #include "navegador/browser/ui/espacos.h"
 
+#include <cstdlib>
+#include <map>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -8,49 +10,69 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/strings/string_number_conversions.h"
+#include "base/no_destructor.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 #include "cc/paint/paint_flags.h"
+#include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
-#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
-#include "chrome/browser/ui/tabs/tab_group_theme.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
-#include "chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h"
+#include "chrome/common/webui_url_constants.h"
+#include "components/prefs/pref_change_registrar.h"
+#include "components/prefs/pref_service.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/tabs/public/tab_group.h"
+#include "components/tabs/public/tab_interface.h"
 #include "navegador/browser/containers/containers.h"
+#include "navegador/browser/containers/espacos_dados.h"
+#include "navegador/browser/ui/atalhos.h"
+#include "navegador/browser/ui/configuracoes.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
+#include "navegador/browser/ui/containers/espaco.h"
+#include "ui/base/accelerators/accelerator.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/base/models/image_model.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider.h"
-#include "ui/base/accelerators/accelerator.h"
 #include "ui/events/event.h"
-#include "ui/events/keycodes/keyboard_codes.h"
+#include "ui/events/event_handler.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/font_list.h"
 #include "ui/menus/simple_menu_model.h"
-#include "ui/views/background.h"
+#include "components/vector_icons/vector_icons.h"
+#include "ui/accessibility/ax_enums.mojom.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/color/color_id.h"
+#include "ui/views/accessibility/view_accessibility.h"
+#include "ui/views/animation/ink_drop.h"
+#include "ui/views/border.h"
 #include "ui/views/context_menu_controller.h"
-#include "ui/views/controls/menu/menu_runner.h"
-#include "ui/views/focus/focus_manager.h"
+#include "ui/views/controls/highlight_path_generator.h"
+#include "ui/views/layout/fill_layout.h"
+#include "ui/views/view_tracker.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/focus/focus_manager.h"
 #include "ui/views/layout/box_layout.h"
-#include "ui/views/layout/flex_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
+#include "url/gurl.h"
 
 namespace navegador::espacos {
 
@@ -63,37 +85,94 @@ constexpr int kEspacoEntreBolinhas = 3;
 constexpr int kBolinha = 10;  // área clicável de cada bolinha
 constexpr float kRaioBolinha = 3.0f;
 constexpr float kRaioBolinhaAtual = 4.0f;
+// Como o Zen: entre duas trocas pela rodinha, pelo menos isto.
+constexpr base::TimeDelta kIntervaloRodinha = base::Milliseconds(200);
 
-// Cores dos espaços novos, em rodízio.
-constexpr tab_groups::TabGroupColorId kCoresNovas[] = {
-    tab_groups::TabGroupColorId::kBlue,   tab_groups::TabGroupColorId::kPurple,
-    tab_groups::TabGroupColorId::kGreen,  tab_groups::TabGroupColorId::kOrange,
-    tab_groups::TabGroupColorId::kPink,   tab_groups::TabGroupColorId::kCyan,
-    tab_groups::TabGroupColorId::kYellow, tab_groups::TabGroupColorId::kRed,
-};
+// Cor da paleta dos containers -> cor de grupo do Chromium.
+tab_groups::TabGroupColorId CorDoGrupo(std::string_view cor) {
+  if (cor == "roxo") {
+    return tab_groups::TabGroupColorId::kPurple;
+  }
+  if (cor == "verde") {
+    return tab_groups::TabGroupColorId::kGreen;
+  }
+  if (cor == "laranja") {
+    return tab_groups::TabGroupColorId::kOrange;
+  }
+  if (cor == "rosa") {
+    return tab_groups::TabGroupColorId::kPink;
+  }
+  if (cor == "turquesa") {
+    return tab_groups::TabGroupColorId::kCyan;
+  }
+  if (cor == "amarelo") {
+    return tab_groups::TabGroupColorId::kYellow;
+  }
+  if (cor == "vermelho") {
+    return tab_groups::TabGroupColorId::kRed;
+  }
+  if (cor == "cinza") {
+    return tab_groups::TabGroupColorId::kGrey;
+  }
+  return tab_groups::TabGroupColorId::kBlue;
+}
 
-// Uma bolinha: um espaço. Clicar foca o espaço.
+std::string CorDaPaleta(tab_groups::TabGroupColorId cor) {
+  switch (cor) {
+    case tab_groups::TabGroupColorId::kPurple:
+      return "roxo";
+    case tab_groups::TabGroupColorId::kGreen:
+      return "verde";
+    case tab_groups::TabGroupColorId::kOrange:
+      return "laranja";
+    case tab_groups::TabGroupColorId::kPink:
+      return "rosa";
+    case tab_groups::TabGroupColorId::kCyan:
+      return "turquesa";
+    case tab_groups::TabGroupColorId::kYellow:
+      return "amarelo";
+    case tab_groups::TabGroupColorId::kRed:
+      return "vermelho";
+    case tab_groups::TabGroupColorId::kGrey:
+      return "cinza";
+    default:
+      return "azul";
+  }
+}
+
+// Nome mostrado: o emoji (se tiver) e o nome.
+std::u16string Titulo(const Espaco& espaco) {
+  std::u16string nome = base::UTF8ToUTF16(espaco.nome);
+  if (espaco.icone.empty()) {
+    return nome;
+  }
+  return base::UTF8ToUTF16(espaco.icone) + u" " + nome;
+}
+
+class FaixaDeEspacos;
+
+std::map<BrowserWindowInterface*, FaixaDeEspacos*>& Faixas() {
+  static base::NoDestructor<std::map<BrowserWindowInterface*, FaixaDeEspacos*>>
+      faixas;
+  return *faixas;
+}
+
+// Uma bolinha: um espaço. Clicar leva pro espaço.
 class Bolinha : public views::View {
   METADATA_HEADER(Bolinha, views::View)
 
  public:
-  Bolinha(std::optional<tab_groups::TabGroupColorId> cor,
+  Bolinha(std::string cor,
           bool atual,
           std::u16string nome,
           base::RepeatingClosure ao_clicar)
-      : cor_(cor), atual_(atual), ao_clicar_(std::move(ao_clicar)) {
+      : cor_(std::move(cor)), atual_(atual), ao_clicar_(std::move(ao_clicar)) {
     SetTooltipText(nome);
     SetPreferredSize(gfx::Size(kBolinha, kBolinha));
   }
 
   void OnPaint(gfx::Canvas* canvas) override {
-    const ui::ColorProvider* cores = GetColorProvider();
-    if (!cores) {
-      return;
-    }
-    SkColor cor =
-        cor_ ? cores->GetColor(GetTabGroupTabStripColorId(*cor_, true))
-             : cores->GetColor(kColorTabForegroundActiveFrameActive);
+    SkColor cor = containers::Cor(cor_);
     if (!atual_) {
       cor = SkColorSetA(cor, 0x66);
     }
@@ -115,7 +194,7 @@ class Bolinha : public views::View {
   }
 
  private:
-  std::optional<tab_groups::TabGroupColorId> cor_;
+  std::string cor_;
   bool atual_;
   base::RepeatingClosure ao_clicar_;
 };
@@ -123,6 +202,161 @@ class Bolinha : public views::View {
 BEGIN_METADATA(Bolinha)
 END_METADATA
 
+// Nome do espaço no cabeçalho da lateral; clicar abre a lista de espaços,
+// como o seletor de perfis do Dia ("Work ⌄": ✓ no atual, bolinha da cor nos
+// outros, "Edit Profiles…").
+class TituloDoEspaco : public views::Button,
+                       public ui::SimpleMenuModel::Delegate {
+  METADATA_HEADER(TituloDoEspaco, views::Button)
+
+ public:
+  explicit TituloDoEspaco(BrowserWindowInterface* browser)
+      : views::Button(base::BindRepeating(&TituloDoEspaco::AbrirMenu,
+                                          base::Unretained(this))),
+        browser_(browser) {
+    SetLayoutManager(std::make_unique<views::FillLayout>());
+    rotulo_ = AddChildView(std::make_unique<views::Label>());
+    rotulo_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+    rotulo_->SetElideBehavior(gfx::ELIDE_TAIL);
+    // Texto onde o Dia põe o nome do perfil (~58 da borda da lateral).
+    rotulo_->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(0, 8)));
+    rotulo_->SetFontList(
+        gfx::FontList()
+            .DeriveWithSizeDelta(13 - gfx::FontList().GetFontSize())
+            .DeriveWithWeight(gfx::Font::Weight::SEMIBOLD));
+    rotulo_->SetCanProcessEventsWithinSubtree(false);
+    SetPreferredSize(gfx::Size(0, 32));
+    views::InkDrop::Get(this)->SetMode(views::InkDropHost::InkDropMode::ON);
+    views::InkDrop::Get(this)->SetBaseColor(
+        kColorTabForegroundActiveFrameActive);
+    views::InstallRoundRectHighlightPathGenerator(this, gfx::Insets(), 4);
+    SetTooltipText(u"Trocar de espaço");
+  }
+
+  void Mostrar(const std::u16string& texto) {
+    rotulo_->SetText(texto);
+    GetViewAccessibility().SetName(u"Espaço: " + texto);
+  }
+
+  void OnThemeChanged() override {
+    views::Button::OnThemeChanged();
+    rotulo_->SetEnabledColor(
+        GetColorProvider()->GetColor(kColorTabForegroundActiveFrameActive));
+  }
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override {
+    if (command_id == kNovo) {
+      espacos::NovoEspaco(browser_);
+    } else if (command_id == kEditar) {
+      configuracoes::Mostrar(browser_, configuracoes::Aba::kEspacos);
+    } else if (const size_t i = command_id - kPrimeiro; i < ids_.size()) {
+      espacos::IrPara(browser_, ids_[i]);
+    }
+  }
+
+ private:
+  void AbrirMenu() {
+    Profile* perfil = browser_->GetProfile();
+    const std::string atual = Ativo(perfil);
+    std::string do_grupo;
+    if (std::optional<tab_groups::TabGroupId> grupo =
+            browser_->GetTabStripModel()->GetFocusedGroup()) {
+      do_grupo = EspacoDoGrupo(perfil, grupo->ToString()).value_or("");
+    }
+    menu_ = std::make_unique<ui::SimpleMenuModel>(this);
+    menu_->AddTitle(u"Espaços");
+    ids_.clear();
+    for (const Espaco& espaco : Todos(perfil)) {
+      const bool e_o_atual =
+          espaco.id == (do_grupo.empty() ? atual : do_grupo);
+      menu_->AddItemWithIcon(
+          kPrimeiro + ids_.size(), Titulo(espaco),
+          e_o_atual ? ui::ImageModel::FromVectorIcon(
+                          kCheckIcon, ui::kColorMenuIcon, 16)
+                    : containers::Bolinha(espaco.cor));
+      ids_.push_back(espaco.id);
+    }
+    menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+    menu_->AddItem(kNovo, u"Novo espaço…");
+    menu_->AddItem(kEditar, u"Editar espaços…");
+    runner_ = std::make_unique<views::MenuRunner>(
+        menu_.get(), views::MenuRunner::HAS_MNEMONICS);
+    runner_->RunMenuAt(GetWidget(), nullptr, GetAnchorBoundsInScreen(),
+                       views::MenuAnchorPosition::kTopLeft,
+                       ui::mojom::MenuSourceType::kMouse);
+  }
+
+  static constexpr int kNovo = 1;
+  static constexpr int kEditar = 2;
+  static constexpr int kPrimeiro = 100;
+
+  raw_ptr<BrowserWindowInterface> browser_;
+  raw_ptr<views::Label> rotulo_ = nullptr;
+  std::vector<std::string> ids_;
+  std::unique_ptr<ui::SimpleMenuModel> menu_;
+  std::unique_ptr<views::MenuRunner> runner_;
+};
+
+BEGIN_METADATA(TituloDoEspaco)
+END_METADATA
+
+// Eventos em cima da lateral inteira (pre-target handler nela): trocam de
+// espaço sem passar pelas abas.
+class TrocaNaLateral : public ui::EventHandler {
+ public:
+  explicit TrocaNaLateral(base::RepeatingCallback<void(bool)> girar,
+                          base::RepeatingCallback<void(bool)> girar_rodinha)
+      : girar_(std::move(girar)), girar_rodinha_(std::move(girar_rodinha)) {}
+
+  void OnMouseEvent(ui::MouseEvent* event) override {
+    // Botões laterais (voltar/avançar) com o ponteiro na lateral trocam de
+    // espaço, como no Zen; em cima da página continuam voltar/avançar.
+    if (event->type() == ui::EventType::kMousePressed ||
+        event->type() == ui::EventType::kMouseReleased) {
+      const int botao = event->changed_button_flags();
+      if (botao & (ui::EF_BACK_MOUSE_BUTTON | ui::EF_FORWARD_MOUSE_BUTTON)) {
+        if (event->type() == ui::EventType::kMousePressed) {
+          girar_.Run(/*pra_frente=*/botao & ui::EF_FORWARD_MOUSE_BUTTON);
+        }
+        event->SetHandled();
+        return;
+      }
+    }
+    // Rolagem horizontal (sem tecla) ou Ctrl+rodinha: troca de espaço. A
+    // vertical sozinha continua rolando a lista de abas.
+    if (event->type() == ui::EventType::kMousewheel) {
+      const ui::MouseWheelEvent* rodinha = event->AsMouseWheelEvent();
+      int delta = 0;
+      if (rodinha->x_offset() != 0 &&
+          std::abs(rodinha->x_offset()) >= std::abs(rodinha->y_offset())) {
+        delta = -rodinha->x_offset();
+      } else if (rodinha->IsControlDown() && rodinha->y_offset() != 0) {
+        delta = -rodinha->y_offset();
+      }
+      if (delta != 0) {
+        girar_rodinha_.Run(delta > 0);
+        event->SetHandled();
+      }
+    }
+  }
+
+  void OnScrollEvent(ui::ScrollEvent* event) override {
+    // Touchpad: deslizar de lado troca de espaço.
+    if (event->type() == ui::EventType::kScroll &&
+        std::abs(event->x_offset()) > std::abs(event->y_offset()) * 2 &&
+        std::abs(event->x_offset()) > 30) {
+      girar_rodinha_.Run(event->x_offset() < 0);
+      event->SetHandled();
+    }
+  }
+
+ private:
+  base::RepeatingCallback<void(bool)> girar_;
+  base::RepeatingCallback<void(bool)> girar_rodinha_;
+};
+
+// A faixa no pé da lateral e o controle dos espaços da janela.
 class FaixaDeEspacos : public views::View,
                        public TabStripModelObserver,
                        public views::ContextMenuController,
@@ -130,13 +364,14 @@ class FaixaDeEspacos : public views::View,
   METADATA_HEADER(FaixaDeEspacos, views::View)
 
  public:
-  explicit FaixaDeEspacos(BrowserWindowInterface* browser)
-      : browser_(browser), model_(browser->GetTabStripModel()) {
+  FaixaDeEspacos(views::View* lateral, BrowserWindowInterface* browser)
+      : lateral_(lateral),
+        browser_(browser),
+        model_(browser->GetTabStripModel()) {
     layout_ = SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(0, 10),
         8));
-    auto* layout = layout_.get();
-    layout->set_cross_axis_alignment(
+    layout_->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);
 
     titulo_ = AddChildView(std::make_unique<views::Label>());
@@ -144,9 +379,10 @@ class FaixaDeEspacos : public views::View,
     titulo_->SetElideBehavior(gfx::ELIDE_TAIL);
     titulo_->SetMaximumWidthSingleLine(kLarguraMaximaTitulo);
     titulo_->SetFontList(
-        gfx::FontList().DeriveWithSizeDelta(13 - gfx::FontList().GetFontSize())
+        gfx::FontList()
+            .DeriveWithSizeDelta(13 - gfx::FontList().GetFontSize())
             .DeriveWithWeight(gfx::Font::Weight::MEDIUM));
-    layout->SetFlexForView(titulo_, 1);
+    layout_->SetFlexForView(titulo_, 1);
 
     bolinhas_ = AddChildView(std::make_unique<views::View>());
     bolinhas_->SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -161,60 +397,199 @@ class FaixaDeEspacos : public views::View,
 
     model_->AddObserver(this);
     set_context_menu_controller(this);
+    Faixas()[browser_] = this;
 
-    if (auto* estado = tabs::VerticalTabStripStateController::From(browser)) {
-      SetVisible(estado->GetCollapseState() ==
-                 tabs::VerticalTabStripCollapseState::kExpanded);
-      recolher_ = estado->RegisterOnCollapseChanged(base::BindRepeating(
-          [](FaixaDeEspacos* faixa,
-             tabs::VerticalTabStripCollapseState state) {
-            // Recolhida (56 de largura) não cabe; volta ao expandir.
-            faixa->SetVisible(state ==
-                              tabs::VerticalTabStripCollapseState::kExpanded);
-          },
-          base::Unretained(this)));
-    }
+    prefs_.Init(Perfil()->GetPrefs());
+    prefs_.Add(kListaPref,
+               base::BindRepeating(&FaixaDeEspacos::QuandoListaMudar,
+                                   base::Unretained(this)));
+    prefs_.Add(kAtalhosPref,
+               base::BindRepeating(&FaixaDeEspacos::RegistrarAtalhos,
+                                   base::Unretained(this)));
 
     Atualizar();
   }
 
-  ~FaixaDeEspacos() override { model_->RemoveObserver(this); }
+  ~FaixaDeEspacos() override {
+    model_->RemoveObserver(this);
+    auto it = Faixas().find(browser_);
+    if (it != Faixas().end() && it->second == this) {
+      Faixas().erase(it);
+    }
+  }
 
-  // Atalhos: Ctrl+Alt+→/← troca de espaço, Ctrl+Alt+N cria um.
-  void AddedToWidget() override {
-    if (views::FocusManager* foco = GetFocusManager()) {
-      for (const ui::Accelerator& atalho : Atalhos()) {
-        foco->RegisterAccelerator(atalho,
-                                  ui::AcceleratorManager::kHighPriority, this);
+  // --- Troca de espaço ----------------------------------------------------
+
+  void Focar(const std::string& espaco) {
+    if (!Get(Perfil(), espaco)) {
+      return;
+    }
+    if (std::optional<tab_groups::TabGroupId> grupo = GrupoDoEspaco(espaco)) {
+      // Volta pra última aba usada no espaço: ativar uma aba de outro grupo
+      // já foca o grupo dela (patch no TabStripModel::ActivateTab). Sem
+      // ela, o Chromium foca na primeira aba do grupo.
+      int index = TabStripModel::kNoTab;
+      auto ultima = ultima_aba_.find(espaco);
+      if (ultima != ultima_aba_.end()) {
+        if (tabs::TabInterface* aba = ultima->second.Get()) {
+          index = model_->GetIndexOfTab(aba);
+        }
+      }
+      if (index != TabStripModel::kNoTab &&
+          model_->GetTabGroupForTab(index) == *grupo) {
+        if (index != model_->active_index()) {
+          model_->ActivateTabAt(index);
+        }
+        if (model_->GetFocusedGroup() != *grupo) {
+          model_->SetFocusedGroup(*grupo);
+        }
+      } else {
+        model_->SetFocusedGroup(*grupo);
+      }
+    } else {
+      CriarAbaNoEspaco(espaco, GURL(chrome::kChromeUINewTabURL));
+    }
+    DefinirAtivo(Perfil(), espaco);
+  }
+
+  void Girar(bool pra_frente) {
+    const std::vector<Espaco> todos = Todos(Perfil());
+    if (todos.size() < 2) {
+      return;
+    }
+    const std::string atual = EspacoAtual();
+    size_t i = 0;
+    while (i < todos.size() && todos[i].id != atual) {
+      ++i;
+    }
+    if (i == todos.size()) {
+      i = 0;
+    }
+    const size_t n = todos.size();
+    Focar(todos[(i + (pra_frente ? 1 : n - 1)) % n].id);
+  }
+
+  void IrParaPosicao(size_t posicao) {
+    const std::vector<Espaco> todos = Todos(Perfil());
+    if (posicao < todos.size()) {
+      Focar(todos[posicao].id);
+    }
+  }
+
+  void NovoEspaco() {
+    configuracoes::EditarEspaco(
+        browser_, std::string(),
+        base::BindOnce(&FaixaDeEspacos::Focar, weak_factory_.GetWeakPtr()));
+  }
+
+  void MoverAbaPara(int index, const std::string& espaco) {
+    if (index < 0 || index >= model_->count() || model_->IsTabPinned(index)) {
+      return;
+    }
+    const std::optional<tab_groups::TabGroupId> origem =
+        model_->GetTabGroupForTab(index);
+    const bool era_ativa = index == model_->active_index();
+    if (std::optional<tab_groups::TabGroupId> destino =
+            GrupoDoEspaco(espaco)) {
+      if (destino == origem) {
+        return;
+      }
+      model_->AddToExistingGroup({index}, *destino, /*add_to_end=*/true);
+    } else {
+      const tab_groups::TabGroupId grupo = model_->AddToNewGroup({index});
+      Ligar(grupo, espaco);
+    }
+    // Como no Zen: quem move a aba fica no espaço; a aba ativa passa pra
+    // outra do espaço (ou, se era a última, a janela segue a aba).
+    if (era_ativa && origem) {
+      const TabGroup* grupo = model_->group_model()->GetTabGroup(*origem);
+      if (model_->group_model()->ContainsTabGroup(*origem) && grupo &&
+          grupo->GetFirstTab()) {
+        model_->ActivateTabAt(model_->GetIndexOfTab(grupo->GetFirstTab()));
+      } else {
+        Focar(espaco);
       }
     }
   }
+
+  // Fecha as abas do espaço nesta janela (antes, se a janela está nele,
+  // passa pro espaço seguinte).
+  void FecharEspaco(const std::string& espaco) {
+    std::optional<tab_groups::TabGroupId> grupo = GrupoDoEspaco(espaco);
+    if (!grupo) {
+      return;
+    }
+    if (model_->GetFocusedGroup() == *grupo) {
+      Girar(/*pra_frente=*/true);
+      if (model_->GetFocusedGroup() == *grupo) {
+        // Era o único espaço com abas nesta janela: abre o seguinte.
+        for (const Espaco& outro : Todos(Perfil())) {
+          if (outro.id != espaco) {
+            Focar(outro.id);
+            break;
+          }
+        }
+      }
+    }
+    if (model_->group_model()->ContainsTabGroup(*grupo)) {
+      model_->CloseAllTabsInGroup(*grupo);
+    }
+  }
+
+  Profile* PerfilDaJanela() const { return Perfil(); }
+
+  void DefinirTitulo(TituloDoEspaco* titulo) {
+    titulo_do_cabecalho_.SetView(titulo);
+    Atualizar();
+  }
+
+  // --- views::View ---------------------------------------------------------
+
+  void AddedToWidget() override {
+    RegistrarAtalhos();
+    lateral_->AddPreTargetHandler(&na_lateral_);
+    // A sessão restaurada chega depois: arruma no próximo giro.
+    GarantirDepois();
+  }
+
   void RemovedFromWidget() override {
     if (views::FocusManager* foco = GetFocusManager()) {
       foco->UnregisterAccelerators(this);
     }
+    lateral_->RemovePreTargetHandler(&na_lateral_);
   }
+
   bool AcceleratorPressed(const ui::Accelerator& atalho) override {
-    switch (atalho.key_code()) {
-      case ui::VKEY_RIGHT:
-        Girar(/*pra_frente=*/true);
-        return true;
-      case ui::VKEY_LEFT:
-        Girar(/*pra_frente=*/false);
-        return true;
-      case ui::VKEY_N:
-        NovoEspaco();
-        return true;
-      default:
-        return false;
+    auto it = acoes_.find(atalho);
+    if (it == acoes_.end()) {
+      return false;
     }
+    const std::string& acao = it->second;
+    if (acao == "alternar_lateral") {
+      chrome::ExecuteCommand(browser_, IDC_TOGGLE_VERTICAL_TABS_COLLAPSE);
+    } else if (acao == "proximo_espaco") {
+      Girar(/*pra_frente=*/true);
+    } else if (acao == "espaco_anterior") {
+      Girar(/*pra_frente=*/false);
+    } else if (acao == "novo_espaco") {
+      NovoEspaco();
+    } else if (acao.starts_with("espaco_")) {
+      IrParaPosicao(acao.back() - '1');
+    } else if (acao == "configuracoes") {
+      configuracoes::Mostrar(browser_);
+    } else if (acao == "containers") {
+      configuracoes::Mostrar(browser_, configuracoes::Aba::kContainers);
+    } else {
+      return false;
+    }
+    return true;
   }
+
   // Valem mesmo com a faixa escondida (lateral recolhida).
   bool CanHandleAccelerators() const override {
     return GetWidget() && GetWidget()->IsActive();
   }
 
-  // views::View:
   gfx::Size CalculatePreferredSize(
       const views::SizeBounds& available_size) const override {
     return gfx::Size(views::View::CalculatePreferredSize(available_size).width(),
@@ -227,119 +602,368 @@ class FaixaDeEspacos : public views::View,
         GetColorProvider()->GetColor(kColorTabForegroundActiveFrameActive));
   }
 
-  // A rodinha do mouse passa de um espaço pro outro (o "deslizar" do Dia).
+  // A rodinha em cima da faixa passa de um espaço pro outro (o "deslizar"
+  // do Dia). Em cima do resto da lateral, ver OnMouseEvent.
   bool OnMouseWheel(const ui::MouseWheelEvent& event) override {
-    const int delta = event.y_offset() != 0 ? event.y_offset() : event.x_offset();
+    const int delta =
+        event.y_offset() != 0 ? event.y_offset() : event.x_offset();
     if (delta == 0) {
       return false;
     }
-    Girar(delta < 0);
+    GirarPelaRodinha(delta < 0);
     return true;
   }
 
-  // views::ContextMenuController: clique direito na faixa.
+  // --- views::ContextMenuController: clique direito na faixa ---------------
+
   void ShowContextMenuForViewImpl(
       views::View* source,
       const gfx::Point& point,
       ui::mojom::MenuSourceType source_type) override {
     menu_ = std::make_unique<ui::SimpleMenuModel>(this);
-    if (model_->GetFocusedGroup()) {
-      menu_->AddItem(kEditar, u"Editar espaço…");
-      containers_ = containers::GetAll(browser_->GetProfile());
-      submenu_containers_ = std::make_unique<ui::SimpleMenuModel>(this);
-      submenu_containers_->AddCheckItem(kSemContainer, u"Nenhum");
-      for (size_t i = 0; i < containers_.size(); ++i) {
-        submenu_containers_->AddCheckItem(
-            kPrimeiroContainer + i, base::UTF8ToUTF16(containers_[i].name));
-        submenu_containers_->SetIcon(
-            submenu_containers_->GetItemCount() - 1,
-            containers::Bolinha(containers_[i].color));
-      }
-      menu_->AddSubMenu(kContainerDoEspaco, u"Container do espaço",
-                        submenu_containers_.get());
-      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+    menu_->AddItem(kEditar, u"Editar espaço…");
+    containers_ = containers::GetAll(Perfil());
+    submenu_containers_ = std::make_unique<ui::SimpleMenuModel>(this);
+    submenu_containers_->AddCheckItem(kSemContainer, u"Nenhum");
+    for (size_t i = 0; i < containers_.size(); ++i) {
+      submenu_containers_->AddCheckItem(
+          kPrimeiroContainer + i, base::UTF8ToUTF16(containers_[i].name));
+      submenu_containers_->SetIcon(submenu_containers_->GetItemCount() - 1,
+                                   containers::Bolinha(containers_[i].color));
     }
+    menu_->AddSubMenu(kContainerDoEspaco, u"Container do espaço",
+                      submenu_containers_.get());
+    menu_->AddSeparator(ui::NORMAL_SEPARATOR);
     menu_->AddItem(kNovo, u"Novo espaço");
+    menu_->AddItem(kConfigurar, u"Configurar espaços…");
     menu_runner_ = std::make_unique<views::MenuRunner>(
         menu_.get(), views::MenuRunner::CONTEXT_MENU);
     menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
                             views::MenuAnchorPosition::kTopLeft, source_type);
   }
 
-  // ui::SimpleMenuModel::Delegate:
+  // --- ui::SimpleMenuModel::Delegate ---------------------------------------
+
   bool IsCommandIdChecked(int command_id) const override {
-    const auto atual = model_->GetFocusedGroup();
-    if (!atual) {
-      return false;
-    }
     const std::optional<std::string> container =
-        containers::ContainerDoEspaco(browser_->GetProfile(), atual->ToString());
+        containers::ContainerDoEspaco(Perfil(), EspacoAtual());
     if (command_id == kSemContainer) {
       return !container;
     }
     const size_t i = command_id - kPrimeiroContainer;
-    return container && i < containers_.size() && containers_[i].id == *container;
+    return container && i < containers_.size() &&
+           containers_[i].id == *container;
   }
 
   void ExecuteCommand(int command_id, int event_flags) override {
-    const auto atual = model_->GetFocusedGroup();
-    if (command_id == kNovo) {
-      NovoEspaco();
-      return;
-    }
-    if (!atual) {
-      return;
-    }
-    if (command_id == kEditar) {
-      editor_ = TabGroupEditorBubbleView::Show(browser_, *atual, this,
-                                               std::nullopt,
-                                               /*stop_context_menu_propagation=*/
-                                               false);
-      return;
-    }
-    if (command_id == kSemContainer) {
-      containers::DefinirContainerDoEspaco(browser_->GetProfile(),
-                                           atual->ToString(), "");
-      return;
+    const std::string atual = EspacoAtual();
+    switch (command_id) {
+      case kNovo:
+        NovoEspaco();
+        return;
+      case kEditar:
+        configuracoes::EditarEspaco(browser_, atual, base::DoNothing());
+        return;
+      case kConfigurar:
+        configuracoes::Mostrar(browser_, configuracoes::Aba::kEspacos);
+        return;
+      case kSemContainer:
+        containers::DefinirContainerDoEspaco(Perfil(), atual, "");
+        return;
     }
     const size_t i = command_id - kPrimeiroContainer;
     if (i < containers_.size()) {
-      containers::DefinirContainerDoEspaco(
-          browser_->GetProfile(), atual->ToString(), containers_[i].id);
+      containers::DefinirContainerDoEspaco(Perfil(), atual,
+                                           containers_[i].id);
     }
   }
 
-  // TabStripModelObserver:
+  // --- TabStripModelObserver -----------------------------------------------
+
+  void OnTabStripModelChanged(
+      TabStripModel* tab_strip_model,
+      const TabStripModelChange& change,
+      const TabStripSelectionChange& selection) override {
+    if (change.type() == TabStripModelChange::kInserted) {
+      GarantirDepois();
+    }
+    if (selection.active_tab_changed() && selection.new_tab) {
+      if (std::optional<tab_groups::TabGroupId> grupo =
+              selection.new_tab->GetGroup()) {
+        if (std::optional<std::string> espaco =
+                EspacoDoGrupo(Perfil(), grupo->ToString())) {
+          ultima_aba_[*espaco] = selection.new_tab->GetHandle();
+        }
+      }
+    }
+  }
+
   void OnTabGroupFocusChanged(
       std::optional<tab_groups::TabGroupId> new_focused_group_id,
       std::optional<tab_groups::TabGroupId> old_focused_group_id) override {
+    if (new_focused_group_id) {
+      if (std::optional<std::string> espaco =
+              EspacoDoGrupo(Perfil(), new_focused_group_id->ToString())) {
+        DefinirAtivo(Perfil(), *espaco);
+      }
+    } else {
+      // Sem espaço não existe: volta a focar um.
+      GarantirDepois();
+    }
     AtualizarDepois();
   }
-  void OnTabGroupChanged(const TabGroupChange& change) override {
-    AtualizarDepois();
-  }
+
   void OnTabGroupAdded(const tab_groups::TabGroupId& group_id) override {
-    AtualizarDepois();
+    GarantirDepois();
   }
-  void OnTabGroupWillBeRemoved(const tab_groups::TabGroupId& group_id) override {
-    AtualizarDepois();
+
+  void OnTabGroupWillBeRemoved(
+      const tab_groups::TabGroupId& group_id) override {
+    // A última aba do espaço fechou: como no Zen, a janela fica no espaço,
+    // com uma aba nova.
+    if (model_->GetFocusedGroup() == group_id && model_->count() > 1) {
+      if (std::optional<std::string> espaco =
+              EspacoDoGrupo(Perfil(), group_id.ToString())) {
+        espaco_a_manter_ = *espaco;
+      }
+    }
+    DesligarGrupo(Perfil(), group_id.ToString());
+    GarantirDepois();
   }
 
  private:
-  static std::vector<ui::Accelerator> Atalhos() {
-    constexpr int kMod = ui::EF_CONTROL_DOWN | ui::EF_ALT_DOWN;
-    return {ui::Accelerator(ui::VKEY_RIGHT, kMod),
-            ui::Accelerator(ui::VKEY_LEFT, kMod),
-            ui::Accelerator(ui::VKEY_N, kMod)};
+  Profile* Perfil() const { return browser_->GetProfile(); }
+
+  std::optional<tab_groups::TabGroupId> GrupoDoEspaco(
+      const std::string& espaco) const {
+    if (!model_->group_model()) {
+      return std::nullopt;
+    }
+    for (const tab_groups::TabGroupId& id :
+         model_->group_model()->ListTabGroups()) {
+      if (EspacoDoGrupo(Perfil(), id.ToString()) == espaco) {
+        return id;
+      }
+    }
+    return std::nullopt;
   }
 
-  std::vector<tab_groups::TabGroupId> Espacos() const {
-    return model_->group_model() ? model_->group_model()->ListTabGroups()
-                                 : std::vector<tab_groups::TabGroupId>();
+  std::string EspacoAtual() const {
+    if (std::optional<tab_groups::TabGroupId> grupo =
+            model_->GetFocusedGroup()) {
+      if (std::optional<std::string> espaco =
+              EspacoDoGrupo(Perfil(), grupo->ToString())) {
+        return *espaco;
+      }
+    }
+    return Ativo(Perfil());
   }
 
-  // Os avisos do modelo chegam no meio das mudanças (o grupo removido ainda
-  // existe, por exemplo): redesenha depois.
+  void Ligar(const tab_groups::TabGroupId& grupo, const std::string& espaco) {
+    LigarGrupo(Perfil(), grupo.ToString(), espaco);
+    AplicarVisual(grupo, espaco);
+  }
+
+  void AplicarVisual(const tab_groups::TabGroupId& grupo,
+                     const std::string& espaco) {
+    std::optional<Espaco> dados = Get(Perfil(), espaco);
+    const TabGroup* tab_group = model_->group_model()->GetTabGroup(grupo);
+    if (!dados || !tab_group) {
+      return;
+    }
+    const tab_groups::TabGroupVisualData visual(Titulo(*dados),
+                                                CorDoGrupo(dados->cor));
+    if (tab_group->visual_data()->title() != visual.title() ||
+        tab_group->visual_data()->color() != visual.color()) {
+      model_->ChangeTabGroupVisuals(grupo, visual, /*is_customized=*/true);
+    }
+  }
+
+  // Primeira aba de um espaço que ainda não tem grupo nesta janela: abre a
+  // aba (no container do espaço), põe num grupo novo ligado ao espaço e foca.
+  void CriarAbaNoEspaco(const std::string& espaco, const GURL& url) {
+    content::WebContents* aba = nullptr;
+    {
+      containers::EspacoPendente pendente(browser_, espaco);
+      NavigateParams params(browser_, url, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+      params.disposition = WindowOpenDisposition::NEW_BACKGROUND_TAB;
+      Navigate(&params);
+      aba = params.navigated_or_inserted_contents;
+    }
+    const int index = aba ? model_->GetIndexOfWebContents(aba)
+                          : TabStripModel::kNoTab;
+    if (index == TabStripModel::kNoTab) {
+      return;
+    }
+    const tab_groups::TabGroupId grupo = model_->AddToNewGroup({index});
+    Ligar(grupo, espaco);
+    model_->SetFocusedGroup(grupo);
+    model_->ActivateTabAt(model_->GetIndexOfWebContents(aba));
+  }
+
+  void GarantirDepois() {
+    if (garantia_pendente_) {
+      return;
+    }
+    garantia_pendente_ = true;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&FaixaDeEspacos::Garantir,
+                                  weak_factory_.GetWeakPtr()));
+  }
+
+  // Regras da janela: todo grupo é de um espaço, toda aba solta (não fixada)
+  // entra no espaço atual e sempre tem um espaço focado.
+  void Garantir() {
+    garantia_pendente_ = false;
+    if (!model_->group_model() || model_->empty()) {
+      return;
+    }
+    Profile* perfil = Perfil();
+
+    // A última aba de um espaço fechou: reabre o espaço com aba nova.
+    if (!espaco_a_manter_.empty()) {
+      const std::string espaco = std::move(espaco_a_manter_);
+      espaco_a_manter_.clear();
+      if (Get(perfil, espaco) && !GrupoDoEspaco(espaco)) {
+        Focar(espaco);
+      }
+    }
+
+    // Grupo sem espaço (sessão antiga, grupo vindo de outra janela): vira o
+    // espaço do mesmo nome, ou um espaço novo com o nome e a cor dele.
+    for (const tab_groups::TabGroupId& id :
+         model_->group_model()->ListTabGroups()) {
+      if (!model_->group_model()->ContainsTabGroup(id) ||
+          EspacoDoGrupo(perfil, id.ToString())) {
+        continue;
+      }
+      const TabGroup* grupo = model_->group_model()->GetTabGroup(id);
+      const std::string nome =
+          base::UTF16ToUTF8(grupo->visual_data()->title());
+      std::optional<std::string> espaco;
+      for (const Espaco& existente : Todos(perfil)) {
+        if (!nome.empty() && (existente.nome == nome ||
+                              base::UTF16ToUTF8(Titulo(existente)) == nome)) {
+          espaco = existente.id;
+          break;
+        }
+      }
+      // Grupo sem nome (aba solta de outra janela, sessão antiga): é do
+      // espaço atual.
+      if (!espaco && nome.empty()) {
+        espaco = EspacoAtual();
+      }
+      // O espaço já tem grupo nesta janela: junta as abas nele.
+      if (espaco) {
+        if (std::optional<tab_groups::TabGroupId> existente =
+                GrupoDoEspaco(*espaco);
+            existente && *existente != id) {
+          std::vector<int> abas;
+          for (int i = 0; i < model_->count(); ++i) {
+            if (model_->GetTabGroupForTab(i) == id) {
+              abas.push_back(i);
+            }
+          }
+          model_->AddToExistingGroup(abas, *existente, /*add_to_end=*/true);
+          GarantirDepois();
+          continue;
+        }
+      }
+      if (!espaco) {
+        // Versão antiga: o container era do grupo.
+        const std::string* container =
+            perfil->GetPrefs()
+                ->GetDict(containers::kEspacosPref)
+                .FindString(id.ToString());
+        espaco = Criar(perfil, nome.empty() ? "Espaço" : nome, "",
+                       CorDaPaleta(grupo->visual_data()->color()),
+                       container ? *container : "")
+                     .id;
+      }
+      Ligar(id, *espaco);
+    }
+
+    // Abas soltas -> espaço atual.
+    std::vector<int> soltas;
+    for (int i = 0; i < model_->count(); ++i) {
+      if (!model_->IsTabPinned(i) && !model_->GetTabGroupForTab(i)) {
+        soltas.push_back(i);
+      }
+    }
+    if (!soltas.empty()) {
+      std::optional<tab_groups::TabGroupId> alvo = model_->GetFocusedGroup();
+      if (!alvo) {
+        alvo = GrupoDoEspaco(Ativo(perfil));
+      }
+      if (alvo) {
+        model_->AddToExistingGroup(soltas, *alvo, /*add_to_end=*/true);
+      } else {
+        const tab_groups::TabGroupId novo = model_->AddToNewGroup(soltas);
+        Ligar(novo, Ativo(perfil));
+      }
+    }
+
+    // Sempre um espaço focado: o da aba ativa, senão o último usado, senão o
+    // primeiro grupo.
+    if (!model_->GetFocusedGroup()) {
+      std::optional<tab_groups::TabGroupId> foco;
+      if (model_->active_index() != TabStripModel::kNoTab) {
+        foco = model_->GetTabGroupForTab(model_->active_index());
+      }
+      if (!foco) {
+        foco = GrupoDoEspaco(Ativo(perfil));
+      }
+      if (!foco && !model_->group_model()->ListTabGroups().empty()) {
+        foco = model_->group_model()->ListTabGroups().front();
+      }
+      if (foco) {
+        model_->SetFocusedGroup(*foco);
+      }
+    }
+
+    for (const tab_groups::TabGroupId& id :
+         model_->group_model()->ListTabGroups()) {
+      if (std::optional<std::string> espaco =
+              EspacoDoGrupo(perfil, id.ToString())) {
+        AplicarVisual(id, *espaco);
+      }
+    }
+    Atualizar();
+  }
+
+  void QuandoListaMudar() {
+    // Espaço apagado: os grupos dele ficam soltos e o Garantir religa.
+    GarantirDepois();
+    AtualizarDepois();
+  }
+
+  void RegistrarAtalhos() {
+    views::FocusManager* foco = GetFocusManager();
+    if (!foco) {
+      return;
+    }
+    foco->UnregisterAccelerators(this);
+    acoes_.clear();
+    for (const Atalho& atalho : Atalhos()) {
+      if (std::optional<ui::Accelerator> tecla =
+              atalhos::Ler(AtalhoDe(Perfil(), atalho.acao))) {
+        acoes_[*tecla] = atalho.acao;
+        foco->RegisterAccelerator(*tecla,
+                                  ui::AcceleratorManager::kHighPriority, this);
+      }
+    }
+  }
+
+  void GirarPelaRodinha(bool pra_frente) {
+    const base::TimeTicks agora = base::TimeTicks::Now();
+    if (agora - ultima_rodinha_ < kIntervaloRodinha) {
+      return;
+    }
+    ultima_rodinha_ = agora;
+    Girar(pra_frente);
+  }
+
+  // Os avisos do modelo chegam no meio das mudanças: redesenha depois.
   void AtualizarDepois() {
     if (atualizacao_pendente_) {
       return;
@@ -352,37 +976,29 @@ class FaixaDeEspacos : public views::View,
 
   void Atualizar() {
     atualizacao_pendente_ = false;
-    const std::optional<tab_groups::TabGroupId> atual =
-        model_->GetFocusedGroup();
+    const std::vector<Espaco> todos = Todos(Perfil());
+    const std::string atual = EspacoAtual();
     bolinhas_->RemoveAllChildViews();
-
-    bolinhas_->AddChildView(std::make_unique<Bolinha>(
-        std::nullopt, !atual, u"Início",
-        base::BindRepeating(&FaixaDeEspacos::Focar, base::Unretained(this),
-                            std::nullopt)));
-    std::u16string titulo = u"Início";
-    for (const tab_groups::TabGroupId& id : Espacos()) {
-      const TabGroup* grupo = model_->group_model()->GetTabGroup(id);
-      if (!grupo) {
-        continue;
-      }
-      std::u16string nome = grupo->visual_data()->title();
-      if (nome.empty()) {
-        nome = u"Espaço sem nome";
-      }
-      if (atual == id) {
-        titulo = nome;
+    std::u16string titulo;
+    for (const Espaco& espaco : todos) {
+      if (espaco.id == atual) {
+        titulo = Titulo(espaco);
       }
       bolinhas_->AddChildView(std::make_unique<Bolinha>(
-          grupo->visual_data()->color(), atual == id, nome,
+          espaco.cor, espaco.id == atual, Titulo(espaco),
           base::BindRepeating(&FaixaDeEspacos::Focar, base::Unretained(this),
-                              std::optional<tab_groups::TabGroupId>(id))));
+                              espaco.id)));
     }
     titulo_->SetText(titulo);
-    // Como no Dia: com um espaço só (o Início), o rodapé fica limpo, só com o
-    // "+" discreto à direita; nome e bolinhas aparecem a partir do segundo.
-    const bool varios = !Espacos().empty();
-    titulo_->SetVisible(varios);
+    if (auto* cabecalho = static_cast<TituloDoEspaco*>(
+            titulo_do_cabecalho_.view())) {
+      cabecalho->Mostrar(titulo);
+    }
+    // O nome fica no cabeçalho (como o perfil no Dia); aqui, com um espaço
+    // só o rodapé fica limpo, só com o "+" discreto à direita; as bolinhas
+    // aparecem a partir do segundo.
+    const bool varios = todos.size() > 1;
+    titulo_->SetVisible(false);
     bolinhas_->SetVisible(varios);
     layout_->set_main_axis_alignment(
         varios ? views::BoxLayout::MainAxisAlignment::kStart
@@ -391,83 +1007,125 @@ class FaixaDeEspacos : public views::View,
     SchedulePaint();
   }
 
-  void Focar(std::optional<tab_groups::TabGroupId> espaco) {
-    if (espaco && !model_->group_model()->ContainsTabGroup(*espaco)) {
-      return;
-    }
-    model_->SetFocusedGroup(espaco);
-  }
-
-  // Ordem: Início, depois os espaços na ordem das abas. Dá a volta.
-  void Girar(bool pra_frente) {
-    std::vector<std::optional<tab_groups::TabGroupId>> ordem = {std::nullopt};
-    for (const auto& id : Espacos()) {
-      ordem.push_back(id);
-    }
-    const auto atual = model_->GetFocusedGroup();
-    size_t i = 0;
-    while (i < ordem.size() && ordem[i] != atual) {
-      ++i;
-    }
-    const size_t n = ordem.size();
-    Focar(ordem[(i + (pra_frente ? 1 : n - 1)) % n]);
-  }
-
-  void NovoEspaco() {
-    // A aba nova não pode cair dentro do espaço focado.
-    model_->SetFocusedGroup(std::nullopt);
-    chrome::NewTab(browser_, NewTabTypes::kNewTabCommand);
-    const int index = model_->active_index();
-    if (index == TabStripModel::kNoTab) {
-      return;
-    }
-    const std::vector<tab_groups::TabGroupId> antes = Espacos();
-    const tab_groups::TabGroupId espaco = model_->AddToNewGroup({index});
-    const size_t n = antes.size();
-    model_->ChangeTabGroupVisuals(
-        espaco,
-        tab_groups::TabGroupVisualData(
-            u"Espaço " + base::NumberToString16(n + 1),
-            kCoresNovas[n % std::size(kCoresNovas)]),
-        /*is_customized=*/true);
-    model_->SetFocusedGroup(espaco);
-  }
-
   static constexpr int kEditar = 1;
   static constexpr int kNovo = 2;
   static constexpr int kContainerDoEspaco = 3;
+  static constexpr int kConfigurar = 4;
   static constexpr int kSemContainer = 100;
   static constexpr int kPrimeiroContainer = 101;
 
+  raw_ptr<views::View> lateral_;
   raw_ptr<BrowserWindowInterface> browser_;
+  TrocaNaLateral na_lateral_{
+      base::BindRepeating(&FaixaDeEspacos::Girar, base::Unretained(this)),
+      base::BindRepeating(&FaixaDeEspacos::GirarPelaRodinha,
+                          base::Unretained(this))};
   raw_ptr<TabStripModel> model_;
+  PrefChangeRegistrar prefs_;
+  std::map<ui::Accelerator, std::string> acoes_;
+  std::map<std::string, tabs::TabHandle> ultima_aba_;
+  std::string espaco_a_manter_;
+  base::TimeTicks ultima_rodinha_;
   std::unique_ptr<ui::SimpleMenuModel> menu_;
   std::unique_ptr<ui::SimpleMenuModel> submenu_containers_;
   std::unique_ptr<views::MenuRunner> menu_runner_;
-  std::unique_ptr<views::Widget> editor_;
   std::vector<containers::Container> containers_;
   raw_ptr<views::BoxLayout> layout_ = nullptr;
   raw_ptr<views::Label> titulo_ = nullptr;
   raw_ptr<views::View> bolinhas_ = nullptr;
   raw_ptr<views::ImageButton> novo_ = nullptr;
+  views::ViewTracker titulo_do_cabecalho_;
   bool atualizacao_pendente_ = false;
-  base::CallbackListSubscription recolher_;
+  bool garantia_pendente_ = false;
   base::WeakPtrFactory<FaixaDeEspacos> weak_factory_{this};
 };
 
 BEGIN_METADATA(FaixaDeEspacos)
 END_METADATA
 
+FaixaDeEspacos* FaixaDe(BrowserWindowInterface* browser) {
+  auto it = Faixas().find(browser);
+  return it == Faixas().end() ? nullptr : it->second;
+}
+
 }  // namespace
 
 void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
+  // "Mover para o espaço" no menu da aba (containers_ui não enxerga daqui).
+  static bool ponte_ligada = false;
+  if (!ponte_ligada) {
+    ponte_ligada = true;
+    containers::DefinirMoverAba(base::BindRepeating(
+        [](TabStripModel* tab_strip, int index, const std::string& espaco) {
+          for (const auto& [janela, faixa] : Faixas()) {
+            if (janela->GetTabStripModel() == tab_strip) {
+              faixa->MoverAbaPara(index, espaco);
+              return;
+            }
+          }
+        }));
+    containers::DefinirAbrirConfiguracoes(
+        base::BindRepeating([](BrowserWindowInterface* janela) {
+          configuracoes::Mostrar(janela);
+        }));
+  }
   // Espaçador: ocupa o que sobra embaixo das abas e empurra a faixa pro pé.
   auto* espacador = lateral->AddChildView(std::make_unique<views::View>());
   espacador->SetProperty(
       views::kFlexBehaviorKey,
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
                                views::MaximumFlexSizeRule::kUnbounded));
-  lateral->AddChildView(std::make_unique<FaixaDeEspacos>(browser));
+  lateral->AddChildView(std::make_unique<FaixaDeEspacos>(lateral, browser));
+}
+
+std::unique_ptr<views::View> CriarTitulo(BrowserWindowInterface* browser) {
+  auto titulo = std::make_unique<TituloDoEspaco>(browser);
+  if (FaixaDeEspacos* faixa = FaixaDe(browser)) {
+    faixa->DefinirTitulo(titulo.get());
+  }
+  return titulo;
+}
+
+void IrPara(BrowserWindowInterface* browser, const std::string& espaco) {
+  if (FaixaDeEspacos* faixa = FaixaDe(browser)) {
+    faixa->Focar(espaco);
+  }
+}
+
+void Girar(BrowserWindowInterface* browser, bool pra_frente) {
+  if (FaixaDeEspacos* faixa = FaixaDe(browser)) {
+    faixa->Girar(pra_frente);
+  }
+}
+
+void NovoEspaco(BrowserWindowInterface* browser) {
+  if (FaixaDeEspacos* faixa = FaixaDe(browser)) {
+    faixa->NovoEspaco();
+  }
+}
+
+void MoverAbaPara(BrowserWindowInterface* browser,
+                  int index,
+                  const std::string& espaco) {
+  if (FaixaDeEspacos* faixa = FaixaDe(browser)) {
+    faixa->MoverAbaPara(index, espaco);
+  }
+}
+
+void Excluir(Profile* profile, const std::string& espaco) {
+  if (Todos(profile).size() <= 1) {
+    return;
+  }
+  std::vector<FaixaDeEspacos*> faixas;
+  for (const auto& [browser, faixa] : Faixas()) {
+    if (faixa->PerfilDaJanela() == profile) {
+      faixas.push_back(faixa);
+    }
+  }
+  for (FaixaDeEspacos* faixa : faixas) {
+    faixa->FecharEspaco(espaco);
+  }
+  Remover(profile, espaco);
 }
 
 }  // namespace navegador::espacos

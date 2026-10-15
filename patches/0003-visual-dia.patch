@@ -592,7 +592,7 @@ index cd6fa39dad..6b9401874b 100644
    // BrowserFrameView:
    BoundsAndMargins GetCaptionButtonBounds() const override;
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..cb4a4d479f 100644
+index b7cdb8f557..341c9264dd 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,11 @@
@@ -640,13 +640,15 @@ index b7cdb8f557..cb4a4d479f 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +172,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +172,16 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
 +  // navegador: espaços do Dia no pé da barra lateral, e a barra de
 +  // navegação na cor do site.
 +  navegador::espacos::AdicionarFaixa(this, browser_view->browser());
++  top_button_container_->SetTituloDoEspaco(
++      navegador::espacos::CriarTitulo(browser_view->browser()));
 +  navegador::cor_da_pagina::Acompanhar(this, browser_view);
 +  // navegador: o logo do cabeçalho abre o menu do navegador, como no Dia.
 +  navegador::menu_do_logo::Ligar(top_button_container_->GetCollapseButton(),
@@ -655,7 +657,7 @@ index b7cdb8f557..cb4a4d479f 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
-@@ -375,6 +395,15 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+@@ -375,6 +397,15 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
  void VerticalTabStripRegionView::Layout(PassKey) {
    LayoutSuperclass<views::AccessiblePaneView>(this);
  
@@ -963,7 +965,7 @@ index cb782286ee..e71afa0132 100644
  
  TabGroupView::~TabGroupView() = default;
 diff --git i/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
-index c3035d4826..c54e868cad 100644
+index c3035d4826..1c5065ecdf 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
 +++ w/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
 @@ -4,6 +4,8 @@
@@ -985,6 +987,30 @@ index c3035d4826..c54e868cad 100644
  constexpr int kGroupLineWidth = 2;
  constexpr int kGroupLineCollapsedLeadingPadding = 6;
  constexpr int kGroupHeaderHeight = 26;
+@@ -92,12 +95,20 @@ views::ProposedLayout TabGroupViewLayout::CalculateVerticalLayout(
+     header_bounds.set_width(size_bounds.width().value() - header_bounds.x());
+   }
+ 
++  // navegador: o grupo focado é o espaço da janela, que ocupa a lateral
++  // toda e já tem o nome no cabeçalho dela: sem a linha do grupo.
++  const bool sem_cabecalho = tab_group_view->IsGroupFocused();
+   layouts.child_layouts.emplace_back(
+       tab_group_view->group_header_.get(),
+-      tab_group_view->group_header_->GetVisible(), header_bounds);
++      tab_group_view->group_header_->GetVisible() && !sem_cabecalho,
++      header_bounds);
+ 
+-  height +=
+-      header_bounds.height() + kGroupHeaderVerticalMargin + kTabVerticalPadding;
++  if (sem_cabecalho) {
++    height = 0;
++  } else {
++    height += header_bounds.height() + kGroupHeaderVerticalMargin +
++              kTabVerticalPadding;
++  }
+   width = std::max(width, header_bounds.width());
+ 
+   // If the tab strip is not collapsed then the group line is below and left
 diff --git i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
 index 5dd9f7ef1a..a5bcaed325 100644
 --- i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc

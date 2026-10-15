@@ -41,7 +41,7 @@ inline constexpr char kPartitionDomain[] = "navegador";
 inline constexpr char kContainersPref[] = "navegador.containers";
 // Chave no extra_data da aba na sessão.
 inline constexpr char kSessionExtraDataKey[] = "navegador_container";
-// Container padrão de cada espaço: { "<id do grupo>": "<id do container>" }.
+// Antigo: container por grupo de abas (hoje é do espaço, espacos_dados.h).
 inline constexpr char kEspacosPref[] = "navegador.espacos_container";
 
 struct Container {
@@ -74,7 +74,7 @@ void ApagarDados(Profile* profile,
                  std::string_view id,
                  base::OnceClosure feito);
 
-// Container padrão do espaço (id do grupo de abas, TabGroupId::ToString()).
+// Container padrão do espaço (id do espaço, ver espacos_dados.h).
 std::optional<std::string> ContainerDoEspaco(Profile* profile,
                                              std::string_view espaco);
 // Vazio tira o container do espaço.

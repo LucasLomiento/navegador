@@ -47,7 +47,7 @@ index 63c3090b4c..ab42fd2ab6 100644
    if (!control) {
      return;
 diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
-index d69e4dd30f..95294d27ed 100644
+index d69e4dd30f..dbd66f15ce 100644
 --- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 +++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 @@ -95,8 +95,9 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
@@ -62,7 +62,82 @@ index d69e4dd30f..95294d27ed 100644
      combo_button_orientation_ = views::LayoutOrientation::kVertical;
      int current_y = 0;
  
-@@ -333,6 +334,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
+@@ -191,6 +192,10 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+     }
+ 
+     host_size.SetToMax(gfx::Size(0, current_y));
++    if (titulo_do_espaco_) {
++      layout.child_layouts.emplace_back(titulo_do_espaco_.get(), false,
++                                        gfx::Rect());
++    }
+   } else {
+     // If the vertical tab strip is uncollapsed, then lay out the buttons
+     // horizontally. The exact y-level of the buttons depends on if they can lay
+@@ -238,6 +243,7 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
+     }
+ 
++    int depois_do_logo = left_alignment;
+     if (collapse_button_ && collapse_button_->GetVisible()) {
+       const gfx::Size pref_size = collapse_button_->GetPreferredSize();
+       gfx::Rect bounds(left_alignment,
+@@ -249,6 +255,7 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+           bounds.bottom() +
+           GetLayoutConstant(
+               LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
++      depois_do_logo = bounds.right();
+     }
+ 
+     int right_alignment = host_size.width();
+@@ -268,6 +275,19 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+       layout.child_layouts.emplace_back(combo_button_.get(),
+                                         combo_button_->GetVisible(), bounds);
+     }
++
++    // navegador: o nome do espaço ocupa o meio do cabeçalho.
++    if (titulo_do_espaco_) {
++      const int altura = titulo_do_espaco_->GetPreferredSize().height();
++      const int x = depois_do_logo + 2;
++      const int largura = right_alignment - 2 - x;
++      const bool cabe = !wrap_during_animation && !wrapped_due_to_overflow &&
++                        largura > 24;
++      layout.child_layouts.emplace_back(
++          titulo_do_espaco_.get(), cabe && titulo_do_espaco_->GetVisible(),
++          gfx::Rect(x, std::max(0, y_baseline - altura / 2),
++                    std::max(0, largura), altura));
++    }
+   }
+ 
+   layout.host_size = host_size;
+@@ -292,6 +312,15 @@ views::LabelButton* VerticalTabStripTopContainer::AddChildButtonFor(
+   return container_button_ptr;
+ }
+ 
++void VerticalTabStripTopContainer::SetTituloDoEspaco(
++    std::unique_ptr<views::View> titulo) {
++  if (titulo_do_espaco_) {
++    RemoveChildViewT(titulo_do_espaco_.ExtractAsDangling());
++  }
++  titulo_do_espaco_ = AddChildView(std::move(titulo));
++  InvalidateLayout();
++}
++
+ TabStripComboButton* VerticalTabStripTopContainer::GetComboButton() {
+   return combo_button_.get();
+ }
+@@ -314,6 +343,11 @@ bool VerticalTabStripTopContainer::IsPositionInWindowCaption(
+     return false;
+   }
+ 
++  if (titulo_do_espaco_ && titulo_do_espaco_->GetVisible() &&
++      IsHitInView(titulo_do_espaco_, point)) {
++    return false;
++  }
++
+   return true;
+ }
+ 
+@@ -333,6 +367,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
      context_menu_runner_.reset();
  
      context_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
@@ -75,7 +150,7 @@ index d69e4dd30f..95294d27ed 100644
      context_menu_model_->AddCheckItem(
          IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER,
          l10n_util::GetStringUTF16(
-@@ -375,7 +382,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
+@@ -375,7 +415,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
  }
  
  bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
@@ -85,7 +160,7 @@ index d69e4dd30f..95294d27ed 100644
      return true;
    }
    return false;
-@@ -383,7 +391,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
+@@ -383,7 +424,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
  
  void VerticalTabStripTopContainer::ExecuteCommand(int command_id,
                                                    int event_flags) {
@@ -95,6 +170,29 @@ index d69e4dd30f..95294d27ed 100644
      chrome::ExecuteCommand(browser_, command_id);
    }
  }
+diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
+index 27763751c7..94d6aed60b 100644
+--- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
++++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h
+@@ -64,6 +64,10 @@ class VerticalTabStripTopContainer : public views::View,
+ 
+   bool IsPositionInWindowCaption(const gfx::Point& point);
+ 
++  // navegador: nome do espaço entre o logo e a seta, como o nome do perfil
++  // no cabeçalho do Dia (navegador/browser/ui/espacos.h).
++  void SetTituloDoEspaco(std::unique_ptr<views::View> titulo);
++
+   // views::ContextMenuController:
+   void ShowContextMenuForViewImpl(
+       views::View* source,
+@@ -102,6 +106,7 @@ class VerticalTabStripTopContainer : public views::View,
+   raw_ptr<TabStripComboButton> combo_button_ = nullptr;
+   raw_ptr<views::LabelButton> collapse_button_ = nullptr;
+   raw_ptr<views::LabelButton> unfocus_button_ = nullptr;
++  raw_ptr<views::View> titulo_do_espaco_ = nullptr;
+ 
+   std::unique_ptr<views::ActionViewController> action_view_controller_;
+ 
 diff --git i/chrome/browser/ui/views/toolbar/app_menu.cc w/chrome/browser/ui/views/toolbar/app_menu.cc
 index 55f2bf1244..f7f13d9065 100644
 --- i/chrome/browser/ui/views/toolbar/app_menu.cc

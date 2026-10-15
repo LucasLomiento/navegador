@@ -12,6 +12,7 @@
 #include "cc/paint/paint_flags.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
+#include "components/constrained_window/constrained_window_views.h"
 #include "content/public/browser/web_contents.h"
 #include "navegador/browser/containers/containers.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
@@ -98,17 +99,15 @@ class BotaoCor : public views::Button {
 BEGIN_METADATA(BotaoCor)
 END_METADATA
 
-class Gerenciador : public views::DialogDelegate,
-                    public views::TextfieldController {
- public:
-  explicit Gerenciador(Profile* profile) : profile_(profile) {
-    SetTitle(u"Containers");
-    SetModalType(ui::mojom::ModalType::kWindow);
-    SetShowCloseButton(true);
-    // Lista que se edita no lugar: sem "OK"/"Fechar", só o x do título.
-    SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+// A lista de containers editável no lugar: no diálogo "Containers" e na aba
+// Containers das Configurações do Navegador.
+class PainelDeContainers : public views::View,
+                           public views::TextfieldController {
+  METADATA_HEADER(PainelDeContainers, views::View)
 
-    auto conteudo = std::make_unique<views::View>();
+ public:
+  explicit PainelDeContainers(Profile* profile) : profile_(profile) {
+    views::View* conteudo = this;
     conteudo->SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kVertical, gfx::Insets::TLBR(0, 16, 16, 16),
         10));
@@ -125,7 +124,8 @@ class Gerenciador : public views::DialogDelegate,
     // "+ Novo container" como linha de texto, no estilo do "+ Nova guia" da
     // lateral.
     auto* novo = conteudo->AddChildView(std::make_unique<views::LabelButton>(
-        base::BindRepeating(&Gerenciador::Novo, base::Unretained(this)),
+        base::BindRepeating(&PainelDeContainers::Novo,
+                            base::Unretained(this)),
         u"Novo container"));
     novo->SetImageModel(views::Button::STATE_NORMAL,
                         ui::ImageModel::FromVectorIcon(
@@ -135,7 +135,6 @@ class Gerenciador : public views::DialogDelegate,
     novo->SetHorizontalAlignment(gfx::ALIGN_LEFT);
     views::InkDrop::Get(novo)->SetMode(views::InkDropHost::InkDropMode::ON);
     views::InstallRoundRectHighlightPathGenerator(novo, gfx::Insets(), 6);
-    SetContentsView(std::move(conteudo));
     Reconstruir();
   }
 
@@ -171,7 +170,7 @@ class Gerenciador : public views::DialogDelegate,
           views::BoxLayout::CrossAxisAlignment::kCenter);
 
       linha->AddChildView(std::make_unique<BotaoCor>(
-          c.color, base::BindRepeating(&Gerenciador::TrocarCor,
+          c.color, base::BindRepeating(&PainelDeContainers::TrocarCor,
                                        base::Unretained(this), c.id)));
       auto* nome = linha->AddChildView(std::make_unique<views::Textfield>());
       nome->SetText(base::UTF8ToUTF16(c.name));
@@ -186,7 +185,7 @@ class Gerenciador : public views::DialogDelegate,
       layout->SetFlexForView(nome, 1);
       auto* excluir =
           linha->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-              base::BindRepeating(&Gerenciador::Excluir,
+              base::BindRepeating(&PainelDeContainers::Excluir,
                                   base::Unretained(this), c.id),
               kDeleteIcon, 16));
       excluir->SetTooltipText(u"Excluir container");
@@ -196,7 +195,8 @@ class Gerenciador : public views::DialogDelegate,
         nome->SelectAll(false);
       }
     }
-    if (GetWidget()) {
+    PreferredSizeChanged();
+    if (GetWidget() && GetWidget()->non_client_view()) {
       GetWidget()->SetSize(GetWidget()->non_client_view()->GetPreferredSize());
     }
   }
@@ -229,16 +229,31 @@ class Gerenciador : public views::DialogDelegate,
   std::vector<Linha> linhas_;
 };
 
+BEGIN_METADATA(PainelDeContainers)
+END_METADATA
+
 }  // namespace
+
+std::unique_ptr<views::View> CriarPainel(Profile* profile) {
+  return std::make_unique<PainelDeContainers>(profile);
+}
 
 void MostrarGerenciador(content::WebContents* aba) {
   if (!aba) {
     return;
   }
   Profile* profile = Profile::FromBrowserContext(aba->GetBrowserContext());
-  views::Widget* widget = views::DialogDelegate::CreateDialogWidget(
-      std::make_unique<Gerenciador>(profile), /*context=*/nullptr,
-      /*parent=*/aba->GetTopLevelNativeWindow());
+  auto dialogo = std::make_unique<views::DialogDelegate>();
+  dialogo->SetTitle(u"Containers");
+  dialogo->SetModalType(ui::mojom::ModalType::kWindow);
+  dialogo->SetShowCloseButton(true);
+  // Lista que se edita no lugar: sem "OK"/"Fechar", só o x do título.
+  dialogo->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
+  dialogo->SetContentsView(CriarPainel(profile));
+  dialogo->set_fixed_width(480);
+  // Como os diálogos do Chromium: centralizado no alto da janela.
+  views::Widget* widget = constrained_window::CreateBrowserModalDialogViews(
+      std::move(dialogo), aba->GetTopLevelNativeWindow());
   widget->Show();
 }
 

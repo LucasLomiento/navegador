@@ -1,0 +1,261 @@
+#include "navegador/browser/containers/espacos_dados.h"
+
+#include <algorithm>
+#include <utility>
+
+#include "base/no_destructor.h"
+#include "base/rand_util.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/values.h"
+#include "chrome/browser/profiles/profile.h"
+#include "components/pref_registry/pref_registry_syncable.h"
+#include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
+
+namespace navegador::espacos {
+
+namespace {
+
+constexpr char kId[] = "id";
+constexpr char kNome[] = "nome";
+constexpr char kIcone[] = "icone";
+constexpr char kCor[] = "cor";
+constexpr char kContainer[] = "container";
+
+// Rodízio das cores dos espaços novos (nomes da paleta dos containers).
+constexpr const char* kCores[] = {"azul",    "roxo",    "verde", "laranja",
+                                  "rosa",    "turquesa", "amarelo", "vermelho"};
+
+base::DictValue ParaDict(const Espaco& espaco) {
+  base::DictValue dict;
+  dict.Set(kId, espaco.id);
+  dict.Set(kNome, espaco.nome);
+  dict.Set(kIcone, espaco.icone);
+  dict.Set(kCor, espaco.cor);
+  dict.Set(kContainer, espaco.container);
+  return dict;
+}
+
+std::optional<Espaco> DeValor(const base::Value& valor) {
+  const base::DictValue* dict = valor.GetIfDict();
+  if (!dict) {
+    return std::nullopt;
+  }
+  const std::string* id = dict->FindString(kId);
+  const std::string* nome = dict->FindString(kNome);
+  if (!id || id->empty() || !nome) {
+    return std::nullopt;
+  }
+  const std::string* icone = dict->FindString(kIcone);
+  const std::string* cor = dict->FindString(kCor);
+  const std::string* container = dict->FindString(kContainer);
+  return Espaco{*id, *nome, icone ? *icone : "", cor ? *cor : "azul",
+                container ? *container : ""};
+}
+
+// Id fixo: a lista padrão é igual em todo perfil novo e só é gravada quando
+// alguém mexe.
+base::ListValue ListaPadrao() {
+  base::ListValue lista;
+  lista.Append(ParaDict({"pessoal", "Pessoal", "", "azul", ""}));
+  return lista;
+}
+
+std::string NovoId() {
+  uint8_t bytes[6];
+  base::RandBytes(bytes);
+  return "e" + base::HexEncodeLower(bytes);
+}
+
+}  // namespace
+
+void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+  registry->RegisterListPref(kListaPref, ListaPadrao());
+  registry->RegisterDictionaryPref(kGruposPref);
+  registry->RegisterStringPref(kAtivoPref, "pessoal");
+  registry->RegisterDictionaryPref(kAtalhosPref);
+}
+
+std::vector<Espaco> Todos(Profile* profile) {
+  std::vector<Espaco> resultado;
+  for (const base::Value& valor : profile->GetPrefs()->GetList(kListaPref)) {
+    if (std::optional<Espaco> espaco = DeValor(valor)) {
+      resultado.push_back(std::move(*espaco));
+    }
+  }
+  if (resultado.empty()) {
+    resultado.push_back({"pessoal", "Pessoal", "", "azul", ""});
+  }
+  return resultado;
+}
+
+std::optional<Espaco> Get(Profile* profile, std::string_view id) {
+  for (Espaco& espaco : Todos(profile)) {
+    if (espaco.id == id) {
+      return std::move(espaco);
+    }
+  }
+  return std::nullopt;
+}
+
+Espaco Criar(Profile* profile,
+             std::string_view nome,
+             std::string_view icone,
+             std::string_view cor,
+             std::string_view container) {
+  Espaco espaco{NovoId(), std::string(nome), std::string(icone),
+                std::string(cor), std::string(container)};
+  // A lista padrão só existe em memória: grava ela antes de acrescentar.
+  base::ListValue lista;
+  for (const Espaco& existente : Todos(profile)) {
+    lista.Append(ParaDict(existente));
+  }
+  lista.Append(ParaDict(espaco));
+  profile->GetPrefs()->SetList(kListaPref, std::move(lista));
+  return espaco;
+}
+
+void Atualizar(Profile* profile, const Espaco& espaco) {
+  base::ListValue lista;
+  for (const Espaco& existente : Todos(profile)) {
+    lista.Append(ParaDict(existente.id == espaco.id ? espaco : existente));
+  }
+  profile->GetPrefs()->SetList(kListaPref, std::move(lista));
+}
+
+void Remover(Profile* profile, std::string_view id) {
+  std::vector<Espaco> todos = Todos(profile);
+  if (todos.size() <= 1) {
+    return;
+  }
+  base::ListValue lista;
+  for (const Espaco& existente : todos) {
+    if (existente.id != id) {
+      lista.Append(ParaDict(existente));
+    }
+  }
+  profile->GetPrefs()->SetList(kListaPref, std::move(lista));
+
+  // Os grupos que eram dele ficam soltos (a janela religa).
+  ScopedDictPrefUpdate grupos(profile->GetPrefs(), kGruposPref);
+  std::vector<std::string> soltar;
+  for (const auto& [grupo, espaco] : *grupos) {
+    if (espaco.is_string() && espaco.GetString() == id) {
+      soltar.push_back(grupo);
+    }
+  }
+  for (const std::string& grupo : soltar) {
+    grupos->Remove(grupo);
+  }
+  if (Ativo(profile) == id) {
+    DefinirAtivo(profile, Todos(profile).front().id);
+  }
+}
+
+void Mover(Profile* profile, std::string_view id, size_t posicao) {
+  std::vector<Espaco> todos = Todos(profile);
+  auto it = std::ranges::find(todos, id, &Espaco::id);
+  if (it == todos.end()) {
+    return;
+  }
+  Espaco espaco = std::move(*it);
+  todos.erase(it);
+  posicao = std::min(posicao, todos.size());
+  todos.insert(todos.begin() + posicao, std::move(espaco));
+  base::ListValue lista;
+  for (const Espaco& existente : todos) {
+    lista.Append(ParaDict(existente));
+  }
+  profile->GetPrefs()->SetList(kListaPref, std::move(lista));
+}
+
+std::string ProximaCor(Profile* profile) {
+  return kCores[Todos(profile).size() % std::size(kCores)];
+}
+
+std::optional<std::string> EspacoDoGrupo(Profile* profile,
+                                         std::string_view grupo) {
+  const std::string* id =
+      profile->GetPrefs()->GetDict(kGruposPref).FindString(grupo);
+  if (!id || !Get(profile, *id)) {
+    return std::nullopt;
+  }
+  return *id;
+}
+
+void LigarGrupo(Profile* profile,
+                std::string_view grupo,
+                std::string_view espaco) {
+  ScopedDictPrefUpdate grupos(profile->GetPrefs(), kGruposPref);
+  grupos->Set(grupo, espaco);
+}
+
+void DesligarGrupo(Profile* profile, std::string_view grupo) {
+  ScopedDictPrefUpdate grupos(profile->GetPrefs(), kGruposPref);
+  grupos->Remove(grupo);
+}
+
+std::string Ativo(Profile* profile) {
+  const std::string& id = profile->GetPrefs()->GetString(kAtivoPref);
+  if (Get(profile, id)) {
+    return id;
+  }
+  return Todos(profile).front().id;
+}
+
+void DefinirAtivo(Profile* profile, std::string_view espaco) {
+  profile->GetPrefs()->SetString(kAtivoPref, std::string(espaco));
+}
+
+const std::vector<Atalho>& Atalhos() {
+  // Padrões: os do Zen pra troca de espaço (Ctrl+Alt+setas) e o do Dia pra
+  // mostrar/ocultar a lateral (Ctrl+Shift+S).
+  static const base::NoDestructor<std::vector<Atalho>> atalhos(
+      std::vector<Atalho>{
+          {"alternar_lateral", u"Mostrar ou ocultar a lateral",
+           "Ctrl+Shift+S"},
+          {"proximo_espaco", u"Próximo espaço", "Ctrl+Alt+Right"},
+          {"espaco_anterior", u"Espaço anterior", "Ctrl+Alt+Left"},
+          {"novo_espaco", u"Novo espaço", "Ctrl+Alt+N"},
+          {"espaco_1", u"Ir pro espaço 1", "Ctrl+Alt+1"},
+          {"espaco_2", u"Ir pro espaço 2", "Ctrl+Alt+2"},
+          {"espaco_3", u"Ir pro espaço 3", "Ctrl+Alt+3"},
+          {"espaco_4", u"Ir pro espaço 4", "Ctrl+Alt+4"},
+          {"espaco_5", u"Ir pro espaço 5", "Ctrl+Alt+5"},
+          {"configuracoes", u"Configurações do Navegador", "Ctrl+Comma"},
+          {"containers", u"Gerenciar containers", ""},
+      });
+  return *atalhos;
+}
+
+std::string AtalhoDe(Profile* profile, std::string_view acao) {
+  if (const std::string* escolhido =
+          profile->GetPrefs()->GetDict(kAtalhosPref).FindString(acao)) {
+    return *escolhido;
+  }
+  for (const Atalho& atalho : Atalhos()) {
+    if (atalho.acao == acao) {
+      return atalho.padrao;
+    }
+  }
+  return std::string();
+}
+
+void DefinirAtalho(Profile* profile,
+                   std::string_view acao,
+                   std::string_view atalho) {
+  ScopedDictPrefUpdate atalhos(profile->GetPrefs(), kAtalhosPref);
+  for (const Atalho& conhecido : Atalhos()) {
+    if (conhecido.acao == acao && conhecido.padrao == atalho) {
+      atalhos->Remove(acao);
+      return;
+    }
+  }
+  atalhos->Set(acao, atalho);
+}
+
+void RestaurarAtalhos(Profile* profile) {
+  profile->GetPrefs()->ClearPref(kAtalhosPref);
+}
+
+}  // namespace navegador::espacos

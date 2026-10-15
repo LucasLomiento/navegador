@@ -1,0 +1,30 @@
+diff --git i/chrome/browser/ui/tabs/tab_strip_model.cc w/chrome/browser/ui/tabs/tab_strip_model.cc
+index 01f863a9f4..db0320bd3e 100644
+--- i/chrome/browser/ui/tabs/tab_strip_model.cc
++++ w/chrome/browser/ui/tabs/tab_strip_model.cc
+@@ -1114,15 +1114,24 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
+ 
+   // If this tab was activated, eg. by an extension, but is not in the focused
+   // group, unfocus the focused group (unless it is a pinned tab).
++  // navegador: aba de outro grupo (outro espaço) foca o grupo dela, como no
++  // Zen: a janela vai pro espaço da aba.
+   std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
++  std::optional<tab_groups::TabGroupId> grupo_da_aba;
+   if (focused_group.has_value() &&
+       !tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
+           tab, focused_group)) {
+-    SetFocusedGroup(std::nullopt);
++    grupo_da_aba = tab->GetGroup();
++    if (!grupo_da_aba.has_value()) {
++      SetFocusedGroup(std::nullopt);
++    }
+   }
+ 
+   tabs::TabStripModelSelectionState new_model = selection_model_;
+   SetSelectedTab(new_model, tab);
++  if (grupo_da_aba.has_value()) {
++    new_model.set_focused_group(grupo_da_aba);
++  }
+   SetSelection(
+       new_model,
+       user_gesture.type != TabStripUserGestureDetails::GestureType::kNone

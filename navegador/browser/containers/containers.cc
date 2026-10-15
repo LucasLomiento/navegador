@@ -1,5 +1,7 @@
 #include "navegador/browser/containers/containers.h"
 
+#include "navegador/browser/containers/espacos_dados.h"
+
 #include <utility>
 
 #include "base/functional/callback.h"
@@ -74,28 +76,30 @@ std::string NewId() {
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterListPref(kContainersPref, DefaultContainers());
+  // Antigo (container por grupo de abas); ficou registrado pra não dar erro
+  // em perfil que já tinha.
   registry->RegisterDictionaryPref(kEspacosPref);
+  espacos::RegisterProfilePrefs(registry);
 }
 
 std::optional<std::string> ContainerDoEspaco(Profile* profile,
                                              std::string_view espaco) {
-  const std::string* id =
-      profile->GetPrefs()->GetDict(kEspacosPref).FindString(espaco);
-  if (!id || !Get(profile, *id)) {
+  const std::optional<espacos::Espaco> dados = espacos::Get(profile, espaco);
+  if (!dados || dados->container.empty() || !Get(profile, dados->container)) {
     return std::nullopt;
   }
-  return *id;
+  return dados->container;
 }
 
 void DefinirContainerDoEspaco(Profile* profile,
                               std::string_view espaco,
                               std::string_view container) {
-  ScopedDictPrefUpdate update(profile->GetPrefs(), kEspacosPref);
-  if (container.empty()) {
-    update->Remove(espaco);
-  } else {
-    update->Set(espaco, container);
+  std::optional<espacos::Espaco> dados = espacos::Get(profile, espaco);
+  if (!dados) {
+    return;
   }
+  dados->container = std::string(container);
+  espacos::Atualizar(profile, *dados);
 }
 
 std::vector<Container> GetAll(Profile* profile) {

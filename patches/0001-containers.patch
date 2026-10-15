@@ -248,15 +248,16 @@ index 3396b27000..d83f6ad5c9 100644
        ":tab_model",
        ":tab_strip",
 diff --git i/chrome/browser/ui/tabs/tab_menu_model.h w/chrome/browser/ui/tabs/tab_menu_model.h
-index f0b718e6ba..be58e1ca1b 100644
+index f0b718e6ba..b76beed49a 100644
 --- i/chrome/browser/ui/tabs/tab_menu_model.h
 +++ w/chrome/browser/ui/tabs/tab_menu_model.h
-@@ -101,6 +101,8 @@ class TabMenuModel : public ui::SimpleMenuModel {
+@@ -101,6 +101,9 @@ class TabMenuModel : public ui::SimpleMenuModel {
    std::unique_ptr<ui::SimpleMenuModel>
        add_to_existing_comparison_table_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> swap_with_split_submenu_;
-+  // navegador: "Abrir em container".
++  // navegador: "Abrir em container" e "Mover para o espaço".
 +  std::unique_ptr<ui::SimpleMenuModel> navegador_containers_submenu_;
++  std::unique_ptr<ui::SimpleMenuModel> navegador_espacos_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> split_layout_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> arrange_split_view_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> glic_tab_sub_menu_model_;

@@ -5,11 +5,14 @@
 #define NAVEGADOR_BROWSER_UI_CONTAINERS_CONTAINERS_UI_H_
 
 #include <memory>
+#include <string>
 #include <string_view>
 
+#include "base/functional/callback.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/models/image_model.h"
 
+class BrowserWindowInterface;
 class GURL;
 class TabStripModel;
 
@@ -60,6 +63,24 @@ void AbrirEmContainer(TabStripModel* tab_strip,
 // escolhido e fecha a original.
 std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDaAba(TabStripModel* tab_strip,
                                                        int index);
+
+// Menu de contexto da aba: "Mover para o espaço" com os outros espaços do
+// perfil. Quem move é a janela (navegador/browser/ui/espacos.cc, que mora
+// no //chrome/browser/ui:ui e não pode ser chamado daqui): ela se registra
+// com DefinirMoverAba.
+using MoverAba = base::RepeatingCallback<
+    void(TabStripModel* tab_strip, int index, const std::string& espaco)>;
+void DefinirMoverAba(MoverAba mover);
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDeEspacos(
+    TabStripModel* tab_strip,
+    int index);
+
+// "Configurações do Navegador…" no menu do logo (o AppMenuModel também não
+// enxerga o //chrome/browser/ui:ui): espacos.cc registra quem abre.
+using AbrirConfiguracoes =
+    base::RepeatingCallback<void(BrowserWindowInterface* browser)>;
+void DefinirAbrirConfiguracoes(AbrirConfiguracoes abrir);
+void MostrarConfiguracoes(BrowserWindowInterface* browser);
 
 // Menu de contexto de um link: "Abrir link em container". Abre o link numa
 // aba nova (em segundo plano, como "abrir link em nova aba") ao lado da aba

@@ -4,6 +4,8 @@ source_set("containers") {
   sources = [
     "containers.cc",
     "containers.h",
+    "espacos_dados.cc",
+    "espacos_dados.h",
   ]
   deps = [
     "//base",

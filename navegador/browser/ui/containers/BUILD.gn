@@ -17,6 +17,8 @@ source_set("containers_ui") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/tabs:tab_enums",
     "//chrome/browser/ui/tabs:tab_strip",
+    "//components/constrained_window",
+    "//components/tab_groups",
     "//components/tabs:public",
     "//content/public/browser",
     "//navegador/browser/containers",
@@ -34,8 +36,11 @@ source_set("espaco") {
     "espaco.h",
   ]
   deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/tabs:tab_strip",
     "//components/tab_groups",
+    "//navegador/browser/containers",
   ]
 }

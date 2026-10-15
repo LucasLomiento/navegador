@@ -13,7 +13,7 @@ index b6cf0bffe2..b68ec7ae64 100644
          $i18n{tabStripPosition}
        </div>
 diff --git i/chrome/browser/ui/tabs/tab_menu_model.cc w/chrome/browser/ui/tabs/tab_menu_model.cc
-index 97c6ded1ac..3b303e4e94 100644
+index 97c6ded1ac..3ec0f7a79a 100644
 --- i/chrome/browser/ui/tabs/tab_menu_model.cc
 +++ w/chrome/browser/ui/tabs/tab_menu_model.cc
 @@ -4,6 +4,8 @@
@@ -25,21 +25,76 @@ index 97c6ded1ac..3b303e4e94 100644
  #include <memory>
  #include <optional>
  
-@@ -414,9 +416,10 @@ void TabMenuModel::Build(int index) {
-         tab_strip_->GetTabGroupForTab(index);
-     if (group_id.has_value()) {
-       const bool is_focused = tab_strip_->GetFocusedGroup() == group_id;
+@@ -408,60 +410,15 @@ void TabMenuModel::Build(int index) {
+     SetElementIdentifierAt(GetItemCount() - 1, kArrangeSplitTabsMenuItem);
+   }
+ 
+-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing) &&
+-      tab_strip_->SupportsTabGroups()) {
+-    std::optional<tab_groups::TabGroupId> group_id =
+-        tab_strip_->GetTabGroupForTab(index);
+-    if (group_id.has_value()) {
+-      const bool is_focused = tab_strip_->GetFocusedGroup() == group_id;
 -      AddItemWithStringId(TabStripModel::CommandToggleFocusGroup,
 -                          is_focused ? IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP
 -                                     : IDS_TAB_CXMENU_FOCUS_TAB_GROUP);
-+      // navegador: grupo focado é um espaço do Dia (navegador/browser/ui/
-+      // espacos.h); o texto fala de espaço, como a faixa do pé da lateral.
-+      AddItem(TabStripModel::CommandToggleFocusGroup,
-+              is_focused ? u"Voltar ao Início" : u"Ir para o espaço");
-       SetElementIdentifierAt(GetItemCount() - 1, kFocusTabGroupMenuItem);
-     }
+-      SetElementIdentifierAt(GetItemCount() - 1, kFocusTabGroupMenuItem);
+-    }
+-  }
+-
+-  if (ExistingTabGroupSubMenuModel::ShouldShowSubmenu(
+-          tab_strip_, index, tab_menu_model_delegate_)) {
+-    // Create submenu with existing groups
+-    add_to_existing_group_submenu_ =
+-        std::make_unique<ExistingTabGroupSubMenuModel>(
+-            delegate(), tab_menu_model_delegate_, tab_strip_, index);
++  // navegador: os grupos são os espaços (navegador/browser/ui/espacos.h):
++  // no lugar dos itens de grupo do Chromium, "Mover para o espaço". O id do
++  // item é o do submenu de grupos, que o TabStripModel já aceita.
++  navegador_espacos_submenu_ =
++      navegador::containers::CriarSubmenuDeEspacos(tab_strip_, index);
++  if (tab_strip_->SupportsTabGroups() &&
++      navegador_espacos_submenu_->GetItemCount() > 0) {
+     AddSubMenu(TabStripModel::CommandAddToExistingGroup,
+-               l10n_util::GetPluralStringFUTF16(IDS_TAB_CXMENU_ADD_TAB_TO_GROUP,
+-                                                num_tabs),
+-               add_to_existing_group_submenu_.get());
+-    if (features::IsMenuSimplificationEnabled()) {
+-      SetIconForCommandId(
+-          TabStripModel::CommandAddToExistingGroup,
+-          ui::ImageModel::FromVectorIcon(
+-              features::IsRoundedIconsEnabled()
+-                  ? kGridViewIcon
+-                  : kSavedTabGroupBarEverythingOldIcon,
+-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
+-    }
+-  } else {
+-    AddItem(TabStripModel::CommandAddToNewGroup,
+-            l10n_util::GetPluralStringFUTF16(
+-                IDS_TAB_CXMENU_ADD_TAB_TO_NEW_GROUP, num_tabs));
+-    SetElementIdentifierAt(GetItemCount() - 1, kAddToNewGroupItemIdentifier);
+-    if (features::IsMenuSimplificationEnabled()) {
+-      SetIconForCommandId(
+-          TabStripModel::CommandAddToNewGroup,
+-          ui::ImageModel::FromVectorIcon(
+-              features::IsRoundedIconsEnabled()
+-                  ? kGridViewIcon
+-                  : kSavedTabGroupBarEverythingOldIcon,
+-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
+-    }
+-  }
+-
+-  for (const auto& selection : indices) {
+-    if (tab_strip_->GetTabGroupForTab(selection).has_value()) {
+-      AddItemWithStringId(TabStripModel::CommandRemoveFromGroup,
+-                          IDS_TAB_CXMENU_REMOVE_TAB_FROM_GROUP);
+-      break;
+-    }
++               u"Mover para o espaço", navegador_espacos_submenu_.get());
    }
-@@ -585,32 +588,16 @@ void TabMenuModel::Build(int index) {
+ 
+   if (ExistingWindowSubMenuModel::ShouldShowSubmenu(tab_strip_->profile())) {
+@@ -585,32 +542,16 @@ void TabMenuModel::Build(int index) {
      }
    }
  
@@ -158,7 +213,7 @@ index 22ece00a8c..88a105da9d 100644
      collapse_action->SetEnabled(ShouldDisplayVerticalTabs());
    }
 diff --git i/chrome/browser/ui/toolbar/app_menu_model.cc w/chrome/browser/ui/toolbar/app_menu_model.cc
-index f8f6a64f35..5a2db01b48 100644
+index f8f6a64f35..8e88e3ce25 100644
 --- i/chrome/browser/ui/toolbar/app_menu_model.cc
 +++ w/chrome/browser/ui/toolbar/app_menu_model.cc
 @@ -4,6 +4,8 @@
@@ -198,16 +253,27 @@ index f8f6a64f35..5a2db01b48 100644
  
    if (CustomizeChromePageHandler::IsSupported(
            NtpCustomBackgroundServiceFactory::GetForProfile(
-@@ -1994,6 +1977,8 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
+@@ -1258,6 +1241,9 @@ void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
+   LogMenuMetrics(command_id);
+ 
+   switch (command_id) {
++    case kNavegadorConfiguracoes:
++      navegador::containers::MostrarConfiguracoes(browser_);
++      return;
+     case IDC_SHOW_BOOKMARK_SIDE_PANEL:
+     case IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL:
+     case IDC_SHOW_READING_MODE_SIDE_PANEL:
+@@ -1994,6 +1980,9 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
    switch (command_id) {
      case IDC_NEW_INCOGNITO_WINDOW:
        return IncognitoModePrefs::IsIncognitoAllowed(browser_->GetProfile());
 +    case kNavegadorContainersMenu:
++    case kNavegadorConfiguracoes:
 +      return true;
      default:
        return chrome::IsCommandEnabled(browser_, command_id);
    }
-@@ -2114,6 +2099,21 @@ void AppMenuModel::Build() {
+@@ -2114,6 +2103,26 @@ void AppMenuModel::Build() {
      }
    }
  
@@ -224,22 +290,29 @@ index f8f6a64f35..5a2db01b48 100644
 +                             vector_icons::kCookieIcon, ui::kColorMenuIcon,
 +                             ui::SimpleMenuModel::kDefaultIconSize));
 +    }
++    AddItemWithIcon(kNavegadorConfiguracoes, u"Configurações do Navegador…",
++                    ui::ImageModel::FromVectorIcon(
++                        vector_icons::kTuneIcon,
++                        ui::kColorMenuIcon,
++                        ui::SimpleMenuModel::kDefaultIconSize));
 +  }
 +
    AddSeparator(ui::NORMAL_SEPARATOR);
  
  #if !BUILDFLAG(IS_CHROMEOS)
 diff --git i/chrome/browser/ui/toolbar/app_menu_model.h w/chrome/browser/ui/toolbar/app_menu_model.h
-index ed3f1fa50b..d22cc9000f 100644
+index ed3f1fa50b..8d1a49dbe3 100644
 --- i/chrome/browser/ui/toolbar/app_menu_model.h
 +++ w/chrome/browser/ui/toolbar/app_menu_model.h
-@@ -234,6 +234,9 @@ class AppMenuModel : public ui::SimpleMenuModel,
+@@ -234,6 +234,11 @@ class AppMenuModel : public ui::SimpleMenuModel,
        IDC_SAVED_TAB_GROUPS_MENU;
    static constexpr int kMoreToolsMenuPlaceholder = IDC_MORE_TOOLS_MENU;
    static constexpr int kHelpMenuPlaceholder = IDC_HELP_MENU;
 +  // navegador: submenu "Containers" (o id só não pode colidir; os itens
 +  // têm delegate próprio).
 +  static constexpr int kNavegadorContainersMenu = 0x6E62;
++  // navegador: "Configurações do Navegador…" (espaços, containers, atalhos).
++  static constexpr int kNavegadorConfiguracoes = 0x6E63;
  
    // Number of menus within the app menu with an arbitrarily high (variable)
    // number of menu items. For example, the number of bookmarks menu items
