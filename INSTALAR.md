@@ -43,18 +43,37 @@ padrão.
 - Containers: menu do logo → Containers → nova aba num container ou
   "Gerenciar containers…" (criar, renomear, trocar a cor, excluir).
 
-## Atalhos próprios
+## Espaços, fixados e configurações
 
+- **Configurações do Navegador**: `Ctrl+,` ou menu do logo → "Configurações
+  do Navegador…". Abas: Espaços (nome, emoji, cor, container de cada espaço,
+  ordem, excluir, novo), Containers e Atalhos (clicar no atalho e apertar as
+  teclas novas; Esc cancela, Backspace tira). As configurações do Chromium
+  continuam no menu do logo → Configurações.
+- **Espaços** (como os workspaces do Zen): cada janela está num espaço e mostra
+  só as abas dele; aba nova nasce no container do espaço. Trocar: nome do
+  espaço no alto da lateral (como o seletor de perfis do Dia), botões
+  laterais do mouse (voltar/avançar) com o ponteiro em cima da lateral,
+  rolagem de lado ou `Ctrl`+rodinha na lateral, as bolinhas do pé ou os
+  atalhos. Menu da aba → "Mover para o espaço".
+- **Favoritos, sites fixados e pastas** são do espaço (iguais em toda janela
+  nele, e ficam ao fechar o navegador). Menu da aba → "Adicionar aos
+  favoritos" (ladrilho no alto) ou "Fixar no espaço" (fora das pastas, numa
+  pasta ou numa pasta nova). Clicar abre o site; o "x" fecha só a aba.
+  Clique direito num site ou pasta: renomear, usar o endereço atual, mover,
+  desafixar, excluir a pasta.
+
+## Atalhos próprios (padrão; mudam nas Configurações)
+
+- `Ctrl+Shift+S`: mostrar/ocultar a lateral.
+- `Ctrl+Alt+→` / `Ctrl+Alt+←`: próximo / anterior espaço.
+- `Ctrl+Alt+1` … `Ctrl+Alt+5`: ir pro espaço 1 a 5.
 - `Ctrl+Alt+N`: novo espaço.
-- `Ctrl+Alt+→` / `Ctrl+Alt+←`: próximo / anterior espaço (a rodinha do mouse
-  em cima da faixa de espaços também troca).
+- `Ctrl+,`: Configurações do Navegador.
 - Clique direito na aba: "Abrir em container"; num link: "Abrir link em
-  container"; no "+ Nova aba": "Nova aba em container". Em todos, "Gerenciar
-  containers…".
-- Clique direito na faixa de espaços (embaixo da lateral): editar o espaço,
-  escolher o container padrão dele, novo espaço.
+  container"; no "+ Nova aba": "Nova aba em container".
 - A cor da lateral: menu do logo → Mais ferramentas → Personalizar (ou
-  Configurações → Aparência).
+  Configurações → Aparência); dentro de um espaço, a lateral pega a cor dele.
 
 ## Netflix
 
