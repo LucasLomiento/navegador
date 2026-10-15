@@ -11,7 +11,7 @@ index 817cd91bda..27fafcf284 100644
      ":util",
      "//chrome/browser:browser_process",
 diff --git i/chrome/browser/prefs/browser_prefs.cc w/chrome/browser/prefs/browser_prefs.cc
-index 2653e37bec..b726815ec5 100644
+index 2653e37bec..dfd79662ac 100644
 --- i/chrome/browser/prefs/browser_prefs.cc
 +++ w/chrome/browser/prefs/browser_prefs.cc
 @@ -221,6 +221,7 @@
@@ -30,6 +30,17 @@ index 2653e37bec..b726815ec5 100644
    AccessibilityLabelsService::RegisterProfilePrefs(registry);
    registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
    AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
+@@ -1961,6 +1963,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+   NewTabPageHandler::RegisterProfilePrefs(registry);
+   NewTabPageUI::RegisterProfilePrefs(registry);
+   MostVisitedPrefObserver::RegisterProfilePrefs(registry);
++  // navegador: a nova aba começa nos mais visitados, como antes (o padrão do
++  // Chromium, "meus atalhos", vinha com a Web Store de exemplo).
++  registry->SetDefaultPrefValue(ntp_prefs::kNtpCustomLinksVisible,
++                                base::Value(false));
+   MostRelevantTabResumptionPageHandler::RegisterProfilePrefs(registry);
+   DriveService::RegisterProfilePrefs(registry);
+   GoogleCalendarPageHandler::RegisterProfilePrefs(registry);
 diff --git i/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn w/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn
 index 57e6082124..91e06044ad 100644
 --- i/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn

@@ -67,6 +67,10 @@ inline constexpr char kAbrirInteiraPref[] = "navegador.lateral.abrir_inteira";
 // Procurar versão nova nas Releases do GitHub ao abrir o navegador.
 inline constexpr char kProcurarAtualizacoesPref[] =
     "navegador.atualizacoes.procurar";
+// Nova aba: hora e data no centro (os atalhos embaixo usam as prefs do
+// próprio Chromium; ver navegador/browser/ui/inicio.h).
+inline constexpr char kInicioHoraPref[] = "navegador.inicio.hora";
+inline constexpr char kInicioDataPref[] = "navegador.inicio.data";
 
 struct Espaco {
   std::string id;

@@ -1,0 +1,108 @@
+diff --git i/chrome/browser/resources/new_tab_page_third_party/BUILD.gn w/chrome/browser/resources/new_tab_page_third_party/BUILD.gn
+index 0c145046f3..4f04218cea 100644
+--- i/chrome/browser/resources/new_tab_page_third_party/BUILD.gn
++++ w/chrome/browser/resources/new_tab_page_third_party/BUILD.gn
+@@ -24,4 +24,7 @@ build_webui("build") {
+     "//ui/webui/resources/mojo:build_ts",
+   ]
+   webui_context_type = "trusted"
++
++  # navegador: as opções da nova aba vão por chrome.send (inicio.cc).
++  ts_definitions = [ "//tools/typescript/definitions/chrome_send.d.ts" ]
+ }
+diff --git i/chrome/browser/ui/webui/new_tab_page_third_party/BUILD.gn w/chrome/browser/ui/webui/new_tab_page_third_party/BUILD.gn
+index f9e2c12d86..720f372415 100644
+--- i/chrome/browser/ui/webui/new_tab_page_third_party/BUILD.gn
++++ w/chrome/browser/ui/webui/new_tab_page_third_party/BUILD.gn
+@@ -41,6 +41,10 @@ if (!is_android) {
+     sources = [
+       "new_tab_page_third_party_handler.cc",
+       "new_tab_page_third_party_ui.cc",
++
++      # navegador: o que aparece na nova aba.
++      "//navegador/browser/ui/inicio.cc",
++      "//navegador/browser/ui/inicio.h",
+     ]
+     public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+     deps = [
+diff --git i/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.cc w/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.cc
+index 151c14c9ab..63d76c3ddb 100644
+--- i/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.cc
++++ w/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/search/ntp_user_data_logger.h"
+ #include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_handler.h"
++#include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_pref_observer.h"
+ #include "chrome/browser/ui/webui/favicon_source.h"
+ #include "chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_handler.h"
+ #include "chrome/browser/ui/webui/ntp/ntp_resource_cache.h"
+@@ -38,6 +39,7 @@
+ #include "ui/color/color_provider.h"
+ #include "ui/gfx/color_utils.h"
+ #include "ui/webui/webui_util.h"
++#include "navegador/browser/ui/inicio.h"
+ #include "url/url_util.h"
+ 
+ using content::BrowserContext;
+@@ -155,6 +157,9 @@ void CreateAndAddNewTabPageThirdPartyUiHtmlSource(Profile* profile,
+   source->AddString("shortcutAlreadyExists", "");
+   source->AddString("urlField", "");
+ 
++  // navegador: textos da edição de atalhos e o que aparece na nova aba.
++  navegador::inicio::PrepararFonte(source, profile);
++
+   webui::SetupWebUIDataSource(
+       source, kNewTabPageThirdPartyResources,
+       IDR_NEW_TAB_PAGE_THIRD_PARTY_NEW_TAB_PAGE_THIRD_PARTY_HTML);
+@@ -162,7 +167,8 @@ void CreateAndAddNewTabPageThirdPartyUiHtmlSource(Profile* profile,
+ }  // namespace
+ 
+ NewTabPageThirdPartyUI::NewTabPageThirdPartyUI(content::WebUI* web_ui)
+-    : ui::MojoWebUIController(web_ui, /*enable_chrome_send=*/false),
++    // navegador: chrome.send pras opções da nova aba (inicio.cc).
++    : ui::MojoWebUIController(web_ui, /*enable_chrome_send=*/true),
+       page_factory_receiver_(this),
+       most_visited_page_factory_receiver_(this),
+       profile_(Profile::FromWebUI(web_ui)),
+@@ -175,6 +181,7 @@ NewTabPageThirdPartyUI::NewTabPageThirdPartyUI(content::WebUI* web_ui)
+                     profile_, chrome::FaviconUrlFormat::kFavicon2));
+   content::URLDataSource::Add(profile_,
+                               std::make_unique<ThemeSource>(profile_));
++  web_ui->AddMessageHandler(navegador::inicio::CriarMensagens(profile_));
+ }
+ 
+ WEB_UI_CONTROLLER_TYPE_IMPL(NewTabPageThirdPartyUI)
+@@ -232,7 +239,8 @@ void NewTabPageThirdPartyUI::CreatePageHandler(
+           profile_, GURL(chrome::kChromeUINewTabPageThirdPartyURL),
+           navigation_start_time_ticks_),
+       navigation_start_time_);
+-  most_visited_page_handler_->EnableTileTypes(
+-      ntp_tiles::MostVisitedSites::EnableTileTypesOptions().with_top_sites(
+-          true));
++  // navegador: mais visitados, meus atalhos ou nenhum, pelas prefs da nova
++  // aba do Chrome (seguidas ao vivo).
++  most_visited_pref_observer_ = std::make_unique<MostVisitedPrefObserver>(
++      profile_, most_visited_page_handler_.get());
+ }
+diff --git i/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h w/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h
+index 7f39af7264..f8f4aabb42 100644
+--- i/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h
++++ w/chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h
+@@ -27,6 +27,7 @@ class WebUI;
+ 
+ class GURL;
+ class MostVisitedHandler;
++class MostVisitedPrefObserver;
+ class NewTabPageThirdPartyHandler;
+ class Profile;
+ class NewTabPageThirdPartyUI;
+@@ -89,6 +90,8 @@ class NewTabPageThirdPartyUI
+   mojo::Receiver<new_tab_page_third_party::mojom::PageHandlerFactory>
+       page_factory_receiver_;
+   std::unique_ptr<MostVisitedHandler> most_visited_page_handler_;
++  // navegador: depois do handler (é destruído antes dele).
++  std::unique_ptr<MostVisitedPrefObserver> most_visited_pref_observer_;
+   mojo::Receiver<most_visited::mojom::MostVisitedPageHandlerFactory>
+       most_visited_page_factory_receiver_;
+   raw_ptr<Profile> profile_;

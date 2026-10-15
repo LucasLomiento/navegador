@@ -1,14 +1,14 @@
 diff --git i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
-index 1044c32c43..a0dd0ddbbb 100644
+index 1044c32c43..646da8b72d 100644
 --- i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
 +++ w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
-@@ -1,54 +1,98 @@
+@@ -1,56 +1,305 @@
  <!doctype html>
 -<html dir="$i18n{textdirection}" lang="$i18n{language}"
 -    $i18n{hascustombackground} $i18n{isdark} $i18n{webuiRoundedIconsAttribute}>
 +<!-- navegador: nova aba calma, no estilo do Dia: hora e data grandes no
-+     centro e os sites mais visitados embaixo. A busca é pela barra de
-+     endereço, que já abre focada. -->
++     centro e os atalhos embaixo. A busca é pela barra de endereço, que já
++     abre focada. O que aparece se escolhe no "Personalizar" do canto. -->
 +<html dir="$i18n{textdirection}" lang="$i18n{language}" $i18n{isdark}>
    <head>
      <meta charset="utf-8">
@@ -113,6 +113,180 @@ index 1044c32c43..a0dd0ddbbb 100644
 +          opacity: 0;
 +          transform: translateY(6px);
 +        }
++      }
++
++      [hidden] {
++        display: none !important;
++      }
++
++      /* Personalizar: botão discreto no canto e um painel pequeno. */
++      html {
++        --painel-fundo: rgba(255, 255, 255, .96);
++        --painel-borda: rgba(0, 0, 0, .08);
++        --painel-sombra: 0 12px 32px rgba(0, 0, 0, .14);
++        --controle: rgba(0, 0, 0, .06);
++        --controle-ativo: #ffffff;
++        --chave-desligada: rgba(0, 0, 0, .18);
++        --destaque: #3b82f6;
++      }
++
++      @media (prefers-color-scheme: dark) {
++        html {
++          --painel-fundo: rgba(40, 40, 44, .96);
++          --painel-borda: rgba(255, 255, 255, .08);
++          --painel-sombra: 0 12px 32px rgba(0, 0, 0, .45);
++          --controle: rgba(255, 255, 255, .07);
++          --controle-ativo: rgba(255, 255, 255, .16);
++          --chave-desligada: rgba(255, 255, 255, .2);
++        }
++      }
++
++      .personalizar {
++        align-items: center;
++        background: transparent;
++        border: 0;
++        border-radius: 8px;
++        bottom: 16px;
++        color: var(--texto-2);
++        cursor: pointer;
++        display: flex;
++        height: 32px;
++        justify-content: center;
++        opacity: .6;
++        position: fixed;
++        right: 16px;
++        transition: opacity .15s, background-color .15s;
++        width: 32px;
++      }
++
++      .personalizar:hover,
++      .personalizar[aria-expanded=true] {
++        background: var(--controle);
++        opacity: 1;
++      }
++
++      .personalizar:focus-visible {
++        outline: 2px solid var(--destaque);
++      }
++
++      .painel {
++        backdrop-filter: blur(20px);
++        background: var(--painel-fundo);
++        border: 1px solid var(--painel-borda);
++        border-radius: 12px;
++        bottom: 56px;
++        box-shadow: var(--painel-sombra);
++        box-sizing: border-box;
++        font-size: 13px;
++        padding: 12px;
++        position: fixed;
++        right: 16px;
++        width: 272px;
++        animation: abrir .14s cubic-bezier(.2, .8, .2, 1) both;
++      }
++
++      @keyframes abrir {
++        from {
++          opacity: 0;
++          transform: translateY(4px) scale(.98);
++        }
++      }
++
++      .painel .titulo {
++        font-size: 13px;
++        font-weight: 600;
++        margin: 2px 2px 10px;
++      }
++
++      .painel .linha {
++        align-items: center;
++        border-radius: 6px;
++        cursor: pointer;
++        display: flex;
++        justify-content: space-between;
++        padding: 6px 2px;
++      }
++
++      .painel .rotulo {
++        color: var(--texto-2);
++        font-size: 12px;
++        margin: 10px 2px 6px;
++      }
++
++      .chave {
++        appearance: none;
++        background: var(--chave-desligada);
++        border-radius: 999px;
++        cursor: pointer;
++        height: 18px;
++        margin: 0;
++        position: relative;
++        transition: background-color .15s;
++        width: 30px;
++      }
++
++      .chave::after {
++        background: #fff;
++        border-radius: 50%;
++        box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
++        content: '';
++        height: 14px;
++        left: 2px;
++        position: absolute;
++        top: 2px;
++        transition: transform .15s;
++        width: 14px;
++      }
++
++      .chave:checked {
++        background: var(--destaque);
++      }
++
++      .chave:checked::after {
++        transform: translateX(12px);
++      }
++
++      .chave:focus-visible {
++        outline: 2px solid var(--destaque);
++        outline-offset: 2px;
++      }
++
++      .segmentos {
++        background: var(--controle);
++        border-radius: 8px;
++        display: flex;
++        gap: 2px;
++        padding: 2px;
++      }
++
++      .segmentos button {
++        background: transparent;
++        border: 0;
++        border-radius: 6px;
++        color: var(--texto-2);
++        cursor: pointer;
++        flex: 1;
++        font: inherit;
++        font-size: 12px;
++        padding: 5px 4px;
++        white-space: nowrap;
++      }
++
++      .segmentos button[aria-checked=true] {
++        background: var(--controle-ativo);
++        box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
++        color: var(--texto);
++      }
++
++      .segmentos button:focus-visible {
++        outline: 2px solid var(--destaque);
++      }
++
++      .painel .dica {
++        color: var(--texto-2);
++        font-size: 12px;
++        line-height: 1.4;
++        margin: 8px 2px 0;
        }
      </style>
    </head>
@@ -121,12 +295,57 @@ index 1044c32c43..a0dd0ddbbb 100644
 +    <div class="data" id="data"></div>
      <script type="module" src="strings.m.js"></script>
      <cr-most-visited></cr-most-visited>
++    <button class="personalizar" id="personalizar" title="Personalizar"
++        aria-label="Personalizar a nova aba" aria-expanded="false"
++        aria-controls="painel">
++      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
++          stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
++          aria-hidden="true">
++        <path d="M2 4.5h6.5M11.5 4.5H14M2 11.5h2.5M7.5 11.5H14"/>
++        <circle cx="10" cy="4.5" r="1.6"/>
++        <circle cx="6" cy="11.5" r="1.6"/>
++      </svg>
++    </button>
++    <div class="painel" id="painel" role="dialog"
++        aria-label="Personalizar a nova aba" hidden>
++      <div class="titulo">Nova aba</div>
++      <label class="linha">Hora
++        <input type="checkbox" class="chave" id="opcao-hora">
++      </label>
++      <label class="linha">Data
++        <input type="checkbox" class="chave" id="opcao-data">
++      </label>
++      <div class="rotulo" id="rotulo-atalhos">Atalhos</div>
++      <div class="segmentos" id="segmentos" role="radiogroup"
++          aria-labelledby="rotulo-atalhos">
++        <button role="radio" data-atalhos="0">Mais visitados</button>
++        <button role="radio" data-atalhos="1">Meus atalhos</button>
++        <button role="radio" data-atalhos="2">Nenhum</button>
++      </div>
++      <div class="dica" id="dica-meus">
++        Adicione pelo +; o menu de cada atalho edita ou remove.
++      </div>
++    </div>
      <script type="module" src="new_tab_page_third_party.js"></script>
+     <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">
+   </body>
 diff --git i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts
-index 47cdc104bb..ceb25b203b 100644
+index 47cdc104bb..c58055da45 100644
 --- i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts
 +++ w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts
-@@ -30,3 +30,26 @@ callbackRouter.setTheme.addListener(theme => {
+@@ -6,6 +6,11 @@ import 'chrome://resources/cr_components/most_visited/most_visited.js';
+ 
+ import {assert} from 'chrome://resources/js/assert.js';
+ import {skColorToRgba} from 'chrome://resources/js/color_utils.js';
++// navegador: chrome.send pras opções da nova aba (inicio.cc); o lint pede
++// Mojo em página nova, mas aqui é uma mensagem só.
++// eslint-disable-next-line no-restricted-imports
++import {addWebUiListener} from 'chrome://resources/js/cr.js';
++import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+ 
+ import {BrowserProxy} from './browser_proxy.js';
+ 
+@@ -30,3 +35,122 @@ callbackRouter.setTheme.addListener(theme => {
    mostVisitedElement.theme = theme.mostVisited;
  });
  handler.updateTheme();
@@ -153,6 +372,102 @@ index 47cdc104bb..ceb25b203b 100644
 +  setInterval(mostrarHora, 60 * 1000);
 +}, (60 - new Date().getSeconds()) * 1000);
 +
++/* eslint-disable no-restricted-properties */
++// navegador: o que aparece na nova aba (inicio.cc guarda nas prefs do
++// perfil). As mudanças feitas nas Configurações chegam por
++// 'navegador-inicio'.
++interface OpcoesDoInicio {
++  hora: boolean;
++  data: boolean;
++  atalhos: number;  // 0 mais visitados, 1 meus atalhos, 2 nenhum.
++}
++
++function elemento<T extends HTMLElement>(seletor: string): T {
++  const achado = document.querySelector<T>(seletor);
++  assert(achado);
++  return achado;
++}
++
++const botao = elemento<HTMLButtonElement>('#personalizar');
++const painel = elemento<HTMLElement>('#painel');
++const opcaoHora = elemento<HTMLInputElement>('#opcao-hora');
++const opcaoData = elemento<HTMLInputElement>('#opcao-data');
++const segmentos =
++    Array.from(painel.querySelectorAll<HTMLButtonElement>('[data-atalhos]'));
++
++function aplicar(opcoes: OpcoesDoInicio) {
++  elemento('#hora').hidden = !opcoes.hora;
++  elemento('#data').hidden = !opcoes.data;
++  opcaoHora.checked = opcoes.hora;
++  opcaoData.checked = opcoes.data;
++  for (const segmento of segmentos) {
++    const escolhido = Number(segmento.dataset['atalhos']) === opcoes.atalhos;
++    segmento.setAttribute('aria-checked', String(escolhido));
++    segmento.tabIndex = escolhido ? 0 : -1;
++  }
++  elemento('#dica-meus').hidden = opcoes.atalhos !== 1;
++  // Sem hora e sem data, os atalhos sobem pro meio.
++  elemento('cr-most-visited').style.marginTop =
++      opcoes.hora || opcoes.data ? '' : '0';
++}
++
++aplicar({
++  hora: loadTimeData.getBoolean('navegadorHora'),
++  data: loadTimeData.getBoolean('navegadorData'),
++  atalhos: loadTimeData.getInteger('navegadorAtalhos'),
++});
++addWebUiListener('navegador-inicio', aplicar);
++chrome.send('navegadorInicioPronto');
++
++function abrirPainel(aberto: boolean) {
++  painel.hidden = !aberto;
++  botao.setAttribute('aria-expanded', String(aberto));
++  if (aberto) {
++    opcaoHora.focus();
++  }
++}
++
++botao.addEventListener('click', () => abrirPainel(painel.hidden));
++document.addEventListener('pointerdown', e => {
++  const alvo = e.target as Node;
++  if (!painel.hidden && !painel.contains(alvo) && !botao.contains(alvo)) {
++    abrirPainel(false);
++  }
++});
++document.addEventListener('keydown', e => {
++  if (e.key === 'Escape' && !painel.hidden) {
++    abrirPainel(false);
++    botao.focus();
++  }
++});
++
++opcaoHora.addEventListener('change', () => {
++  chrome.send('navegadorInicioDefinir', ['hora', opcaoHora.checked]);
++});
++opcaoData.addEventListener('change', () => {
++  chrome.send('navegadorInicioDefinir', ['data', opcaoData.checked]);
++});
++for (const segmento of segmentos) {
++  segmento.addEventListener('click', () => {
++    chrome.send(
++        'navegadorInicioDefinir',
++        ['atalhos', Number(segmento.dataset['atalhos'])]);
++  });
++}
++// Setas trocam a escolha, como num grupo de rádio.
++elemento('#segmentos').addEventListener('keydown', e => {
++  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
++    return;
++  }
++  const atual = segmentos.findIndex(
++      segmento => segmento.getAttribute('aria-checked') === 'true');
++  const proximo = (atual + (e.key === 'ArrowRight' ? 1 : -1) +
++                   segmentos.length) %
++      segmentos.length;
++  segmentos[proximo]!.click();
++  segmentos[proximo]!.focus();
++  e.preventDefault();
++});
 diff --git i/chrome/browser/search/search.cc w/chrome/browser/search/search.cc
 index 6d3e318b62..6c0187ca54 100644
 --- i/chrome/browser/search/search.cc
@@ -1799,3 +2114,37 @@ index fceda6b642..7ae8e7bc8c 100644
    return gfx::TruncateString(formatted_text, max_url_display_chars_,
                               gfx::CHARACTER_BREAK);
  }
+diff --git i/ui/views/controls/menu/menu_config.cc w/ui/views/controls/menu/menu_config.cc
+index a711c50328..67b4fecdde 100644
+--- i/ui/views/controls/menu/menu_config.cc
++++ w/ui/views/controls/menu/menu_config.cc
+@@ -82,17 +82,26 @@ bool MenuConfig::ShouldUseBubbleBorderForMenu(
+ }
+ 
+ void MenuConfig::InitCommon() {
+-  context_menu_font_list = font_list = TypographyProvider::Get().GetFont(
++  // navegador: menus em 13 px, como o resto da interface (e o Dia). O
++  // Chromium soma o tamanho ao da fonte do sistema (no Omarchy, Adwaita Sans
++  // 11 pt = 15 px) e os menus ficavam em 16 px, maiores que tudo em volta;
++  // linhas e divisórias mais justas junto.
++  const gfx::FontList fonte = TypographyProvider::Get().GetFont(
+       style::CONTEXT_MENU, style::STYLE_BODY_3);
++  context_menu_font_list = font_list =
++      fonte.DeriveWithSizeDelta(13 - fonte.GetFontSize());
+   reserve_dedicated_arrow_column = false;
+   menu_horizontal_border_size = 0;
+   submenu_horizontal_overlap = 0;
+-  item_vertical_margin = 6;
++  item_vertical_margin = 5;
+   item_horizontal_border_padding = 12;
+   arrow_size = 16;
+-  separator_height = 17;
++  separator_height = 9;
+   separator_spacing_height = 4;
+   use_outer_border = false;
++  // Menu do botão direito sem os atalhos escritos ("Alt+Seta para a
++  // esquerda"), como no Windows: deixavam a caixa larga.
++  show_context_menu_accelerators = false;
+ }
+ 
+ // static

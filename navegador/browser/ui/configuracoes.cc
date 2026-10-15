@@ -41,6 +41,7 @@
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "navegador/browser/ui/espacos.h"
 #include "navegador/browser/ui/importar_zen.h"
+#include "navegador/browser/ui/inicio.h"
 #include "navegador/browser/ui/seletor_de_cor.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -675,6 +676,44 @@ std::unique_ptr<views::View> PaginaAparencia(BrowserWindowInterface* browser) {
                 RefazerJanelas(perfil);
               },
               perfil))));
+
+  // O mesmo do "Personalizar" no canto da nova aba (inicio.cc).
+  Cartao* nova_aba = pagina->Secao(u"Nova aba");
+  nova_aba->Adicionar(Linha(
+      u"Hora", std::u16string(),
+      Interruptor(perfil->GetPrefs()->GetBoolean(espacos::kInicioHoraPref),
+                  u"Hora na nova aba",
+                  base::BindRepeating(
+                      [](Profile* perfil, bool ligado) {
+                        perfil->GetPrefs()->SetBoolean(
+                            espacos::kInicioHoraPref, ligado);
+                      },
+                      perfil))));
+  nova_aba->Adicionar(Linha(
+      u"Data", std::u16string(),
+      Interruptor(perfil->GetPrefs()->GetBoolean(espacos::kInicioDataPref),
+                  u"Data na nova aba",
+                  base::BindRepeating(
+                      [](Profile* perfil, bool ligado) {
+                        perfil->GetPrefs()->SetBoolean(
+                            espacos::kInicioDataPref, ligado);
+                      },
+                      perfil))));
+  nova_aba->Adicionar(Linha(
+      u"Atalhos",
+      u"Os sites que você mais visita, uma lista sua (adicione pelo + na "
+      u"nova aba) ou nada.",
+      Escolha({u"Mais visitados", u"Meus atalhos", u"Nenhum"},
+              static_cast<size_t>(inicio::LerAtalhos(perfil->GetPrefs())),
+              u"Atalhos na nova aba",
+              base::BindRepeating(
+                  [](Profile* perfil, size_t escolha) {
+                    inicio::DefinirAtalhos(
+                        perfil->GetPrefs(),
+                        static_cast<inicio::Atalhos>(escolha));
+                  },
+                  perfil))));
+
   pagina->Rodape(u"A cor de cada espaço (que tinge a janela) fica em Espaços.");
   return pagina;
 }
