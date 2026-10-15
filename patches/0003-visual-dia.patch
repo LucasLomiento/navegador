@@ -194,7 +194,7 @@ index 29dfbde914..f76664dca1 100644
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..338322548a 100644
+index b7cdb8f557..b792d57d7f 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,8 @@
@@ -206,14 +206,12 @@ index b7cdb8f557..338322548a 100644
  #include <algorithm>
  #include <optional>
  
-@@ -147,10 +149,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -147,10 +149,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
-+  // navegador: "Nova aba" no topo da lista (como no Dia), entre o cabeçalho
-+  // e o separador, sem esticar: o que sobra fica embaixo das abas.
-+  ReorderChildView(bottom_button_container_,
-+                   GetIndexOf(top_button_separator_).value());
++  // navegador: "Nova aba" logo depois da última aba (como no Dia), sem
++  // esticar: o que sobra fica pra faixa de espaços no pé.
    bottom_button_container_->SetProperty(
        views::kFlexBehaviorKey,
        views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
@@ -222,7 +220,7 @@ index b7cdb8f557..338322548a 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +166,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +164,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
