@@ -4,13 +4,13 @@ namespace navegador::visual {
 
 std::optional<int> LayoutConstantOverride(LayoutConstant constant) {
   switch (constant) {
-    // Abas da lateral: linha de 32 (a linha de grupo do Dia tem mínimo 32),
-    // cantos 6 (os do botão "Nova aba" e do seletor de espaços).
+    // Abas da lateral: destaque de 30 com cantos 8 (medido no Dia rodando).
     case LayoutConstant::kVerticalTabHeight:
+      return 30;
     case LayoutConstant::kVerticalTabPinnedHeight:
-      return 32;
+      return 41;
     case LayoutConstant::kVerticalTabCornerRadius:
-      return 6;
+      return 8;
     // Recuo lateral da lista do Dia: 8 de cada lado.
     case LayoutConstant::kVerticalTabStripHorizontalPadding:
       return 8;

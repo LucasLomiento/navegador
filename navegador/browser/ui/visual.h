@@ -19,9 +19,10 @@
 namespace navegador::visual {
 
 // Cartão do conteúdo: a barra de navegação e a página juntas, com margem até
-// a borda da janela e cantos arredondados (a "superfície" do Dia, cantos 7).
-inline constexpr int kCartaoMargem = 8;
-inline constexpr int kCartaoRaio = 7;
+// a borda da janela e cantos arredondados (medido no Dia rodando: margem ~6,
+// cantos ~8; docs/dia-medidas.md, seção 15).
+inline constexpr int kCartaoMargem = 6;
+inline constexpr int kCartaoRaio = 8;
 
 std::optional<int> LayoutConstantOverride(LayoutConstant constant);
 std::optional<gfx::Insets> LayoutInsetsOverride(LayoutInset inset);

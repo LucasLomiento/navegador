@@ -68,6 +68,20 @@ index 7d1a2d797f..ee4b695e93 100644
    const bool touch_ui = ui::TouchUiController::Get()->touch_ui();
    switch (inset) {
      case DOWNLOAD_ICON:
+diff --git i/chrome/browser/ui/tabs/vertical_tab_strip_state.h w/chrome/browser/ui/tabs/vertical_tab_strip_state.h
+index b46ad7ecdf..6c3db54f84 100644
+--- i/chrome/browser/ui/tabs/vertical_tab_strip_state.h
++++ w/chrome/browser/ui/tabs/vertical_tab_strip_state.h
+@@ -7,7 +7,8 @@
+ 
+ namespace tabs {
+ 
+-inline constexpr int kVerticalTabStripDefaultUncollapsedWidth = 240;
++// navegador: 190, a largura da lateral do Dia.
++inline constexpr int kVerticalTabStripDefaultUncollapsedWidth = 190;
+ 
+ // Per-window state for the vertical tab strip.
+ struct VerticalTabStripState {
 diff --git i/chrome/browser/ui/ui_features.cc w/chrome/browser/ui/ui_features.cc
 index 7a0e331ded..8d2dee8dfa 100644
 --- i/chrome/browser/ui/ui_features.cc
