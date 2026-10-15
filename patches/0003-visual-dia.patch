@@ -68,6 +68,20 @@ index 7d1a2d797f..ee4b695e93 100644
    const bool touch_ui = ui::TouchUiController::Get()->touch_ui();
    switch (inset) {
      case DOWNLOAD_ICON:
+diff --git i/chrome/browser/ui/ui_features.cc w/chrome/browser/ui/ui_features.cc
+index 7a0e331ded..8d2dee8dfa 100644
+--- i/chrome/browser/ui/ui_features.cc
++++ w/chrome/browser/ui/ui_features.cc
+@@ -551,7 +551,8 @@ BASE_FEATURE_PARAM(bool,
+ BASE_FEATURE(kAiOverlayDisableNavigationContext,
+              base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE(kTabGroupsFocusing, base::FEATURE_DISABLED_BY_DEFAULT);
++// navegador: espaços do Dia (grupo focado = espaço).
++BASE_FEATURE(kTabGroupsFocusing, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE_PARAM(bool, kTabGroupsFocusFreezing, &kTabGroupsFocusing, true);
+ 
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 index 29dfbde914..f76664dca1 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
@@ -154,10 +168,19 @@ index 29dfbde914..f76664dca1 100644
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..692857bfb9 100644
+index b7cdb8f557..338322548a 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -147,10 +147,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+ 
++#include "navegador/browser/ui/espacos.h"
++
+ #include <algorithm>
+ #include <optional>
+ 
+@@ -147,10 +149,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -173,3 +196,13 @@ index b7cdb8f557..692857bfb9 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
+@@ -160,6 +166,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+ 
+   gemini_button_ = AddChildView(std::make_unique<views::View>());
+ 
++  // navegador: espaços do Dia no pé da barra lateral.
++  navegador::espacos::AdicionarFaixa(this, browser_view->browser());
++
+   resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
+   resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
+   resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
