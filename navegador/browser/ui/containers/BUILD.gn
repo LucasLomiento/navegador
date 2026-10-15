@@ -23,3 +23,16 @@ source_set("containers_ui") {
     "//url",
   ]
 }
+
+# Espaço focado da janela (pro browser_navigator).
+source_set("espaco") {
+  sources = [
+    "espaco.cc",
+    "espaco.h",
+  ]
+  deps = [
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs:tab_strip",
+    "//components/tab_groups",
+  ]
+}

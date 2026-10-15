@@ -1,5 +1,5 @@
 diff --git i/chrome/browser/ui/BUILD.gn w/chrome/browser/ui/BUILD.gn
-index 82f397571f..07b332ed87 100644
+index 82f397571f..3ab2b5f7b8 100644
 --- i/chrome/browser/ui/BUILD.gn
 +++ w/chrome/browser/ui/BUILD.gn
 @@ -399,6 +399,7 @@ if (!is_android) {
@@ -21,15 +21,16 @@ index 82f397571f..07b332ed87 100644
        "browser_manager_service.cc",
        "browser_manager_service.h",
        "browser_manager_service_factory.cc",
-@@ -1558,6 +1563,7 @@ static_library("ui") {
+@@ -1558,6 +1563,8 @@ static_library("ui") {
  
      # Non-android deps for "ui" target.
      deps += [
 +      "//navegador/browser/containers",  # navegador
++      "//navegador/browser/ui/containers:containers_ui",  # navegador
        ":accelerator_table",
        ":browser_actions",
        ":browser_select_file_dialog_controller",
-@@ -3877,6 +3883,10 @@ source_set("layout_constants") {
+@@ -3877,6 +3884,10 @@ source_set("layout_constants") {
    sources = [
      "layout_constants.cc",
      "layout_constants.h",

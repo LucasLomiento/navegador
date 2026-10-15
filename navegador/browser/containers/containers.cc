@@ -68,6 +68,28 @@ std::string NewId() {
 
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterListPref(kContainersPref, DefaultContainers());
+  registry->RegisterDictionaryPref(kEspacosPref);
+}
+
+std::optional<std::string> ContainerDoEspaco(Profile* profile,
+                                             std::string_view espaco) {
+  const std::string* id =
+      profile->GetPrefs()->GetDict(kEspacosPref).FindString(espaco);
+  if (!id || !Get(profile, *id)) {
+    return std::nullopt;
+  }
+  return *id;
+}
+
+void DefinirContainerDoEspaco(Profile* profile,
+                              std::string_view espaco,
+                              std::string_view container) {
+  ScopedDictPrefUpdate update(profile->GetPrefs(), kEspacosPref);
+  if (container.empty()) {
+    update->Remove(espaco);
+  } else {
+    update->Set(espaco, container);
+  }
 }
 
 std::vector<Container> GetAll(Profile* profile) {
@@ -156,13 +178,19 @@ scoped_refptr<content::SiteInstance> CreateSiteInstance(Profile* profile,
 scoped_refptr<content::SiteInstance> SiteInstanceForNewTab(
     Profile* profile,
     content::WebContents* source_contents,
+    std::optional<std::string> espaco,
     const GURL& url) {
-  // Só herda dentro do mesmo perfil: uma aba levada pra janela de outro
-  // perfil não carrega o container junto.
-  if (!source_contents || source_contents->GetBrowserContext() != profile) {
-    return nullptr;
+  std::optional<std::string> id;
+  if (source_contents) {
+    // Só herda dentro do mesmo perfil: uma aba levada pra janela de outro
+    // perfil não carrega o container junto.
+    if (source_contents->GetBrowserContext() != profile) {
+      return nullptr;
+    }
+    id = IdForWebContents(source_contents);
+  } else if (espaco) {
+    id = ContainerDoEspaco(profile, *espaco);
   }
-  std::optional<std::string> id = IdForWebContents(source_contents);
   if (!id || !Get(profile, *id)) {
     return nullptr;
   }

@@ -9,6 +9,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "cc/paint/paint_flags.h"
 #include "chrome/app/vector_icons/vector_icons.h"
@@ -21,10 +22,13 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/tabs/public/tab_group.h"
+#include "navegador/browser/containers/containers.h"
+#include "navegador/browser/ui/containers/containers_ui.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
@@ -32,7 +36,10 @@
 #include "ui/events/event.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/font_list.h"
+#include "ui/menus/simple_menu_model.h"
 #include "ui/views/background.h"
+#include "ui/views/context_menu_controller.h"
+#include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/label.h"
@@ -40,6 +47,7 @@
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
+#include "ui/views/widget/widget.h"
 
 namespace navegador::espacos {
 
@@ -112,7 +120,10 @@ class Bolinha : public views::View {
 BEGIN_METADATA(Bolinha)
 END_METADATA
 
-class FaixaDeEspacos : public views::View, public TabStripModelObserver {
+class FaixaDeEspacos : public views::View,
+                       public TabStripModelObserver,
+                       public views::ContextMenuController,
+                       public ui::SimpleMenuModel::Delegate {
   METADATA_HEADER(FaixaDeEspacos, views::View)
 
  public:
@@ -145,6 +156,7 @@ class FaixaDeEspacos : public views::View, public TabStripModelObserver {
     novo_->SetTooltipText(u"Novo espaço");
 
     model_->AddObserver(this);
+    set_context_menu_controller(this);
 
     if (auto* estado = tabs::VerticalTabStripStateController::From(browser)) {
       SetVisible(estado->GetCollapseState() ==
@@ -185,6 +197,78 @@ class FaixaDeEspacos : public views::View, public TabStripModelObserver {
     }
     Girar(delta < 0);
     return true;
+  }
+
+  // views::ContextMenuController: clique direito na faixa.
+  void ShowContextMenuForViewImpl(
+      views::View* source,
+      const gfx::Point& point,
+      ui::mojom::MenuSourceType source_type) override {
+    menu_ = std::make_unique<ui::SimpleMenuModel>(this);
+    if (model_->GetFocusedGroup()) {
+      menu_->AddItem(kEditar, u"Editar espaço…");
+      containers_ = containers::GetAll(browser_->GetProfile());
+      submenu_containers_ = std::make_unique<ui::SimpleMenuModel>(this);
+      submenu_containers_->AddCheckItem(kSemContainer, u"Nenhum");
+      for (size_t i = 0; i < containers_.size(); ++i) {
+        submenu_containers_->AddCheckItem(
+            kPrimeiroContainer + i, base::UTF8ToUTF16(containers_[i].name));
+        submenu_containers_->SetIcon(
+            submenu_containers_->GetItemCount() - 1,
+            containers::Bolinha(containers_[i].color));
+      }
+      menu_->AddSubMenu(kContainerDoEspaco, u"Container do espaço",
+                        submenu_containers_.get());
+      menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+    }
+    menu_->AddItem(kNovo, u"Novo espaço");
+    menu_runner_ = std::make_unique<views::MenuRunner>(
+        menu_.get(), views::MenuRunner::CONTEXT_MENU);
+    menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
+                            views::MenuAnchorPosition::kTopLeft, source_type);
+  }
+
+  // ui::SimpleMenuModel::Delegate:
+  bool IsCommandIdChecked(int command_id) const override {
+    const auto atual = model_->GetFocusedGroup();
+    if (!atual) {
+      return false;
+    }
+    const std::optional<std::string> container =
+        containers::ContainerDoEspaco(browser_->GetProfile(), atual->ToString());
+    if (command_id == kSemContainer) {
+      return !container;
+    }
+    const size_t i = command_id - kPrimeiroContainer;
+    return container && i < containers_.size() && containers_[i].id == *container;
+  }
+
+  void ExecuteCommand(int command_id, int event_flags) override {
+    const auto atual = model_->GetFocusedGroup();
+    if (command_id == kNovo) {
+      NovoEspaco();
+      return;
+    }
+    if (!atual) {
+      return;
+    }
+    if (command_id == kEditar) {
+      editor_ = TabGroupEditorBubbleView::Show(browser_, *atual, this,
+                                               std::nullopt,
+                                               /*stop_context_menu_propagation=*/
+                                               false);
+      return;
+    }
+    if (command_id == kSemContainer) {
+      containers::DefinirContainerDoEspaco(browser_->GetProfile(),
+                                           atual->ToString(), "");
+      return;
+    }
+    const size_t i = command_id - kPrimeiroContainer;
+    if (i < containers_.size()) {
+      containers::DefinirContainerDoEspaco(
+          browser_->GetProfile(), atual->ToString(), containers_[i].id);
+    }
   }
 
   // TabStripModelObserver:
@@ -296,8 +380,19 @@ class FaixaDeEspacos : public views::View, public TabStripModelObserver {
     model_->SetFocusedGroup(espaco);
   }
 
+  static constexpr int kEditar = 1;
+  static constexpr int kNovo = 2;
+  static constexpr int kContainerDoEspaco = 3;
+  static constexpr int kSemContainer = 100;
+  static constexpr int kPrimeiroContainer = 101;
+
   raw_ptr<BrowserWindowInterface> browser_;
   raw_ptr<TabStripModel> model_;
+  std::unique_ptr<ui::SimpleMenuModel> menu_;
+  std::unique_ptr<ui::SimpleMenuModel> submenu_containers_;
+  std::unique_ptr<views::MenuRunner> menu_runner_;
+  std::unique_ptr<views::Widget> editor_;
+  std::vector<containers::Container> containers_;
   raw_ptr<views::Label> titulo_ = nullptr;
   raw_ptr<views::View> bolinhas_ = nullptr;
   raw_ptr<views::ImageButton> novo_ = nullptr;

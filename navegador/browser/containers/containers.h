@@ -40,6 +40,8 @@ inline constexpr char kPartitionDomain[] = "navegador";
 inline constexpr char kContainersPref[] = "navegador.containers";
 // Chave no extra_data da aba na sessão.
 inline constexpr char kSessionExtraDataKey[] = "navegador_container";
+// Container padrão de cada espaço: { "<id do grupo>": "<id do container>" }.
+inline constexpr char kEspacosPref[] = "navegador.espacos_container";
 
 struct Container {
   std::string id;
@@ -66,6 +68,14 @@ void Update(Profile* profile, const Container& container);
 // (StoragePartition::ClearData), porque pode ter aba aberta nela.
 void Remove(Profile* profile, std::string_view id);
 
+// Container padrão do espaço (id do grupo de abas, TabGroupId::ToString()).
+std::optional<std::string> ContainerDoEspaco(Profile* profile,
+                                             std::string_view espaco);
+// Vazio tira o container do espaço.
+void DefinirContainerDoEspaco(Profile* profile,
+                              std::string_view espaco,
+                              std::string_view container);
+
 content::StoragePartitionConfig PartitionConfig(Profile* profile,
                                                 std::string_view id);
 
@@ -80,12 +90,14 @@ scoped_refptr<content::SiteInstance> CreateSiteInstance(Profile* profile,
 
 // --- Ganchos no Chromium -------------------------------------------------
 
-// browser_navigator.cc (CreateTargetContents), só quando não há opener:
-// a aba nova herda o container de quem a abriu (Ctrl+clique, "abrir em nova
-// aba"). Devolve nullptr quando a aba não é de container.
+// browser_navigator.cc (CreateTargetContents), só quando não há opener.
+// Com aba de origem (Ctrl+clique, "abrir em nova aba"), herda o container
+// dela (ou nenhum). Sem origem (Ctrl+T, botão "Nova aba"), usa o container
+// do espaço focado, se tiver. Devolve nullptr quando não é de container.
 scoped_refptr<content::SiteInstance> SiteInstanceForNewTab(
     Profile* profile,
     content::WebContents* source_contents,
+    std::optional<std::string> espaco,
     const GURL& url);
 
 // browser_tabrestore.cc (CreateRestoredTab): recria a aba no container que

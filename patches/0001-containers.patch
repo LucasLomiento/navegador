@@ -187,30 +187,32 @@ index 6aca93a450..b2d794a525 100644
    create_params.desired_renderer_state =
        WebContents::CreateParams::kNoRendererProcess;
 diff --git i/chrome/browser/ui/navigator/BUILD.gn w/chrome/browser/ui/navigator/BUILD.gn
-index 812ea8e40e..1cf918e2fe 100644
+index 812ea8e40e..4fe077a98d 100644
 --- i/chrome/browser/ui/navigator/BUILD.gn
 +++ w/chrome/browser/ui/navigator/BUILD.gn
-@@ -83,6 +83,7 @@ source_set("impl") {
+@@ -83,6 +83,8 @@ source_set("impl") {
      ]
  
      deps += [
 +      "//navegador/browser/containers",  # navegador
++      "//navegador/browser/ui/containers:espaco",  # navegador
        "//chrome/browser/apps/app_service",
        "//chrome/browser/apps/link_capturing",
        "//chrome/browser/ui:browser_init_state",
 diff --git i/chrome/browser/ui/navigator/browser_navigator.cc w/chrome/browser/ui/navigator/browser_navigator.cc
-index 5029e26405..ce10242bac 100644
+index 5029e26405..60fd0eb9ce 100644
 --- i/chrome/browser/ui/navigator/browser_navigator.cc
 +++ w/chrome/browser/ui/navigator/browser_navigator.cc
-@@ -74,6 +74,7 @@
+@@ -74,6 +74,8 @@
  #include "content/public/browser/render_view_host.h"
  #include "content/public/browser/site_isolation_policy.h"
  #include "content/public/browser/web_contents.h"
 +#include "navegador/browser/containers/containers.h"
++#include "navegador/browser/ui/containers/espaco.h"
  #include "extensions/buildflags/buildflags.h"
  #include "ui/base/page_transition_types.h"
  #include "ui/base/window_open_disposition.h"
-@@ -504,8 +505,13 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
+@@ -504,8 +506,15 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
    // preserving the requested opener relationship along the way.
    scoped_refptr<content::SiteInstance> initial_site_instance_for_new_contents =
        params.opener ? params.opener->GetSiteInstance()
@@ -218,7 +220,9 @@ index 5029e26405..ce10242bac 100644
 -                          params.browser->GetProfile(), url);
 +                    : navegador::containers::SiteInstanceForNewTab(
 +                          params.browser->GetProfile(),
-+                          params.source_contents.get(), url);
++                          params.source_contents.get(),
++                          navegador::containers::EspacoFocado(params.browser),
++                          url);
 +  if (!initial_site_instance_for_new_contents) {
 +    initial_site_instance_for_new_contents = tab_util::GetSiteInstanceForNewTab(
 +        params.browser->GetProfile(), url);
