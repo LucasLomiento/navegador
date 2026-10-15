@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "components/prefs/pref_service.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
+#include "content/public/browser/media_player_id.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -122,11 +123,7 @@ class Observador : public views::View,
   // views::View:
   void AddedToWidget() override {
     Amostrar();
-    // A página muda sem avisar (rolar, cabeçalho fixo, vídeo): amostra de
-    // novo de tempos em tempos. 64x2 pixels, barato.
-    relogio_.Start(FROM_HERE, base::Milliseconds(1500),
-                   base::BindRepeating(&Observador::Amostrar,
-                                       base::Unretained(this)));
+    Agendar();
   }
   void RemovedFromWidget() override { relogio_.Stop(); }
 
@@ -138,19 +135,88 @@ class Observador : public views::View,
     if (selection.active_tab_changed()) {
       Observe(model_->GetActiveWebContents());
       ++geracao_;
-      Amostrar();
+      Acordar();
     }
   }
 
   // content::WebContentsObserver:
-  void DidFirstVisuallyNonEmptyPaint() override { Amostrar(); }
-  void DidStopLoading() override { Amostrar(); }
-  void DidChangeThemeColor() override { Amostrar(); }
-  void OnBackgroundColorChanged() override { Amostrar(); }
+  void DidFirstVisuallyNonEmptyPaint() override { Acordar(); }
+  void DidStopLoading() override { Acordar(); }
+  void DidChangeThemeColor() override { Acordar(); }
+  void OnBackgroundColorChanged() override { Acordar(); }
+  // O vídeo parou (pausa, fim): a página volta a poder ser amostrada.
+  void MediaStoppedPlaying(const MediaPlayerInfo& info,
+                           const content::MediaPlayerId& id,
+                           MediaStoppedReason reason) override {
+    if (info.has_video) {
+      Acordar();
+    }
+  }
+  void DidToggleFullscreenModeForTab(bool entered_fullscreen,
+                                     bool will_cause_resize) override {
+    if (!entered_fullscreen) {
+      Acordar();
+    }
+  }
 
  private:
+  bool Ligada() const {
+    return browser_view_->browser()->GetProfile()->GetPrefs()->GetBoolean(
+        espacos::kBarraNaCorDoSitePref);
+  }
+
+  // A página muda sem avisar (rolar, cabeçalho fixo): amostra de novo de
+  // tempos em tempos. Cada amostra pede uma cópia da tela ao compositor
+  // (que recompõe a janela): quando a cor não muda, o intervalo cresce até
+  // 6 s; algo acontecendo na aba volta pra 1,5 s. Desligada (Configurações
+  // → Aparência), não amostra nada.
+  void Agendar() {
+    // Desligada, só confere de vez em quando se foi ligada (sem cópia).
+    relogio_.Start(FROM_HERE, Ligada() ? intervalo_ : kIntervaloMaximo,
+                   base::BindOnce(&Observador::Tique, base::Unretained(this)));
+  }
+
+  // Tela cheia: a barra nem aparece.
+  bool TelaCheia() {
+    content::WebContents* contents = web_contents();
+    return browser_view_->IsFullscreen() || (contents && contents->IsFullscreen());
+  }
+
+  // Cada cópia passa um quadro da página pelo compositor de novo: com vídeo
+  // tocando, isso perdia quadros do vídeo (travadinhas a cada amostra,
+  // medido no Xvfb: 4 a 6 quadros perdidos em 20 s, nenhum sem a cópia).
+  // Enquanto toca, a barra fica com a cor que já tem.
+  bool TocandoVideo() {
+    content::WebContents* contents = web_contents();
+    return contents && contents->GetCurrentlyPlayingVideoCount() > 0;
+  }
+
+  void Tique() {
+    // Janela de fundo: a barra dela quase não aparece; espera.
+    if (Ligada() && GetWidget() && GetWidget()->IsActive() && !TelaCheia() &&
+        !TocandoVideo()) {
+      Amostrar();
+    }
+    intervalo_ = std::min(intervalo_ * 2, kIntervaloMaximo);
+    Agendar();
+  }
+
+  // Algo mudou na aba (troca, carregamento, cor do tema): uma amostra na
+  // hora, mesmo com vídeo tocando (é um quadro só, junto da mudança).
+  void Acordar() {
+    intervalo_ = kIntervaloMinimo;
+    if (!TelaCheia()) {
+      Amostrar();
+    }
+    Agendar();
+  }
+
   // Copia uma faixa de 6 de altura no topo da página, reduzida pra 64x2.
   void Amostrar() {
+    if (!Ligada()) {
+      Definir(std::nullopt);
+      return;
+    }
     content::WebContents* contents = web_contents();
     content::RenderWidgetHostView* view =
         contents ? contents->GetRenderWidgetHostView() : nullptr;
@@ -178,7 +244,16 @@ class Observador : public views::View,
     if (resultado.has_value() && !resultado->bitmap.drawsNothing()) {
       cor = CorDominante(resultado->bitmap);
     }
-    Definir(cor ? cor : Reserva());
+    if (!cor) {
+      cor = Reserva();
+    }
+    // Mudou: a página está se mexendo, amostra mais vezes.
+    auto it = Cores().find(browser_view_);
+    if (it == Cores().end() || Diferentes(it->second, cor)) {
+      intervalo_ = kIntervaloMinimo;
+      Agendar();
+    }
+    Definir(cor);
   }
 
   // Sem pixels (aba ainda não pintou): theme-color do site, ou o fundo.
@@ -212,7 +287,10 @@ class Observador : public views::View,
   raw_ptr<BrowserView> browser_view_;
   raw_ptr<TabStripModel> model_;
   int geracao_ = 0;
-  base::RepeatingTimer relogio_;
+  static constexpr base::TimeDelta kIntervaloMinimo = base::Milliseconds(1500);
+  static constexpr base::TimeDelta kIntervaloMaximo = base::Seconds(6);
+  base::TimeDelta intervalo_ = kIntervaloMinimo;
+  base::OneShotTimer relogio_;
   base::WeakPtrFactory<Observador> weak_factory_{this};
 };
 
