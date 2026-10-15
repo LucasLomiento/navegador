@@ -18,6 +18,22 @@ index f8363d5b29..50d326fa01 100644
 +MAC_BUNDLE_ID=io.github.lucaslomiento.Navegador
  MAC_CREATOR_CODE=Cr24
  MAC_TEAM_ID=
+diff --git i/chrome/browser/first_run/first_run_internal_linux.cc w/chrome/browser/first_run/first_run_internal_linux.cc
+index e039d51157..c38cbf4870 100644
+--- i/chrome/browser/first_run/first_run_internal_linux.cc
++++ w/chrome/browser/first_run/first_run_internal_linux.cc
+@@ -43,6 +43,11 @@ base::FilePath InitialPrefsPath() {
+ }
+ 
+ bool ShowEulaDialog() {
++  // navegador: sem termos de serviço pra aceitar (a janela saía em branco,
++  // "This Space Intentionally Blank", fora das compilações do Google).
++  if (true) {
++    return true;
++  }
+   base::FilePath user_data_dir;
+   if (!base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir)) {
+     return false;
 diff --git i/chrome/browser/shell_integration_linux.cc w/chrome/browser/shell_integration_linux.cc
 index 2c071e6ba8..c8df6db6f2 100644
 --- i/chrome/browser/shell_integration_linux.cc
