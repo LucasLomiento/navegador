@@ -449,6 +449,50 @@ index b7cdb8f557..8cf7ad5a8d 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
+diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
+index 52dd469d6d..08968e51d0 100644
+--- i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
++++ w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
+@@ -14,6 +14,7 @@
+ #include "ui/base/ui_base_features.h"
+ #include "ui/compositor/layer.h"
+ #include "ui/gfx/canvas.h"
++#include "ui/gfx/font_list.h"
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/views/actions/action_view_interface.h"
+ #include "ui/views/animation/ink_drop.h"
+@@ -160,6 +161,9 @@ void TabStripFlatEdgeButton::SetShouldShowLabel(bool show_label) {
+     label()->SetSkipSubpixelRenderingOpacityCheck(true);
+     label()->layer()->SetFillsBoundsOpaquely(false);
+     label()->SetSubpixelRenderingEnabled(false);
++    // navegador: 13, o tamanho do texto da lateral do Dia.
++    label()->SetFontList(gfx::FontList().DeriveWithSizeDelta(
++        13 - gfx::FontList().GetFontSize()));
+   }
+ }
+ 
+diff --git i/chrome/browser/ui/views/tabs/tab/tab_title.cc w/chrome/browser/ui/views/tabs/tab/tab_title.cc
+index b0b58ef943..5ae1de1d7b 100644
+--- i/chrome/browser/ui/views/tabs/tab/tab_title.cc
++++ w/chrome/browser/ui/views/tabs/tab/tab_title.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
++#include "ui/gfx/font_list.h"
+ 
+ TabTitle::TabTitle() {
+   SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
+@@ -20,6 +21,9 @@ TabTitle::TabTitle() {
+   SetSkipSubpixelRenderingOpacityCheck(true);
+   SetCanProcessEventsWithinSubtree(false);
+   SetCollapseWhenHidden(true);
++  // navegador: 13, o tamanho do texto das abas do Dia.
++  SetFontList(gfx::FontList().DeriveWithSizeDelta(
++      13 - gfx::FontList().GetFontSize()));
+ }
+ 
+ BEGIN_METADATA(TabTitle)
 diff --git i/components/bookmarks/browser/bookmark_utils.cc w/components/bookmarks/browser/bookmark_utils.cc
 index d8f32a1ca6..0f9d4e3d3b 100644
 --- i/components/bookmarks/browser/bookmark_utils.cc
