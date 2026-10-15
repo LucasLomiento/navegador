@@ -18,7 +18,21 @@ constexpr char kSemIA[] =
     "LensOverlay,"         // Google Lens com IA por cima da página
     "Glic,"                // Gemini no Chrome
     "GlicRollout,"
-    "HistoryEmbeddings";   // busca no histórico com IA
+    "GlicSelectionPrompt,"  // sugestão do Gemini ao selecionar texto
+    "HistoryEmbeddings,"   // busca no histórico com IA
+    "TabOrganization,"     // "organizar guias" com IA
+    "AutofillAi,"          // preenchimento automático com IA
+    "AutofillAiWithDataSchema,"
+    "PermissionsAIv1,"     // pedidos de permissão avaliados por IA
+    "PermissionsAIv3,"
+    "PermissionsAIP92,"
+    "ContextualTasks,"     // tarefas com IA no painel lateral
+    "ContextualCueing,"    // sugestões de IA pela página
+    "ContextualCueingV2,"
+    "GoogleSearchAiModeWorkspace,"
+    "AiModeOmniboxEntryPoint,"
+    "Indigo,"
+    "SkillsEnabled";
 
 }  // namespace
 
