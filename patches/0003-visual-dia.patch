@@ -102,7 +102,7 @@ index 1044c32c43..72c680b6cf 100644
    </body>
  </html>
 diff --git i/chrome/browser/search/search.cc w/chrome/browser/search/search.cc
-index 6d3e318b62..5e014cc769 100644
+index 6d3e318b62..6c0187ca54 100644
 --- i/chrome/browser/search/search.cc
 +++ w/chrome/browser/search/search.cc
 @@ -191,9 +191,8 @@ struct NewTabURLDetails {
@@ -113,7 +113,7 @@ index 6d3e318b62..5e014cc769 100644
 -                             ? chrome::ChromeUINewTabPageURLAsGURL()
 -                             : GURL(chrome::kChromeUINewTabPageThirdPartyURL));
 +    // navegador: sempre a nova aba simples (a do Dia), com qualquer busca.
-+    const GURL local_url(GURL(chrome::kChromeUINewTabPageThirdPartyURL));
++    const GURL local_url(chrome::kChromeUINewTabPageThirdPartyURL);
      if (default_is_google) {
        return NewTabURLDetails(local_url, NEW_TAB_URL_VALID);
      }
