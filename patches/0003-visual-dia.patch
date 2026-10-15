@@ -370,6 +370,36 @@ index 29dfbde914..9a8c318a1d 100644
      } else {
        vertical_tabs_background->SetPrimaryColor(frame_color);
      }
+diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
+index 62f69255e0..f54a0e6328 100644
+--- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
++++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/opaque_browser_frame_view.h"
+ 
++#include "navegador/browser/ui/cores.h"
++
+ #include <algorithm>
+ #include <utility>
+ 
+@@ -670,6 +672,16 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+     }
+   }
+ 
++  // navegador: vidro. A moldura é um fundo só, translúcido, na janela toda
++  // (atrás da lateral e da margem do cartão). Pintada em partes (faixa de
++  // cima + bordas), cada região saía num tom.
++  if (navegador::cores::kVidro &&
++      GetBrowserView()->browser()->GetType() ==
++          BrowserWindowInterface::Type::TYPE_NORMAL) {
++    canvas->FillRect(GetLocalBounds(), frame_color);
++    return;
++  }
++
+   if (IsFrameCondensed()) {
+     PaintMaximizedFrameBorder(canvas);
+   } else {
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 index b7cdb8f557..8cf7ad5a8d 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
