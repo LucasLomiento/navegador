@@ -449,3 +449,17 @@ index b7cdb8f557..8cf7ad5a8d 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
+diff --git i/components/bookmarks/browser/bookmark_utils.cc w/components/bookmarks/browser/bookmark_utils.cc
+index d8f32a1ca6..0f9d4e3d3b 100644
+--- i/components/bookmarks/browser/bookmark_utils.cc
++++ w/components/bookmarks/browser/bookmark_utils.cc
+@@ -464,7 +464,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+       prefs::kShowAppsShortcutInBookmarkBar, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterBooleanPref(
+-      prefs::kShowTabGroupsInBookmarkBar, true,
++      // navegador: os espaços (grupos) ficam só na lateral, sem barra.
++      prefs::kShowTabGroupsInBookmarkBar, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterBooleanPref(
+       prefs::kShowManagedBookmarksInBookmarkBar, true,

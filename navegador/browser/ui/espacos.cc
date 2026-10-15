@@ -33,13 +33,16 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
 #include "ui/color/color_provider.h"
+#include "ui/base/accelerators/accelerator.h"
 #include "ui/events/event.h"
+#include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/font_list.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/background.h"
 #include "ui/views/context_menu_controller.h"
 #include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/focus/focus_manager.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/label.h"
@@ -176,6 +179,40 @@ class FaixaDeEspacos : public views::View,
 
   ~FaixaDeEspacos() override { model_->RemoveObserver(this); }
 
+  // Atalhos: Ctrl+Alt+→/← troca de espaço, Ctrl+Alt+N cria um.
+  void AddedToWidget() override {
+    if (views::FocusManager* foco = GetFocusManager()) {
+      for (const ui::Accelerator& atalho : Atalhos()) {
+        foco->RegisterAccelerator(atalho,
+                                  ui::AcceleratorManager::kHighPriority, this);
+      }
+    }
+  }
+  void RemovedFromWidget() override {
+    if (views::FocusManager* foco = GetFocusManager()) {
+      foco->UnregisterAccelerators(this);
+    }
+  }
+  bool AcceleratorPressed(const ui::Accelerator& atalho) override {
+    switch (atalho.key_code()) {
+      case ui::VKEY_RIGHT:
+        Girar(/*pra_frente=*/true);
+        return true;
+      case ui::VKEY_LEFT:
+        Girar(/*pra_frente=*/false);
+        return true;
+      case ui::VKEY_N:
+        NovoEspaco();
+        return true;
+      default:
+        return false;
+    }
+  }
+  // Valem mesmo com a faixa escondida (lateral recolhida).
+  bool CanHandleAccelerators() const override {
+    return GetWidget() && GetWidget()->IsActive();
+  }
+
   // views::View:
   gfx::Size CalculatePreferredSize(
       const views::SizeBounds& available_size) const override {
@@ -288,6 +325,13 @@ class FaixaDeEspacos : public views::View,
   }
 
  private:
+  static std::vector<ui::Accelerator> Atalhos() {
+    constexpr int kMod = ui::EF_CONTROL_DOWN | ui::EF_ALT_DOWN;
+    return {ui::Accelerator(ui::VKEY_RIGHT, kMod),
+            ui::Accelerator(ui::VKEY_LEFT, kMod),
+            ui::Accelerator(ui::VKEY_N, kMod)};
+  }
+
   std::vector<tab_groups::TabGroupId> Espacos() const {
     return model_->group_model() ? model_->group_model()->ListTabGroups()
                                  : std::vector<tab_groups::TabGroupId>();
