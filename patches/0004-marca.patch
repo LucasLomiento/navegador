@@ -74,6 +74,21 @@ index 5575c049b2..bf3e78ffeb 100644
  #endif
    *result = config_dir.Append(data_dir_basename + GetChannelSuffixForDataDir());
    return true;
+diff --git i/components/policy/core/common/policy_paths.cc w/components/policy/core/common/policy_paths.cc
+index 7c15eeaa4f..ad8005d0f1 100644
+--- i/components/policy/core/common/policy_paths.cc
++++ w/components/policy/core/common/policy_paths.cc
+@@ -18,7 +18,9 @@ const char kPolicyPath[] = "/etc/opt/chrome/policies";
+ #elif BUILDFLAG(GOOGLE_CHROME_FOR_TESTING_BRANDING)
+ const char kPolicyPath[] = "/etc/opt/chrome_for_testing/policies";
+ #else
+-const char kPolicyPath[] = "/etc/chromium/policies";
++// navegador: políticas próprias. As do Chromium do sistema (o Omarchy põe
++// a cor do tema lá) deixavam o navegador "gerenciado pela organização".
++const char kPolicyPath[] = "/etc/navegador/policies";
+ #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+ #endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC)
+ 
 diff --git i/components/vector_icons/chromium/product.icon w/components/vector_icons/chromium/product.icon
 index 072c907d5b..4dbb252ae4 100644
 --- i/components/vector_icons/chromium/product.icon
