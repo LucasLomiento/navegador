@@ -54,7 +54,7 @@ constexpr Paleta kEscuro = {
     .pagina = SkColorSetRGB(0x1F, 0x1F, 0x1F),
     .texto = SK_ColorWHITE,
     .texto_inativo = SkColorSetARGB(0xC5, 0xFF, 0xFF, 0xFF),
-    .aba_ativa = SkColorSetARGB(0xE6, 0x1C, 0x1C, 0x1C),
+    .aba_ativa = SkColorSetARGB(0x1F, 0xFF, 0xFF, 0xFF),
     .aba_hover = SkColorSetARGB(0x0B, 0xFF, 0xFF, 0xFF),
     .aba_selecionada = SkColorSetARGB(0x1F, 0xFF, 0xFF, 0xFF),
     .divisor = SkColorSetARGB(0x15, 0xFF, 0xFF, 0xFF),
@@ -172,6 +172,9 @@ void AddColorMixer(ui::ColorProvider* provider,
   // Abas da lateral.
   mixer[kColorTabBackgroundActiveFrameActive] = {p.aba_ativa};
   mixer[kColorTabBackgroundActiveFrameInactive] = {p.aba_ativa};
+  // Inativas sem fundo nenhum (só o hover), como no Dia.
+  mixer[kColorTabBackgroundInactiveFrameActive] = {SK_ColorTRANSPARENT};
+  mixer[kColorTabBackgroundInactiveFrameInactive] = {SK_ColorTRANSPARENT};
   mixer[kColorTabBackgroundInactiveHoverFrameActive] = {p.aba_hover};
   mixer[kColorTabBackgroundInactiveHoverFrameInactive] = {p.aba_hover};
   mixer[kColorTabBackgroundSelectedFrameActive] = {p.aba_selecionada};

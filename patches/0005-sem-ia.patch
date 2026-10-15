@@ -32,6 +32,21 @@ index 90e572fe4e..d1171582ea 100644
    CreateMetricsServices();
    SetupInitialPrefs();
    SetUpFieldTrials();
+diff --git i/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc w/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
+index a514402e94..a9746af92b 100644
+--- i/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
++++ w/chrome/browser/ui/views/profiles/avatar_toolbar_button_state_manager.cc
+@@ -1360,7 +1360,9 @@ class PromoStateProvider : public StateProvider {
+ 
+   // StateProvider:
+   bool IsActive() const override {
+-    return coordinator_->promo_type().has_value();
++    // navegador: sem convites da conta Google no botão de perfil (não há
++    // sincronização).
++    return false;
+   }
+ 
+   std::u16string GetText() const override {
 diff --git i/components/signin/internal/identity_manager/primary_account_manager.cc w/components/signin/internal/identity_manager/primary_account_manager.cc
 index cb7399be2c..2efe80cb60 100644
 --- i/components/signin/internal/identity_manager/primary_account_manager.cc
