@@ -1051,7 +1051,7 @@ index c3035d4826..e082783f57 100644
  
      auto drag_data = tab_group_view->GetVisualDataForDraggedView(*child);
 diff --git i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
-index 5dd9f7ef1a..a5bcaed325 100644
+index 5dd9f7ef1a..7418a942d9 100644
 --- i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
 +++ w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
 @@ -4,6 +4,8 @@
@@ -1073,6 +1073,19 @@ index 5dd9f7ef1a..a5bcaed325 100644
  }  // namespace
  
  UnpinnedTabContainerViewLayout::UnpinnedTabContainerViewLayout(
+@@ -344,6 +347,12 @@ gfx::Size UnpinnedTabContainerViewLayout::CalculateVerticalMinimumSize(
+         should_show = false;
+       }
+     }
++    // navegador: espaço só com abas ligadas a sites fixados (que aparecem no
++    // alto da lateral, com altura zero aqui): sem a altura mínima de uma aba,
++    // senão sobra um vão entre o divisor e o "+ Nova guia".
++    if (should_show && child->GetPreferredSize().height() == 0) {
++      should_show = false;
++    }
+     if (should_show) {
+       num_children++;
+     }
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
 index ffb1fdda20..3d8d92c6bf 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
