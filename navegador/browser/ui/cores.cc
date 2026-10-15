@@ -91,6 +91,43 @@ class Barra : public ui::ColorProviderKey::InitializerSupplier {
     mixer[kColorToolbarButtonIconInactive] = {SkColorSetA(texto, 0x5C)};
     mixer[kColorToolbarInkDrop] = {texto};
     mixer[kColorToolbarContentAreaSeparator] = {SkColorSetA(texto, 0x1A)};
+
+    // Ícone do site sem a bolinha de fundo do Chromium (no Dia é só o
+    // ícone).
+    mixer[kColorOmniboxIconBackground] = {SK_ColorTRANSPARENT};
+    mixer[kColorOmniboxIconForeground] = {texto};
+    mixer[kColorOmniboxIconHover] = {SkColorSetA(texto, 0x1A)};
+    mixer[kColorOmniboxIconPressed] = {SkColorSetA(texto, 0x29)};
+    mixer[kColorOmniboxActionIcon] = {SkColorSetA(texto, 0xB3)};
+    mixer[kColorOmniboxActionIconHover] = {SkColorSetA(texto, 0x1A)};
+
+    // Endereço focado e sugestões no mesmo tom da barra: sem isso, num site
+    // escuro com o sistema claro a caixa ficava branca com o texto branco.
+    const SkColor caixa =
+        escura ? color_utils::BlendTowardMaxContrast(cor_, 0x1C)
+               : SK_ColorWHITE;
+    const SkColor fraco = SkColorSetA(texto, 0x99);
+    const SkColor link = escura ? SkColorSetRGB(0x8A, 0xB4, 0xF8)
+                                : SkColorSetRGB(0x0B, 0x57, 0xD0);
+    mixer[kColorOmniboxResultsBackground] = {caixa};
+    mixer[kColorOmniboxResultsBackgroundIph] = {caixa};
+    mixer[kColorOmniboxResultsBackgroundHovered] = {
+        color_utils::BlendTowardMaxContrast(caixa, 0x10)};
+    mixer[kColorOmniboxResultsBackgroundSelected] = {
+        color_utils::BlendTowardMaxContrast(caixa, 0x1C)};
+    mixer[kColorOmniboxResultsBackgroundHoverOverlay] = {
+        SkColorSetA(texto, 0x10)};
+    mixer[kColorOmniboxResultsTextSelected] = {texto};
+    mixer[kColorOmniboxResultsTextDimmed] = {fraco};
+    mixer[kColorOmniboxResultsTextDimmedSelected] = {fraco};
+    mixer[kColorOmniboxResultsTextSecondary] = {fraco};
+    mixer[kColorOmniboxResultsTextSecondarySelected] = {fraco};
+    mixer[kColorOmniboxResultsTextAnswer] = {link};
+    mixer[kColorOmniboxResultsIcon] = {SkColorSetA(texto, 0xB3)};
+    mixer[kColorOmniboxResultsIconSelected] = {SkColorSetA(texto, 0xB3)};
+    mixer[kColorOmniboxResultsIconHovered] = {SkColorSetA(texto, 0x21)};
+    mixer[kColorOmniboxResultsUrl] = {link};
+    mixer[kColorOmniboxResultsUrlSelected] = {link};
   }
 
  private:

@@ -519,6 +519,106 @@ index b7cdb8f557..8cf7ad5a8d 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
+diff --git i/chrome/browser/ui/views/location_bar/location_bar_view.cc w/chrome/browser/ui/views/location_bar/location_bar_view.cc
+index 9251f8590b..ccf638ed3c 100644
+--- i/chrome/browser/ui/views/location_bar/location_bar_view.cc
++++ w/chrome/browser/ui/views/location_bar/location_bar_view.cc
+@@ -853,6 +853,7 @@ void LocationBarView::Layout(PassKey) {
+     }
+   }
+ 
++  bool icone_do_site_no_fim = false;
+   if (ShouldShowKeywordBubble()) {
+     location_icon_view_->SetVisible(false);
+     leading_decorations.AddDecoration(
+@@ -862,14 +863,25 @@ void LocationBarView::Layout(PassKey) {
+   } else if (location_icon_view_->GetShowText() &&
+              !ShouldChipOverrideLocationIcon()) {
+     location_icon_view_->SetVisible(true);
++    // navegador: com texto ("Não seguro") o ícone fica aceso mesmo parado.
++    if (location_icon_view_->layer()) {
++      location_icon_view_->layer()->SetOpacity(1.0f);
++    }
+     leading_decorations.AddDecoration(
+         vertical_padding, location_height, false, kLeadingDecorationMaxFraction,
+         /*intra_item_padding=*/0, icon_left, location_icon_view_);
+   } else if (!ShouldChipOverrideLocationIcon()) {
+     location_icon_view_->SetVisible(true);
+-    leading_decorations.AddDecoration(vertical_padding, location_height, false,
+-                                      0, /*intra_item_padding=*/0, icon_left,
+-                                      location_icon_view_);
++    // navegador: sem foco, o ícone do site vai pro fim da caixa (onde o Dia
++    // põe o "...") e o domínio começa na borda; com foco ele volta pra
++    // esquerda, alinhado com as sugestões.
++    if (omnibox_view_->HasFocus()) {
++      leading_decorations.AddDecoration(vertical_padding, location_height,
++                                        false, 0, /*intra_item_padding=*/0,
++                                        icon_left, location_icon_view_);
++    } else {
++      icone_do_site_no_fim = true;
++    }
+   } else {
+     location_icon_view_->SetVisible(false);
+   }
+@@ -882,6 +894,10 @@ void LocationBarView::Layout(PassKey) {
+           /*max_fraction=*/0, intra_item_padding, edge_padding, view);
+     }
+   };
++  if (icone_do_site_no_fim) {
++    add_trailing_decoration(location_icon_view_, /*intra_item_padding=*/0,
++                            /*edge_padding=*/trailing_decorations_edge_padding);
++  }
+ 
+   if (features::IsPageActionsElevatedToolbarEnabled()) {
+     if (page_action_container_ && page_action_container_->GetVisible()) {
+@@ -1437,6 +1453,29 @@ void LocationBarView::RefreshBackground() {
+     permission_dashboard_view_->SetDividerBackgroundColor(background_color_);
+   }
+ 
++  // navegador: parado, o endereço do Dia é só texto. O ícone do site (menos
++  // quando ele tem texto, como "Não seguro") e as ações da página aparecem
++  // junto com a caixa, no hover ou no foco.
++  if (!is_popup_mode_) {
++    const float acesos =
++        omnibox_view_->HasFocus() || input_in_progress ? 1.0f : opacity;
++    views::View* const site = location_icon_view_.get();
++    views::View* const icones[] = {site, page_action_container_.get()};
++    for (views::View* icone : icones) {
++      if (!icone) {
++        continue;
++      }
++      if (!icone->layer()) {
++        icone->SetPaintToLayer();
++        icone->layer()->SetFillsBoundsOpaquely(false);
++      }
++      icone->layer()->SetOpacity(
++          icone == site && location_icon_view_->GetShowText()
++              ? 1.0f
++              : acesos);
++    }
++  }
++
+   SchedulePaint();
+ }
+ 
+@@ -2041,6 +2080,8 @@ void LocationBarView::OnOmniboxFocused() {
+   // the omnibox is intentional, snapping is better than transitioning here.
+   hover_animation_.Reset();
+   RefreshBackground();
++  // navegador: o ícone do site troca de lado com o foco.
++  InvalidateLayout();
+ 
+   // The AI mode page action should only be visible when the omnibox
+   // is focused, so if there is a change in focus, refresh the icon.
+@@ -2067,6 +2108,8 @@ void LocationBarView::OnOmniboxBlurred() {
+   RefreshAiModePageAction();
+ 
+   location_icon_view_->Update(false, false);
++  // navegador: o ícone do site troca de lado com o foco.
++  InvalidateLayout();
+ }
+ 
+ bool LocationBarView::IsFullWebUiOmniboxReady() const {
 diff --git i/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc w/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
 index c7c218422c..cd2172eca5 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
@@ -537,6 +637,28 @@ index c7c218422c..cd2172eca5 100644
  
      // Update label.
      group_header_label_->SetEnabledColor(foreground_color);
+diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
+index ffb1fdda20..3d8d92c6bf 100644
+--- i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
++++ w/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
+@@ -379,13 +379,11 @@ void TabStripComboButton::SetTabSearchBubbleHost(TabSearchBubbleHost* host) {
+   tab_search_bubble_host_observation_.Reset();
+   if (host) {
+     tab_search_bubble_host_observation_.Observe(host);
++    // navegador: seta pra baixo também na lateral, como o "abas recentes" do
++    // Dia (o Chromium põe uma lupa).
+     GetEndButtonActionItem()->SetImage(ui::ImageModel::FromVectorIcon(
+-        context_ == Context::kVerticalTabStrip
+-            ? features::IsRoundedIconsEnabled() ? kManageSearchIcon
+-                                                : kTabSearchTabStripOldIcon
+-        : features::IsRoundedIconsEnabled()
+-            ? vector_icons::kKeyboardArrowDownIcon
+-            : vector_icons::kExpandMoreOldIcon));
++        features::IsRoundedIconsEnabled() ? vector_icons::kKeyboardArrowDownIcon
++                                          : vector_icons::kExpandMoreOldIcon));
+   }
+ }
+ 
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
 index 52dd469d6d..08968e51d0 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
@@ -644,16 +766,18 @@ index d5c6d18f92..6cf329c54f 100644
    // in the location bar.
    virtual bool ShouldDisplayURL() const;
 diff --git i/components/omnibox/browser/location_bar_model_impl.cc w/components/omnibox/browser/location_bar_model_impl.cc
-index fceda6b642..465896b346 100644
+index fceda6b642..7ae8e7bc8c 100644
 --- i/components/omnibox/browser/location_bar_model_impl.cc
 +++ w/components/omnibox/browser/location_bar_model_impl.cc
-@@ -149,6 +149,15 @@ std::u16string LocationBarModelImpl::GetFormattedURL(
+@@ -149,6 +149,17 @@ std::u16string LocationBarModelImpl::GetFormattedURL(
    // a real problem, we could perhaps try to keep some sort of different "elided
    // visible URL" where editing affects and reloads the "real underlying URL",
    // but this seems very tricky for little gain.
-+  // navegador: parada, "domínio / título" (como no Dia). Ao focar, o
-+  // endereço inteiro volta (Unelide).
-+  if (delegate_->ShouldTrimDisplayUrlAfterHostName()) {
++  // navegador: parada, "domínio / título" (como no Dia). Só no texto de
++  // exibição (o que corta depois do domínio): o endereço completo, que é o
++  // que vai pra edição e pra cópia ao focar, fica sem o título.
++  if ((format_types & url_formatter::kFormatUrlTrimAfterHost) &&
++      delegate_->ShouldTrimDisplayUrlAfterHostName()) {
 +    const std::u16string titulo = delegate_->GetPageTitleForDisplay();
 +    if (!titulo.empty()) {
 +      return gfx::TruncateString(formatted_text + u" / " + titulo,
