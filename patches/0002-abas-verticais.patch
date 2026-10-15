@@ -1,0 +1,198 @@
+diff --git i/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts w/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
+index b6cf0bffe2..b68ec7ae64 100644
+--- i/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
++++ w/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
+@@ -161,7 +161,8 @@ export function getHtml(this: SettingsAppearancePageElement) {
+     </if>
+ 
+ 
+-    <div class="cr-row">
++    <!-- navegador: abas sempre na lateral, sem escolha de posição. -->
++    <div class="cr-row" hidden>
+       <div class="flex cr-padded-text" aria-hidden="true">
+         $i18n{tabStripPosition}
+       </div>
+diff --git i/chrome/browser/ui/tabs/tab_menu_model.cc w/chrome/browser/ui/tabs/tab_menu_model.cc
+index 97c6ded1ac..d2d062fbb5 100644
+--- i/chrome/browser/ui/tabs/tab_menu_model.cc
++++ w/chrome/browser/ui/tabs/tab_menu_model.cc
+@@ -585,33 +585,7 @@ void TabMenuModel::Build(int index) {
+     }
+   }
+ 
+-  if (controller) {
+-    AddSeparator(ui::NORMAL_SEPARATOR);
+-    const int switch_to_horizontal_id =
+-#if BUILDFLAG(IS_MAC)
+-        IDS_SWITCH_TO_HORIZONTAL_TAB_MAC;
+-#else
+-        IDS_SWITCH_TO_HORIZONTAL_TAB;
+-#endif
+-
+-    const int switch_to_vertical_id =
+-#if BUILDFLAG(IS_MAC)
+-        IDS_SWITCH_TO_VERTICAL_TAB_MAC;
+-#else
+-        IDS_SWITCH_TO_VERTICAL_TAB;
+-#endif
+-    if (controller->ShouldDisplayVerticalTabs()) {
+-      AddItemWithStringId(TabStripModel::CommandToggleVertical,
+-                          switch_to_horizontal_id);
+-    } else {
+-      AddItemWithStringId(TabStripModel::CommandToggleVertical,
+-                          switch_to_vertical_id);
+-      const user_education::DisplayNewBadge show_badge =
+-          UserEducationService::MaybeShowNewBadge(tab_strip_->profile(),
+-                                                  tabs::kVerticalTabsNewBadge);
+-      SetIsNewFeatureAt(GetItemCount() - 1, show_badge);
+-    }
+-  }
++  // navegador: sem "mover abas pra cima" (abas sempre na lateral).
+ 
+   // Append extension items for the 'tab' context if the feature is enabled.
+ #if BUILDFLAG(ENABLE_EXTENSIONS)
+diff --git i/chrome/browser/ui/tabs/tab_strip_prefs.cc w/chrome/browser/ui/tabs/tab_strip_prefs.cc
+index ca0afc6fd0..aa5c8a660f 100644
+--- i/chrome/browser/ui/tabs/tab_strip_prefs.cc
++++ w/chrome/browser/ui/tabs/tab_strip_prefs.cc
+@@ -24,7 +24,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref(prefs::kOrganizerPanelPinnedToTabstrip, true);
+   registry->RegisterBooleanPref(prefs::kEverythingMenuPinnedToTabstrip, true);
+   registry->RegisterBooleanPref(prefs::kTabScrollButtonsPinnedToTabstrip, true);
+-  registry->RegisterBooleanPref(prefs::kVerticalTabsEnabled, false);
++  // navegador: abas sempre na lateral.
++  registry->RegisterBooleanPref(prefs::kVerticalTabsEnabled, true);
+   registry->RegisterBooleanPref(
+       prefs::kVerticalTabsExpandOnHoverEnabled,
+       tabs::kVerticalTabsExpandOnHoverDefaultEnabled.Get());
+diff --git i/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc w/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+index 22ece00a8c..8cda035e98 100644
+--- i/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
++++ w/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
+@@ -183,6 +183,10 @@ bool VerticalTabStripStateController::ShouldDisplayVerticalTabs() const {
+ }
+ 
+ void VerticalTabStripStateController::SetVerticalTabsEnabled(bool enabled) {
++  // navegador: abas sempre na lateral, não tem como voltar pra cima.
++  if (!enabled) {
++    return;
++  }
+   // If the user already has a pending mode switch, but tries to change tab
+   // strip mode again, ensure the toast is displayed.
+   if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
+diff --git i/chrome/browser/ui/toolbar/app_menu_model.cc w/chrome/browser/ui/toolbar/app_menu_model.cc
+index f8f6a64f35..b8b058e8c5 100644
+--- i/chrome/browser/ui/toolbar/app_menu_model.cc
++++ w/chrome/browser/ui/toolbar/app_menu_model.cc
+@@ -1061,26 +1061,7 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
+       this, IDC_NAME_WINDOW, IDS_NAME_WINDOW,
+       features::IsRoundedIconsEnabled() ? kWebAssetIcon : kNameWindowOldIcon);
+ 
+-  if (auto* controller = tabs::VerticalTabStripStateController::From(browser)) {
+-    if (controller->ShouldDisplayVerticalTabs()) {
+-      AddItemWithStringIdAndVectorIcon(
+-          this, IDC_TOGGLE_VERTICAL_TABS, IDS_SWITCH_TO_HORIZONTAL_TAB,
+-          features::IsRoundedIconsEnabled() ? kToolbarIcon : kToolbarOldIcon);
+-    } else {
+-      AddItemWithStringIdAndVectorIcon(
+-          this, IDC_TOGGLE_VERTICAL_TABS, IDS_SWITCH_TO_VERTICAL_TAB,
+-          base::i18n::IsRTL() ? features::IsRoundedIconsEnabled()
+-                                    ? kDockToLeftIcon
+-                                    : kDockToRightOldIcon
+-          : features::IsRoundedIconsEnabled() ? kDockToRightIcon
+-                                              : kDockToLeftOldIcon);
+-      const user_education::DisplayNewBadge show_badge =
+-          UserEducationService::MaybeShowNewBadge(browser->GetProfile(),
+-                                                  tabs::kVerticalTabsNewBadge);
+-      SetIsNewFeatureAt(GetIndexOfCommandId(IDC_TOGGLE_VERTICAL_TABS).value(),
+-                        show_badge, ui::NewBadgeType::kNew);
+-    }
+-  }
++  // navegador: sem "mover abas pra cima" (abas sempre na lateral).
+ 
+   if (CustomizeChromePageHandler::IsSupported(
+           NtpCustomBackgroundServiceFactory::GetForProfile(
+diff --git i/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc w/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
+index eb00016d40..5ea4c92508 100644
+--- i/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
++++ w/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
+@@ -661,36 +661,7 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
+ 
+           sub.AddAction(kActionNameWindow);
+ 
+-          if (auto* controller = tabs::VerticalTabStripStateController::From(
+-                  browser_window_interface_.get())) {
+-            if (controller->ShouldDisplayVerticalTabs()) {
+-              sub.AddAction(
+-                  kActionToggleVerticalTabs, /*type=*/std::nullopt,
+-                  /*text_override=*/
+-                  l10n_util::GetStringUTF16(IDS_SWITCH_TO_HORIZONTAL_TAB),
+-                  /*icon_override=*/
+-                  ui::ImageModel::FromVectorIcon(
+-                      features::IsRoundedIconsEnabled() ? kToolbarIcon
+-                                                        : kToolbarOldIcon,
+-                      ui::kColorMenuIcon,
+-                      ui::SimpleMenuModel::kDefaultIconSize));
+-            } else {
+-              sub.AddAction(
+-                  kActionToggleVerticalTabs, /*type=*/std::nullopt,
+-                  /*text_override=*/
+-                  l10n_util::GetStringUTF16(IDS_SWITCH_TO_VERTICAL_TAB),
+-                  /*icon_override=*/
+-                  ui::ImageModel::FromVectorIcon(
+-                      base::i18n::IsRTL() ? (features::IsRoundedIconsEnabled()
+-                                                 ? kDockToLeftIcon
+-                                                 : kDockToRightOldIcon)
+-                                          : (features::IsRoundedIconsEnabled()
+-                                                 ? kDockToRightIcon
+-                                                 : kDockToLeftOldIcon),
+-                      ui::kColorMenuIcon,
+-                      ui::SimpleMenuModel::kDefaultIconSize));
+-            }
+-          }
++          // navegador: sem "mover abas pra cima" (abas sempre na lateral).
+ 
+           Profile* profile = browser_window_interface_->GetProfile();
+           if (CustomizeChromePageHandler::IsSupported(
+diff --git i/chrome/browser/ui/views/frame/system_menu_model_builder.cc w/chrome/browser/ui/views/frame/system_menu_model_builder.cc
+index 20c579d108..8727689000 100644
+--- i/chrome/browser/ui/views/frame/system_menu_model_builder.cc
++++ w/chrome/browser/ui/views/frame/system_menu_model_builder.cc
+@@ -200,13 +200,6 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
+ 
+     model->AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+-    const int switch_to_horizontal_id =
+-#if BUILDFLAG(IS_MAC)
+-        IDS_SWITCH_TO_HORIZONTAL_TAB_MAC;
+-#else
+-        IDS_SWITCH_TO_HORIZONTAL_TAB;
+-#endif
+-
+     const int switch_to_vertical_id =
+ #if BUILDFLAG(IS_MAC)
+         IDS_SWITCH_TO_VERTICAL_TAB_MAC;
+@@ -214,9 +207,7 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
+         IDS_SWITCH_TO_VERTICAL_TAB;
+ #endif
+     if (display_vertical_tabs) {
+-      model->AddItemWithStringId(IDC_TOGGLE_VERTICAL_TABS,
+-                                 switch_to_horizontal_id);
+-
++      // navegador: sem "mover abas pra cima" (abas sempre na lateral).
+       model->AddItemWithStringId(IDC_TOGGLE_VERTICAL_TABS_COLLAPSE,
+                                  controller->IsCollapsed()
+                                      ? IDS_EXPAND_VERTICAL_TABS
+@@ -234,9 +225,9 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
+           model->GetIndexOfCommandId(IDC_TOGGLE_VERTICAL_TABS).value(),
+           show_badge, ui::NewBadgeType::kNew);
+     }
+-    model->SetElementIdentifierAt(
+-        model->GetIndexOfCommandId(IDC_TOGGLE_VERTICAL_TABS).value(),
+-        kToggleVerticalTabsElementId);
++    if (auto index = model->GetIndexOfCommandId(IDC_TOGGLE_VERTICAL_TABS)) {
++      model->SetElementIdentifierAt(*index, kToggleVerticalTabsElementId);
++    }
+ 
+     const bool show_expand_on_hover =
+         tabs::IsVerticalTabsExpandOnHoverFeatureEnabled() &&

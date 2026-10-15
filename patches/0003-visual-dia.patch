@@ -1,0 +1,155 @@
+diff --git i/chrome/browser/ui/color/BUILD.gn w/chrome/browser/ui/color/BUILD.gn
+index 0943df4390..dd2aa9e03b 100644
+--- i/chrome/browser/ui/color/BUILD.gn
++++ w/chrome/browser/ui/color/BUILD.gn
+@@ -18,6 +18,9 @@ source_set("color_headers") {
+ 
+ source_set("mixers") {
+   sources = [
++    # navegador: cores do Dia.
++    "//navegador/browser/ui/cores.cc",
++    "//navegador/browser/ui/cores.h",
+     "chrome_color_mixer.cc",
+     "chrome_color_mixer.h",
+     "chrome_color_mixers.cc",
+diff --git i/chrome/browser/ui/color/chrome_color_mixers.cc w/chrome/browser/ui/color/chrome_color_mixers.cc
+index 8432f49468..ee66f1720c 100644
+--- i/chrome/browser/ui/color/chrome_color_mixers.cc
++++ w/chrome/browser/ui/color/chrome_color_mixers.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/color/chrome_color_mixers.h"
+ 
++#include "navegador/browser/ui/cores.h"
++
+ #include <memory>
+ #include <string_view>
+ 
+@@ -95,4 +97,7 @@ void AddChromeColorMixers(ui::ColorProvider* provider,
+   if (key.app_controller) {
+     key.app_controller->AddColorMixers(provider, key);
+   }
++
++  // navegador: cores do Dia por cima de tudo (inclusive do tema do GTK).
++  navegador::cores::AddColorMixer(provider, key);
+ }
+diff --git i/chrome/browser/ui/layout_constants.cc w/chrome/browser/ui/layout_constants.cc
+index 7d1a2d797f..ee4b695e93 100644
+--- i/chrome/browser/ui/layout_constants.cc
++++ w/chrome/browser/ui/layout_constants.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/layout_constants.h"
+ 
++#include "navegador/browser/ui/visual.h"
++
+ #include "base/notreached.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/ui/tabs/features.h"
+@@ -18,6 +20,10 @@
+ #endif
+ 
+ int GetLayoutConstant(LayoutConstant constant) {
++  // navegador: medidas do Dia.
++  if (auto value = navegador::visual::LayoutConstantOverride(constant)) {
++    return *value;
++  }
+   const bool touch_ui = ui::TouchUiController::Get()->touch_ui();
+   switch (constant) {
+     case LayoutConstant::kAppMenuProfileRowAvatarIconSize:
+@@ -184,6 +190,10 @@ int GetLayoutConstant(LayoutConstant constant) {
+ }
+ 
+ gfx::Insets GetLayoutInsets(LayoutInset inset) {
++  // navegador: medidas do Dia.
++  if (auto insets = navegador::visual::LayoutInsetsOverride(inset)) {
++    return *insets;
++  }
+   const bool touch_ui = ui::TouchUiController::Get()->touch_ui();
+   switch (inset) {
+     case DOWNLOAD_ICON:
+diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+index 29dfbde914..f76664dca1 100644
+--- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.h"
+ 
++#include "navegador/browser/ui/visual.h"
++
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -822,6 +824,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+                                GetVerticalTabStripContentOverlap();
+       params.InsetHorizontal(inset_amount, /*leading=*/true);
+ 
++      // navegador: barra de navegação + página num cartão com margem até a
++      // borda da janela (visual do Dia).
++      if (!is_fullscreen(layout_data_->window_state)) {
++        params.Inset(gfx::Insets::TLBR(navegador::visual::kCartaoMargem,
++                                       GetVerticalTabStripContentOverlap(),
++                                       navegador::visual::kCartaoMargem,
++                                       navegador::visual::kCartaoMargem));
++      }
++
+       // Let the vertical tab strip animate out over the content.
+       if (vertical_tab_strip_animation.current_motion) {
+         clip_content_for_animation =
+@@ -855,8 +866,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+   if (IsParentedTo(views().vertical_tab_strip_top_corner,
+                    views().browser_view)) {
+     gfx::Rect corner_bounds;
++    // navegador: o cartão tem cantos próprios, sem o canto côncavo.
+     const bool top_corner_visible =
+         layout_data_->tab_strip_type == TabStripType::kVertical &&
++        is_fullscreen(layout_data_->window_state) &&
+         vertical_tab_strip_animation.top_corner > 0.0;
+ 
+     // The top corner is drawn when the tabstrip goes all the way to the top.
+@@ -878,8 +891,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+   if (IsParentedTo(views().vertical_tab_strip_bottom_corner,
+                    views().browser_view)) {
+     gfx::Rect corner_bounds;
++    // navegador: o cartão tem cantos próprios, sem o canto côncavo.
+     const bool bottom_corner_visible =
+         layout_data_->tab_strip_type == TabStripType::kVertical &&
++        is_fullscreen(layout_data_->window_state) &&
+         vertical_tab_strip_animation.bottom_corner > 0.0;
+     if (bottom_corner_visible) {
+       auto preferred =
+@@ -1231,6 +1246,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+       }
+     }
+     views().multi_contents_view->SetBackgroundRadii(content_corners);
++  } else if (layout_data_->tab_strip_type == TabStripType::kVertical) {
++    // navegador: fim do cartão, cantos de baixo arredondados.
++    gfx::RoundedCornersF content_corners;
++    if (!is_fullscreen(layout_data_->window_state)) {
++      content_corners.set_lower_left(navegador::visual::kCartaoRaio);
++      content_corners.set_lower_right(navegador::visual::kCartaoRaio);
++    }
++    views().multi_contents_view->SetBackgroundRadii(content_corners);
+   }
+ 
+   // Make final visual adjustments required for child views to paint.
+@@ -1427,9 +1450,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+   // By default, this is just a flat background.
+   CustomCornersBackground::Corners corners;
+ 
+-  // Rounded corners are drawn in vertical tab strip mode when not maximized or
+-  // fullscreen.
++  // navegador: começo do cartão, os dois cantos de cima arredondados (fora
++  // da tela cheia).
+   if (layout_data_->tab_strip_type == TabStripType::kVertical &&
++      !is_fullscreen(layout_data_->window_state)) {
++    const CustomCornersBackground::Corner cartao{
++        CustomCornersBackground::CornerType::kRounded,
++        navegador::visual::kCartaoRaio};
++    corners[CornerOrientation::kTopLeading] = cartao;
++    corners[CornerOrientation::kTopTrailing] = cartao;
++  } else if (layout_data_->tab_strip_type == TabStripType::kVertical &&
+       layout_data_->window_state == WindowState::kNormal) {
+     corners[CornerOrientation::kTopTrailing] =
+         background->GetWindowCorner(/*upper=*/true);
