@@ -1,0 +1,18 @@
+# Compilação do pacote: estática e otimizada, sem símbolos. Não é a
+# "official build" do Google (ThinLTO + PGO pedem RAM e perfis que não
+# temos); o código já sai em -O2.
+is_debug = false
+is_component_build = false
+symbol_level = 0
+blink_symbol_level = 0
+v8_symbol_level = 0
+dcheck_always_on = false
+treat_warnings_as_errors = false
+chrome_pgo_phase = 0
+use_remoteexec = false
+
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+enable_widevine = true
+
+use_official_google_api_keys = false

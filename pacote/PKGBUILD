@@ -1,0 +1,57 @@
+# Pacote do navegador a partir da compilação já feita (tools/compilar.sh
+# com tools/args-release.gn em out/release). Não compila nada aqui: o
+# Chromium leva horas e é compilado pelos scripts do repo.
+#
+#   cd pacote && makepkg -sif
+pkgname=navegador
+pkgver=155.0.8059.79
+pkgrel=1
+pkgdesc="Navegador próprio em cima do Chromium, com o visual do Dia"
+arch=(x86_64)
+url="https://github.com/LucasLomiento/navegador"
+license=(BSD-3-Clause)
+depends=(alsa-lib at-spi2-core cups dbus desktop-file-utils gtk3 hicolor-icon-theme
+         libcups libdrm libpulse libxkbcommon mesa nss pango systemd ttf-liberation
+         xdg-utils)
+optdepends=('pipewire: compartilhar tela no Wayland'
+            'kwallet: guardar senhas no KWallet'
+            'gnome-keyring: guardar senhas no keyring do GNOME')
+options=(!strip !debug)
+
+_out="${NAVEGADOR_OUT:-$HOME/Work/navegador-chromium/src/out/release}"
+_repo="$(cd "$startdir/.." && pwd)"
+
+package() {
+  local destino="$pkgdir/usr/lib/navegador"
+  install -Dm755 "$_out/chrome" "$destino/navegador"
+  install -Dm4755 "$_out/chrome_sandbox" "$destino/chrome-sandbox"
+  install -Dm755 "$_out/chrome_crashpad_handler" "$destino/chrome_crashpad_handler"
+
+  local arquivos=(
+    chrome_100_percent.pak chrome_200_percent.pak resources.pak
+    icudtl.dat v8_context_snapshot.bin
+    libEGL.so libGLESv2.so
+    libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
+    libqt5_shim.so libqt6_shim.so
+  )
+  for f in "${arquivos[@]}"; do
+    [[ -e "$_out/$f" ]] && cp "$_out/$f" "$destino/"
+  done
+  install -Dm644 -t "$destino/locales" "$_out"/locales/*.pak
+  for d in MEIPreload PrivacySandboxAttestationsPreloaded; do
+    [[ -d "$_out/$d" ]] && cp -r "$_out/$d" "$destino/"
+  done
+
+  install -Dm755 "$_repo/pacote/navegador.sh" "$pkgdir/usr/bin/navegador"
+  install -Dm644 "$_repo/pacote/navegador.desktop" \
+    "$pkgdir/usr/share/applications/navegador.desktop"
+  for tam in 16 24 32 48 64 128 256 512; do
+    install -dm755 "$pkgdir/usr/share/icons/hicolor/${tam}x${tam}/apps"
+    rsvg-convert -w $tam -h $tam "$_repo/navegador/app/icone.svg" \
+      -o "$pkgdir/usr/share/icons/hicolor/${tam}x${tam}/apps/navegador.png"
+  done
+  install -Dm644 "$_repo/navegador/app/icone.svg" \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/navegador.svg"
+  install -Dm644 "$HOME/Work/navegador-chromium/src/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
