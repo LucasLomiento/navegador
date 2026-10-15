@@ -56,7 +56,7 @@ def ids_em_ordem(src, grd):
     nomes -= {"and", "or", "not", "True", "False", "in", "pp_if",
               "pp_ifdef", "is_linux", "is_win", "is_macosx", "is_android",
               "is_ios", "is_fuchsia", "is_bsd", "is_posix", "is_chromeos",
-              "lang", "_google_chrome"}
+              "lang"}
     defines = {n: False for n in nomes}
     raiz = grd_reader.Parse(grd, debug=False, defines=defines)
     # Em ordem, não por nome: o mesmo IDS_ aparece em ramos diferentes
@@ -64,6 +64,58 @@ def ids_em_ordem(src, grd):
     return [node.GetCliques()[0].GetMessage().GetId()
             for node in raiz.Preorder()
             if isinstance(node, message.MessageNode)]
+
+
+# Mensagens fora do chromium_strings.grd que dizem "Chrome" querendo dizer o
+# navegador. Só essas mudam (o arquivo tem "Chrome Web Store" e afins).
+ESPECIFICAS = {
+    "chrome/app/generated_resources.grd": (
+        "chrome/app/resources/generated_resources_*.xtb",
+        {"IDS_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL"},
+        "Chrome",
+    ),
+}
+
+
+def trocar_arquivo(src, grd_rel, xtb_glob, trocar_mensagem, antigo):
+    """Troca o texto das mensagens escolhidas e leva as traduções junto."""
+    grd = os.path.join(src, grd_rel)
+    original = open(grd, encoding="utf-8").read()
+
+    def nas_mensagens(m):
+        nome = re.search(r'name="([^"]+)"', m.group(1))
+        if not trocar_mensagem(nome.group(1) if nome else ""):
+            return m.group(0)
+        return m.group(1) + m.group(2).replace(antigo, NOVO) + m.group(3)
+
+    novo = re.sub(r"(<message\b[^>]*>)(.*?)(</message>)", nas_mensagens,
+                  original, flags=re.S)
+    if novo == original:
+        return 0, 0
+
+    ids_antigos = ids_em_ordem(src, grd)
+    open(grd, "w", encoding="utf-8").write(novo)
+    ids_novos = ids_em_ordem(src, grd)
+    assert len(ids_antigos) == len(ids_novos)
+    mapa = {a: n for a, n in zip(ids_antigos, ids_novos) if a != n}
+
+    padrao = re.compile(r'<translation id="(\d+)">(.*?)</translation>', re.S)
+    total = 0
+    for xtb in sorted(glob.glob(os.path.join(src, xtb_glob))):
+        conteudo = open(xtb, encoding="utf-8").read()
+
+        def renomear(m):
+            nonlocal total
+            if m.group(1) not in mapa:
+                return m.group(0)
+            total += 1
+            texto = m.group(2).replace(antigo, NOVO)
+            return f'<translation id="{mapa[m.group(1)]}">{texto}</translation>'
+
+        novo_xtb = padrao.sub(renomear, conteudo)
+        if novo_xtb != conteudo:
+            open(xtb, "w", encoding="utf-8").write(novo_xtb)
+    return len(mapa), total
 
 
 def main():
@@ -83,6 +135,7 @@ def main():
                   original, flags=re.S)
     if novo == original:
         print("marca: nada a trocar (já aplicado)")
+        especificas(args.src)
         return
 
     ids_antigos = ids_em_ordem(args.src, grd)
@@ -111,6 +164,15 @@ def main():
         open(xtb, "w", encoding="utf-8").write(padrao.sub(renomear, conteudo))
 
     print(f"marca: {len(mapa)} mensagens com id novo, {total} traduções movidas")
+    especificas(args.src)
+
+
+def especificas(src):
+    for grd_rel, (xtb_glob, nomes, antigo) in ESPECIFICAS.items():
+        n, t = trocar_arquivo(src, grd_rel, xtb_glob, lambda nome: nome in nomes,
+                              antigo)
+        if n:
+            print(f"marca: {grd_rel}: {n} mensagens, {t} traduções")
 
 
 if __name__ == "__main__":

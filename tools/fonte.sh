@@ -38,6 +38,8 @@ if [ "${1:-}" = "--gerar" ]; then
   git diff --binary -- . ':(exclude)navegador' \
     ':(exclude)chrome/app/chromium_strings.grd' \
     ':(exclude)chrome/app/resources/chromium_strings_*.xtb' \
+    ':(exclude)chrome/app/generated_resources.grd' \
+    ':(exclude)chrome/app/resources/generated_resources_*.xtb' \
     ':(exclude)chrome/app/theme/chromium/*product_logo*' \
     ':(exclude)chrome/app/theme/chromium/linux/*product_logo*' \
     "${excl[@]}" > "$RAIZ/patches/9999-resto.patch"
