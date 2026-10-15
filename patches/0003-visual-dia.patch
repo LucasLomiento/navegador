@@ -449,6 +449,24 @@ index b7cdb8f557..8cf7ad5a8d 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
+diff --git i/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc w/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
+index c7c218422c..cd2172eca5 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
+@@ -530,6 +530,13 @@ void TabGroupHeaderView::OnDataChanged(
+         GetTabGroupTabStripColorId(tab_group_visual_data_.color(),
+                                    GetWidget()->ShouldPaintAsActive()));
+     SkColor foreground_color = GetForegroundColor();
++    // navegador: na lateral, o grupo é só texto discreto (como no Dia), sem
++    // etiqueta colorida; a cor do grupo fica na linha ao lado das abas.
++    if (orientation_ == TabStripOrientation::kVertical) {
++      background_color = SK_ColorTRANSPARENT;
++      foreground_color = GetColorProvider()->GetColor(
++          kColorTabForegroundInactiveFrameActive);
++    }
+ 
+     // Update label.
+     group_header_label_->SetEnabledColor(foreground_color);
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
 index 52dd469d6d..08968e51d0 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.cc
