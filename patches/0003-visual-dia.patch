@@ -1,3 +1,122 @@
+diff --git i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
+index 1044c32c43..72c680b6cf 100644
+--- i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
++++ w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
+@@ -1,57 +1,69 @@
+ <!doctype html>
+-<html dir="$i18n{textdirection}" lang="$i18n{language}"
+-    $i18n{hascustombackground} $i18n{isdark} $i18n{webuiRoundedIconsAttribute}>
++<!-- navegador: nova aba no estilo do Dia (degradê suave e o logo no centro;
++     a busca é pela barra de endereço, que já abre focada). -->
++<html dir="$i18n{textdirection}" lang="$i18n{language}" $i18n{isdark}>
+   <head>
+     <meta charset="utf-8">
+     <title>$i18n{title}</title>
+     <style>
+       html {
+-        --ntp-focus-shadow-color: rgba(var(--google-blue-600-rgb), .4);
+-        --ntp-theme-text-color: var(--google-grey-800);
+-        background-attachment: fixed;
+-        background-color: $i18n{colorBackground};
+-        background-position: $i18n{backgroundPosition};
+-        background-repeat: $i18n{backgroundTiling};
++        background-color: #ffffff;
++        color-scheme: light dark;
+         height: 100%;
+-        overflow: auto;
+       }
+ 
+       @media (prefers-color-scheme: dark) {
+         html {
+-          --ntp-focus-shadow-color: rgba(var(--google-blue-300-rgb), .5);
+-          --ntp-theme-text-color: white;
++          background-color: #1f1f1f;
+         }
+       }
+ 
+-      html[has-custom-background] {
+-        background-image: image-set(
+-            url(chrome://theme/IDR_THEME_NTP_BACKGROUND?$i18n{themeId}) 1x,
+-            url(chrome://theme/IDR_THEME_NTP_BACKGROUND@2x?$i18n{themeId}) 2x);
+-      }
+-
+       body {
+         align-items: center;
++        background:
++            radial-gradient(55% 45% at 50% 42%, rgba(79, 140, 255, .14),
++                            transparent 72%),
++            radial-gradient(45% 40% at 50% 62%, rgba(195, 139, 255, .11),
++                            transparent 72%);
+         display: flex;
+         height: 100vh;
+         justify-content: center;
+         margin: 0;
+       }
+ 
+-      cr-most-visited {
+-        --most-visited-focus-shadow: 0 0 0 2px var(--ntp-focus-shadow-color);
+-        --most-visited-text-color: var(--ntp-theme-text-color);
+-        --most-visited-text-shadow: none;
+-      }
+-
+-      html[has-custom-background] cr-most-visited {
+-        --most-visited-text-shadow: 0 0 16px rgba(0, 0, 0, .3);
++      .logo {
++        filter: drop-shadow(0 10px 28px rgba(79, 140, 255, .28));
++        height: 76px;
++        opacity: .92;
++        width: 76px;
+       }
+     </style>
+   </head>
+   <body>
+-    <script type="module" src="strings.m.js"></script>
+-    <cr-most-visited></cr-most-visited>
+-    <script type="module" src="new_tab_page_third_party.js"></script>
+-    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">
++<svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" aria-hidden="true">
++  <defs>
++    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
++      <stop offset="0" stop-color="#4F8CFF"/>
++      <stop offset="0.55" stop-color="#7B6CFF"/>
++      <stop offset="1" stop-color="#C38BFF"/>
++    </linearGradient>
++    <linearGradient id="brilho" x1="0" y1="0" x2="0" y2="1">
++      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
++      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
++    </linearGradient>
++    <linearGradient id="agulha" x1="0" y1="0" x2="0" y2="1">
++      <stop offset="0" stop-color="#FFFFFF"/>
++      <stop offset="1" stop-color="#EAE6FF"/>
++    </linearGradient>
++  </defs>
++  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#fundo)"/>
++  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#brilho)"/>
++  <g transform="rotate(45 128 128)">
++    <path d="M128 52 L156 128 L100 128 Z" fill="url(#agulha)"/>
++    <path d="M100 128 L156 128 L128 204 Z" fill="#FFFFFF" fill-opacity="0.38"/>
++  </g>
++  <circle cx="128" cy="128" r="11" fill="#FFFFFF"/>
++  <circle cx="128" cy="128" r="5" fill="#7B6CFF"/>
++</svg>
+   </body>
+ </html>
+diff --git i/chrome/browser/search/search.cc w/chrome/browser/search/search.cc
+index 6d3e318b62..5e014cc769 100644
+--- i/chrome/browser/search/search.cc
++++ w/chrome/browser/search/search.cc
+@@ -191,9 +191,8 @@ struct NewTabURLDetails {
+       }
+     }
+ #else
+-    const GURL local_url(default_is_google
+-                             ? chrome::ChromeUINewTabPageURLAsGURL()
+-                             : GURL(chrome::kChromeUINewTabPageThirdPartyURL));
++    // navegador: sempre a nova aba simples (a do Dia), com qualquer busca.
++    const GURL local_url(GURL(chrome::kChromeUINewTabPageThirdPartyURL));
+     if (default_is_google) {
+       return NewTabURLDetails(local_url, NEW_TAB_URL_VALID);
+     }
 diff --git i/chrome/browser/ui/color/BUILD.gn w/chrome/browser/ui/color/BUILD.gn
 index 0943df4390..dd2aa9e03b 100644
 --- i/chrome/browser/ui/color/BUILD.gn
