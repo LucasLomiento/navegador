@@ -47,6 +47,23 @@ index a514402e94..a9746af92b 100644
    }
  
    std::u16string GetText() const override {
+diff --git i/chrome/browser/ui/webui/history/browsing_history_handler.cc w/chrome/browser/ui/webui/history/browsing_history_handler.cc
+index 8fe5e39335..8254d681ee 100644
+--- i/chrome/browser/ui/webui/history/browsing_history_handler.cc
++++ w/chrome/browser/ui/webui/history/browsing_history_handler.cc
+@@ -643,6 +643,12 @@ void BrowsingHistoryHandler::TurnOnHistorySync() {
+ #if !BUILDFLAG(IS_CHROMEOS)
+ void BrowsingHistoryHandler::ShouldShowHistoryPageHistorySyncPromo(
+     ShouldShowHistoryPageHistorySyncPromoCallback callback) {
++  // navegador: login na conta Google desligado, sem convite pra sincronizar.
++  if (!profile_->GetPrefs()->GetBoolean(prefs::kSigninAllowed)) {
++    std::move(callback).Run(false);
++    return;
++  }
++
+   const int promo_shown_count = GetHistoryPageHistorySyncPromoShownCount();
+ 
+   // If the promo has been shown more than the threshold, the promo should not
 diff --git i/chrome/browser/ui/webui/settings/settings_ui.cc w/chrome/browser/ui/webui/settings/settings_ui.cc
 index 781744f9cf..80b2bf1520 100644
 --- i/chrome/browser/ui/webui/settings/settings_ui.cc
