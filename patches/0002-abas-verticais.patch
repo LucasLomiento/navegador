@@ -86,14 +86,14 @@ index ca0afc6fd0..bb10475d7c 100644
        prefs::kVerticalTabsExpandOnHoverEnabled,
        tabs::kVerticalTabsExpandOnHoverDefaultEnabled.Get());
 diff --git i/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc w/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
-index 22ece00a8c..d1b6c5bb40 100644
+index 22ece00a8c..db7caa47fc 100644
 --- i/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
 +++ w/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
 @@ -4,6 +4,8 @@
  
  #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
  
-+#include "chrome/grit/theme_resources.h"
++#include "components/vector_icons/vector_icons.h"
 +
  #include <optional>
  
@@ -109,7 +109,7 @@ index 22ece00a8c..d1b6c5bb40 100644
    // If the user already has a pending mode switch, but tries to change tab
    // strip mode again, ensure the toast is displayed.
    if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
-@@ -413,8 +419,10 @@ void VerticalTabStripStateController::UpdateCollapseActionItem() {
+@@ -413,8 +419,11 @@ void VerticalTabStripStateController::UpdateCollapseActionItem() {
        actions::ActionManager::Get().FindAction(kActionToggleCollapseVertical,
                                                 root_action_item_);
    if (collapse_action) {
@@ -117,7 +117,8 @@ index 22ece00a8c..d1b6c5bb40 100644
 +    // do Dia); clicar continua recolhendo/abrindo a lateral.
      collapse_action->SetImage(
 -        ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon));
-+        ui::ImageModel::FromResourceId(IDR_PRODUCT_LOGO_16));
++        ui::ImageModel::FromVectorIcon(vector_icons::kProductIcon,
++                                       ui::kColorIcon));
      collapse_action->SetText(
          chrome::GetCleanTitleAndTooltipText(l10n_util::GetStringUTF16(text)));
  
