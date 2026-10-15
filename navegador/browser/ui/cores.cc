@@ -186,6 +186,8 @@ void AddColorMixer(ui::ColorProvider* provider,
   mixer[kColorTabDividerFrameActive] = {p.divisor};
   mixer[kColorTabDividerFrameInactive] = {p.divisor};
   mixer[kColorVerticalTabStripShadow] = {SK_ColorTRANSPARENT};
+  // Borda fina dos ladrilhos (abas fixadas), como os favoritos do Dia.
+  mixer[kColorVerticalTabPinnedOutline] = {p.divisor};
 
   // "+ Nova aba" e os botões do topo da lateral: sem fundo, texto discreto
   // (o realce do hover vem do ink drop).

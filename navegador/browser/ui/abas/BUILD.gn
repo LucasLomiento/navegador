@@ -1,0 +1,15 @@
+# Detalhes das abas da lateral (ladrilhos dos favoritos).
+source_set("abas") {
+  sources = [
+    "abas.cc",
+    "abas.h",
+  ]
+  deps = [
+    "//cc/paint",
+    "//chrome/browser/ui:layout_constants",
+    "//chrome/browser/ui/color:color_headers",
+    "//ui/color",
+    "//ui/gfx",
+    "//ui/views",
+  ]
+}

@@ -261,33 +261,41 @@ index f0b718e6ba..be58e1ca1b 100644
    std::unique_ptr<ui::SimpleMenuModel> arrange_split_view_submenu_;
    std::unique_ptr<ui::SimpleMenuModel> glic_tab_sub_menu_model_;
 diff --git i/chrome/browser/ui/views/tabs/common/BUILD.gn w/chrome/browser/ui/views/tabs/common/BUILD.gn
-index 2494eac3f3..89de606904 100644
+index 2494eac3f3..c9290707a8 100644
 --- i/chrome/browser/ui/views/tabs/common/BUILD.gn
 +++ w/chrome/browser/ui/views/tabs/common/BUILD.gn
-@@ -87,6 +87,7 @@ source_set("impl") {
+@@ -87,6 +87,8 @@ source_set("impl") {
    ]
  
    deps = [
++    "//navegador/browser/ui/abas",  # navegador
 +    "//navegador/browser/ui/containers:containers_ui",  # navegador
      "//base:i18n",
      "//cc/paint",
      "//chrome/app/theme:theme_resources",
 diff --git i/chrome/browser/ui/views/tabs/common/tab_view.cc w/chrome/browser/ui/views/tabs/common/tab_view.cc
-index cc16ff231e..bbad988c2c 100644
+index cc16ff231e..4ed432b204 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_view.cc
 +++ w/chrome/browser/ui/views/tabs/common/tab_view.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/ui/views/tabs/common/tab_view.h"
  
++#include "navegador/browser/ui/abas/abas.h"
 +#include "navegador/browser/ui/containers/containers_ui.h"
 +
  #include <optional>
  #include <string>
  
-@@ -786,6 +788,8 @@ void TabView::OnPaint(gfx::Canvas* canvas) {
+@@ -785,7 +788,14 @@ void TabView::OnPaint(gfx::Canvas* canvas) {
+     return;
    }
  
++  // navegador: ladrilho das abas fixadas (favoritos do Dia).
++  navegador::abas::PintarLadrilho(canvas, *this,
++                                  pinned_ &&
++                                      orientation_ ==
++                                          TabStripOrientation::kVertical);
    tab_styling()->PaintTab(canvas);
 +  // navegador: cor do container.
 +  navegador::containers::PintarIndicador(canvas, *this, GetTabInterface());
