@@ -22,7 +22,7 @@ namespace navegador::cores {
 // opaca, pro desfoque do compositor (Hyprland) aparecer atrás. O cartão
 // (barra de navegação e página) continua opaco.
 inline constexpr bool kVidro = true;
-inline constexpr unsigned char kVidroAlfaClaro = 0xC8;
+inline constexpr unsigned char kVidroAlfaClaro = 0xE6;
 inline constexpr unsigned char kVidroAlfaEscuro = 0xC0;
 
 void AddColorMixer(ui::ColorProvider* provider,

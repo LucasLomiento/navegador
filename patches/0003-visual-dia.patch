@@ -269,19 +269,20 @@ index a335e2d5cc..b9f66d3948 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914..f76664dca1 100644
+index 29dfbde914..9a8c318a1d 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.h"
  
++#include "navegador/browser/ui/cores.h"
 +#include "navegador/browser/ui/visual.h"
 +
  #include <algorithm>
  #include <memory>
  #include <optional>
-@@ -822,6 +824,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -822,6 +825,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                                 GetVerticalTabStripContentOverlap();
        params.InsetHorizontal(inset_amount, /*leading=*/true);
  
@@ -297,7 +298,7 @@ index 29dfbde914..f76664dca1 100644
        // Let the vertical tab strip animate out over the content.
        if (vertical_tab_strip_animation.current_motion) {
          clip_content_for_animation =
-@@ -855,8 +866,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -855,8 +867,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    if (IsParentedTo(views().vertical_tab_strip_top_corner,
                     views().browser_view)) {
      gfx::Rect corner_bounds;
@@ -308,7 +309,7 @@ index 29dfbde914..f76664dca1 100644
          vertical_tab_strip_animation.top_corner > 0.0;
  
      // The top corner is drawn when the tabstrip goes all the way to the top.
-@@ -878,8 +891,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -878,8 +892,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    if (IsParentedTo(views().vertical_tab_strip_bottom_corner,
                     views().browser_view)) {
      gfx::Rect corner_bounds;
@@ -319,7 +320,7 @@ index 29dfbde914..f76664dca1 100644
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -1231,6 +1246,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1231,6 +1247,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        }
      }
      views().multi_contents_view->SetBackgroundRadii(content_corners);
@@ -334,7 +335,7 @@ index 29dfbde914..f76664dca1 100644
    }
  
    // Make final visual adjustments required for child views to paint.
-@@ -1427,9 +1450,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1427,9 +1451,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
  
@@ -353,6 +354,22 @@ index 29dfbde914..f76664dca1 100644
        layout_data_->window_state == WindowState::kNormal) {
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
+@@ -1524,6 +1555,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+           (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
+           animation.expand_on_hover_opacity * expand_on_hover_opacity);
+       vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
++    } else if (navegador::cores::kVidro &&
++               !is_fullscreen(layout_data_->window_state)) {
++      // navegador: vidro. A moldura translúcida já é pintada atrás; pintar de
++      // novo aqui dobraria a opacidade. Só fica opaca quando a lateral
++      // expande por cima da página (passar o mouse com ela recolhida).
++      auto vertical_tabs_background_color = frame_color;
++      vertical_tabs_background_color.opacity =
++          static_cast<float>(animation.expand_on_hover_opacity);
++      vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
+     } else {
+       vertical_tabs_background->SetPrimaryColor(frame_color);
+     }
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 index b7cdb8f557..8cf7ad5a8d 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
