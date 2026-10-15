@@ -862,6 +862,52 @@ index cb782286ee..e71afa0132 100644
  }
  
  TabGroupView::~TabGroupView() = default;
+diff --git i/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
+index c3035d4826..c54e868cad 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_group_view_layout.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_group_view_layout.h"
+ 
++#include "navegador/browser/ui/visual.h"
++
+ #include <algorithm>
+ #include <vector>
+ 
+@@ -25,7 +27,8 @@
+ #include "ui/views/view_utils.h"
+ 
+ namespace {
+-constexpr int kTabVerticalPadding = 2;
++// navegador: uma aba a cada 35 (30 + 5 de folga), como no Dia.
++constexpr int kTabVerticalPadding = navegador::visual::kEspacoEntreAbas;
+ constexpr int kGroupLineWidth = 2;
+ constexpr int kGroupLineCollapsedLeadingPadding = 6;
+ constexpr int kGroupHeaderHeight = 26;
+diff --git i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
+index 5dd9f7ef1a..a5bcaed325 100644
+--- i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
++++ w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.h"
+ 
++#include "navegador/browser/ui/visual.h"
++
+ #include <algorithm>
+ #include <vector>
+ 
+@@ -25,7 +27,8 @@
+ #include "ui/views/view_utils.h"
+ 
+ namespace {
+-constexpr int kTabVerticalPadding = 2;
++// navegador: uma aba a cada 35 (30 + 5 de folga), como no Dia.
++constexpr int kTabVerticalPadding = navegador::visual::kEspacoEntreAbas;
+ }  // namespace
+ 
+ UnpinnedTabContainerViewLayout::UnpinnedTabContainerViewLayout(
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
 index ffb1fdda20..3d8d92c6bf 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
