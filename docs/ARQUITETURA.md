@@ -43,7 +43,18 @@ Os containers aparecem como cor e ícone na aba, com "Abrir em container" no men
 
 ## Espaços (do Dia)
 
-Os espaços do Dia agrupam abas no menu lateral (troca embaixo, como no Dia). Cada espaço pode ter um container padrão: abrir aba nova num espaço já abre naquele container (o jeito do Zen).
+Cada espaço é um **grupo de abas focado** (`features::kTabGroupsFocusing`, que o Chrome 155 tem mas vem desligado; o navegador liga). Com um grupo focado, a lateral mostra só as abas dele e o `SetFocusedGroup` já ativa a primeira aba do grupo. "Início" é sem foco (todas as abas).
+
+- **Faixa no pé da lateral** (`navegador/browser/ui/espacos.*`, compilado dentro de `//chrome/browser/ui:ui`): nome do espaço atual, uma bolinha por espaço na cor do grupo, "+" pra criar. A rodinha do mouse passa de um pro outro. Some com a lateral recolhida. Medidas do seletor do Dia (38 de altura, título até 160, bolinhas a 3).
+- **Clique direito na faixa**: "Editar espaço…" (o balão de grupo do próprio Chrome: nome e cor), "Container do espaço", "Novo espaço".
+- **Container padrão do espaço**: pref `navegador.espacos_container` (`{ id do grupo: id do container }`; o id do grupo se mantém entre sessões). Ctrl+T e "Nova aba" num espaço com container nascem nele; link aberto de uma aba herda o container da aba.
+
+## Interface dos containers
+
+`navegador/browser/ui/containers/`:
+- Barrinha de 3 px na esquerda da aba, na cor do container (gancho em `TabView::OnPaint`).
+- "Abrir em container" no menu da aba (reabre a aba ao lado e fecha a original), "Abrir link em container" no menu da página, "Nova aba em container" no menu do botão "Nova aba". Os submenus têm delegate próprio; o item que abre cada submenu usa um id que o Chromium já aceita (id desconhecido derruba o navegador no `IsContextMenuCommandEnabled`).
+- Janela "Containers" (gerenciar): criar, renomear, trocar a cor, excluir. Excluir só tira da lista; os dados da partição ficam no disco (falta apagar com `StoragePartition::ClearData`).
 
 ## Pacote
 
