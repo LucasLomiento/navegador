@@ -31,7 +31,12 @@ std::optional<std::string> EspacoFocado(BrowserWindowInterface* browser) {
   std::optional<tab_groups::TabGroupId> grupo =
       browser->GetTabStripModel()->GetFocusedGroup();
   if (!grupo) {
-    return std::nullopt;
+    // Janela nova, ainda sem grupo: a primeira aba vai pro espaço em que a
+    // janela vai entrar (o último usado), e precisa nascer no container dele.
+    if (browser->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL) {
+      return std::nullopt;
+    }
+    return espacos::Ativo(browser->GetProfile());
   }
   return espacos::EspacoDoGrupo(browser->GetProfile(), grupo->ToString());
 }

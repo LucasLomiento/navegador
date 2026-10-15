@@ -30,6 +30,70 @@ index 2653e37bec..b726815ec5 100644
    AccessibilityLabelsService::RegisterProfilePrefs(registry);
    registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
    AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
+diff --git i/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn w/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn
+index 57e6082124..91e06044ad 100644
+--- i/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn
++++ w/chrome/browser/preloading/prefetch/search_prefetch/BUILD.gn
+@@ -58,6 +58,7 @@ source_set("impl") {
+     "//chrome/browser/search_engines",
+     "//components/embedder_support:user_agent",
+     "//components/omnibox/browser",
++    "//navegador/browser/containers",  # navegador
+   ]
+ 
+   if (is_android) {
+diff --git i/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc w/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc
+index e4b6ca4af0..519e169b51 100644
+--- i/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc
++++ w/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_service.h"
+ 
++#include "navegador/browser/containers/containers.h"
++
+ #include <iterator>
+ #include <memory>
+ 
+@@ -282,6 +284,12 @@ bool SearchPrefetchService::MaybePrefetchURL(
+   if (!SearchPrefetchServicePrefetchingIsEnabled())
+     return false;
+ 
++  // navegador: busca digitada numa aba de container não é pré-buscada: a
++  // pré-busca sai com os cookies de fora do container.
++  if (web_contents && navegador::containers::IdForWebContents(web_contents)) {
++    return false;
++  }
++
+   SearchPrefetchEligibilityReasonRecorder recorder(navigation_prefetch);
+ 
+   // Check for search terms before checking for any other eligibility reasons
+diff --git i/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.cc w/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.cc
+index fd19a4fbea..56e399c735 100644
+--- i/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.cc
++++ w/chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/preloading/prefetch/search_prefetch/search_prefetch_url_loader_interceptor.h"
+ 
++#include "navegador/browser/containers/containers.h"
++
+ #include <cstddef>
+ #include <memory>
+ #include <tuple>
+@@ -96,6 +98,12 @@ SearchPrefetchURLLoaderInterceptor::MaybeCreateLoaderForRequest(
+     return {};
+   }
+ 
++  // navegador: aba de container não recebe busca pré-buscada (feita com os
++  // cookies de fora do container).
++  if (navegador::containers::IdForWebContents(web_contents)) {
++    return {};
++  }
++
+   // Only intercept primary main frame and prerender main frame requests.
+   content::RenderFrameHost* main_frame = web_contents->GetPrimaryMainFrame();
+   bool is_primary_main_frame_navigation =
 diff --git i/chrome/browser/renderer_context_menu/BUILD.gn w/chrome/browser/renderer_context_menu/BUILD.gn
 index b2e9ee838f..083cd94bb3 100644
 --- i/chrome/browser/renderer_context_menu/BUILD.gn
@@ -209,6 +273,44 @@ index 6aca93a450..e2d275898b 100644
    send_tab_to_self::SendTabToSelfActivationTracker::RestoreFromExtraData(
        web_contents.get(), extra_data);
  
+diff --git i/chrome/browser/ui/browser_web_contents_delegate/BUILD.gn w/chrome/browser/ui/browser_web_contents_delegate/BUILD.gn
+index d69f5af470..c5b0365a1f 100644
+--- i/chrome/browser/ui/browser_web_contents_delegate/BUILD.gn
++++ w/chrome/browser/ui/browser_web_contents_delegate/BUILD.gn
+@@ -15,6 +15,7 @@ if (!is_android) {
+     deps = [
+       "//base",
+       "//chrome/browser:file_select_helper",
++      "//navegador/browser/containers",  # navegador
+       "//chrome/browser:repost_form_warning_controller",
+       "//chrome/browser/actor",
+       "//chrome/browser/background",
+diff --git i/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc w/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+index d3fa7eea6d..478010fc5d 100644
+--- i/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ w/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
+ 
++#include "navegador/browser/containers/containers.h"
++
+ #include "base/check_deref.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/notimplemented.h"
+@@ -516,6 +518,12 @@ content::PreloadingEligibility
+ BrowserWebContentsDelegate::IsPrerender2Supported(
+     content::WebContents& web_contents,
+     content::PreloadingTriggerType trigger_type) {
++  // navegador: aba de container não pré-renderiza. A página pré-renderizada
++  // nasce fora da partição fixa da aba e, ativada, tirava a aba do container
++  // (digitar um endereço já visitado abria com os cookies de fora).
++  if (navegador::containers::IdForWebContents(&web_contents)) {
++    return content::PreloadingEligibility::kPreloadingDisabled;
++  }
+   Profile* profile =
+       Profile::FromBrowserContext(web_contents.GetBrowserContext());
+   return prefetch::IsSomePreloadingEnabled(*profile->GetPrefs());
 diff --git i/chrome/browser/ui/navigator/BUILD.gn w/chrome/browser/ui/navigator/BUILD.gn
 index 812ea8e40e..4fe077a98d 100644
 --- i/chrome/browser/ui/navigator/BUILD.gn
@@ -401,3 +503,60 @@ index 60489fb251..cc45dbdcca 100644
  };
  
  #endif  // CHROME_BROWSER_UI_VIEWS_TABS_SHARED_NEW_TAB_BUTTON_MENU_MODEL_H_
+diff --git i/content/browser/preloading/prefetch/prefetch_document_manager.cc w/content/browser/preloading/prefetch/prefetch_document_manager.cc
+index c7ab5df07d..555068fe15 100644
+--- i/content/browser/preloading/prefetch/prefetch_document_manager.cc
++++ w/content/browser/preloading/prefetch/prefetch_document_manager.cc
+@@ -22,6 +22,7 @@
+ #include "content/browser/preloading/speculation_rules/speculation_rules_tags.h"
+ #include "content/browser/preloading/speculation_rules/speculation_rules_util.h"
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/browser/storage_partition_impl.h"
+ #include "content/public/browser/content_browser_client.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+@@ -211,6 +212,13 @@ void PrefetchDocumentManager::PrefetchUrl(
+     SpeculationRulesTags speculation_rules_tags,
+     const network::mojom::NoVarySearchPtr& mojo_no_vary_search_hint,
+     scoped_refptr<PreloadPipelineInfo> preload_pipeline_info) {
++  // navegador: página numa partição que não é a padrão (container) não
++  // pré-busca: a pré-busca sai pela rede e com os cookies da partição padrão.
++  if (render_frame_host().GetStoragePartition() !=
++      render_frame_host().GetBrowserContext()->GetDefaultStoragePartition()) {
++    return;
++  }
++
+   const std::pair<GURL, PreloadingType> all_prefetches_key =
+       std::make_pair(url, PreloadPipelineInfoImpl::From(*preload_pipeline_info)
+                               .planned_max_preloading_type());
+diff --git i/content/browser/preloading/prefetch/prefetch_url_loader_interceptor.cc w/content/browser/preloading/prefetch/prefetch_url_loader_interceptor.cc
+index bf1d6b6d81..9e70424c68 100644
+--- i/content/browser/preloading/prefetch/prefetch_url_loader_interceptor.cc
++++ w/content/browser/preloading/prefetch/prefetch_url_loader_interceptor.cc
+@@ -16,6 +16,9 @@
+ #include "content/browser/preloading/prefetch/prefetch_serving_handle.h"
+ #include "content/browser/renderer_host/frame_tree.h"
+ #include "content/browser/renderer_host/frame_tree_node.h"
++#include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/browser/storage_partition_impl.h"
++#include "content/public/browser/browser_context.h"
+ #include "content/browser/renderer_host/navigation_request.h"
+ #include "content/browser/service_worker/service_worker_main_resource_handle.h"
+ #include "content/public/browser/web_contents.h"
+@@ -191,6 +194,16 @@ void PrefetchURLLoaderInterceptor::MaybeCreateLoader(
+     return;
+   }
+ 
++  // navegador: navegação numa partição que não é a padrão (aba de container)
++  // não usa pré-busca, feita com a rede e os cookies da partição padrão.
++  if (RenderFrameHostImpl* atual = frame_tree_node->current_frame_host();
++      atual && atual->GetStoragePartition() !=
++                   atual->GetBrowserContext()->GetDefaultStoragePartition()) {
++    TRACE_EVENT_END("loading");
++    std::move(loader_callback_).Run(std::nullopt);
++    return;
++  }
++
+   TRACE_EVENT_END("loading");
+   GetPrefetch(
+       *prefetch_service, tentative_resource_request.url,

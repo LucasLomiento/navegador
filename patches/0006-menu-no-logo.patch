@@ -23,19 +23,20 @@ index 3741ba7671..779be59085 100644
    }
  }
 diff --git i/chrome/browser/ui/views/frame/browser_view.cc w/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c..ab42fd2ab6 100644
+index 63c3090b4c..90e49bd9c8 100644
 --- i/chrome/browser/ui/views/frame/browser_view.cc
 +++ w/chrome/browser/ui/views/frame/browser_view.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/ui/views/frame/browser_view.h"
  
++#include "navegador/browser/ui/atalhos.h"
 +#include "navegador/browser/ui/menu_do_logo.h"
 +
  #include <stdint.h>
  
  #include <algorithm>
-@@ -3191,6 +3193,10 @@ void BrowserView::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
+@@ -3191,6 +3194,10 @@ void BrowserView::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
  }
  
  void BrowserView::ShowAppMenu() {
@@ -46,6 +47,21 @@ index 63c3090b4c..ab42fd2ab6 100644
    auto* control = ToolbarButtonProvider::From(browser_)->GetAppMenuControl();
    if (!control) {
      return;
+@@ -3255,6 +3262,14 @@ content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
+     return result;
+   }
+ 
++  // navegador: os atalhos das Configurações do Navegador valem antes da
++  // página, como os reservados (o Ctrl+S mostra/oculta a lateral mesmo num
++  // site que trata o Ctrl+S).
++  if (navegador::atalhos::EDoNavegador(browser_->GetProfile(), accelerator) &&
++      focus_manager->ProcessAccelerator(accelerator)) {
++    return content::KeyboardEventProcessingResult::HANDLED;
++  }
++
+   int id;
+   if (!FindCommandIdForAccelerator(accelerator, &id)) {
+     // |accelerator| is not a browser command, it may be handled by ash (e.g.
 diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 index d69e4dd30f..29715bca1f 100644
 --- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc

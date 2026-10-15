@@ -78,6 +78,7 @@
 #include "ui/views/view.h"
 #include "ui/views/vector_icons.h"
 #include "ui/views/view_class_properties.h"
+#include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/window/dialog_delegate.h"
 #include "url/gurl.h"
@@ -555,6 +556,9 @@ class AreaDeFixos : public views::View,
     prefs_.Add(espacos::kListaPref,
                base::BindRepeating(&AreaDeFixos::ReconstruirDepois,
                                    base::Unretained(this)));
+    prefs_.Add(espacos::kQuadroDeFavoritosPref,
+               base::BindRepeating(&AreaDeFixos::ReconstruirDepois,
+                                   base::Unretained(this)));
     Reconstruir();
   }
 
@@ -706,6 +710,10 @@ class AreaDeFixos : public views::View,
       menu_->AddItem(kNovaPastaCmd, u"Nova pasta…");
       menu_->AddItem(kExcluirPasta, u"Excluir a pasta");
     } else {
+      if (views::IsViewClass<SemFavoritos>(source)) {
+        menu_->AddItem(kOcultarQuadro, u"Ocultar este quadro");
+        menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+      }
       menu_->AddItem(kNovaPastaCmd, u"Nova pasta…");
     }
     runner_ = std::make_unique<views::MenuRunner>(
@@ -752,6 +760,10 @@ class AreaDeFixos : public views::View,
         return;
       case kFecharAba:
         FecharAbaDoSite(id);
+        return;
+      case kOcultarQuadro:
+        // Volta pelas Configurações do Navegador (Geral).
+        perfil->GetPrefs()->SetBoolean(espacos::kQuadroDeFavoritosPref, false);
         return;
       case kSubir:
         Mover(perfil, id, -1);
@@ -992,14 +1004,17 @@ class AreaDeFixos : public views::View,
     ids_.clear();
     const std::vector<Site> favoritos = Favoritos(Perfil(), EspacoAtual());
     if (favoritos.empty()) {
-      AddChildView(std::make_unique<SemFavoritos>(base::BindRepeating(
-          [](AreaDeFixos* area) {
-            if (content::WebContents* aba =
-                    area->model_->GetActiveWebContents()) {
-              area->AlternarFavoritoDaAba(aba);
-            }
-          },
-          base::Unretained(this))));
+      if (espacos::MostrarQuadroDeFavoritos(Perfil())) {
+        AddChildView(std::make_unique<SemFavoritos>(base::BindRepeating(
+            [](AreaDeFixos* area) {
+              if (content::WebContents* aba =
+                      area->model_->GetActiveWebContents()) {
+                area->AlternarFavoritoDaAba(aba);
+              }
+            },
+            base::Unretained(this))))
+            ->set_context_menu_controller(this);
+      }
     } else {
       auto* grade = AddChildView(std::make_unique<GradeDeFavoritos>());
       grade->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 3, 0));
@@ -1210,6 +1225,7 @@ class AreaDeFixos : public views::View,
   static constexpr int kAbrirTodas = 10;
   static constexpr int kFecharTodas = 11;
   static constexpr int kExcluirPasta = 12;
+  static constexpr int kOcultarQuadro = 13;
   static constexpr int kPrimeiraPasta = 100;
 
   raw_ptr<BrowserWindowInterface> browser_;

@@ -15,7 +15,7 @@ class BrowserWindowInterface;
 namespace navegador::containers {
 
 // Espaço das abas novas da janela: o pendente (ver abaixo), se houver; senão
-// o do grupo focado.
+// o do grupo focado; numa janela nova, ainda sem grupo, o último usado.
 std::optional<std::string> EspacoFocado(BrowserWindowInterface* browser);
 
 // Enquanto vive, as abas novas da janela são do `espaco` (a janela criando a

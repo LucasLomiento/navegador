@@ -1,6 +1,7 @@
-// Configurações do Navegador: a janela das coisas que são nossas (espaços,
-// containers e atalhos), aberta pelo menu do logo ou pelo atalho (Ctrl+,
-// por padrão). As do Chromium continuam em chrome://settings.
+// Configurações do Navegador: a janela das coisas que são nossas (geral,
+// espaços, containers e atalhos), aberta pelo menu do logo, pelo menu do
+// nome do espaço ou pelo atalho (Ctrl+, por padrão). As do Chromium
+// continuam em chrome://settings.
 //
 // Compilado dentro de //chrome/browser/ui:ui.
 
@@ -15,10 +16,11 @@ class BrowserWindowInterface;
 
 namespace navegador::configuracoes {
 
-enum class Aba { kEspacos = 0, kContainers = 1, kAtalhos = 2 };
+// Na ordem das abas da janela.
+enum class Aba { kGeral = 0, kEspacos = 1, kContainers = 2, kAtalhos = 3 };
 
 // Abre (ou traz pra frente) a janela de configurações na aba pedida.
-void Mostrar(BrowserWindowInterface* browser, Aba aba = Aba::kEspacos);
+void Mostrar(BrowserWindowInterface* browser, Aba aba = Aba::kGeral);
 
 // Editor de um espaço: nome, emoji, cor e container. Com `espaco` vazio,
 // cria um novo. `pronto` recebe o id quando a pessoa confirma.

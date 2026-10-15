@@ -10,6 +10,8 @@
 
 #include "ui/base/accelerators/accelerator.h"
 
+class Profile;
+
 namespace navegador::atalhos {
 
 // "Ctrl+Alt+Right" -> Accelerator. Nada se o texto for vazio ou inválido.
@@ -18,6 +20,11 @@ std::optional<ui::Accelerator> Ler(std::string_view texto);
 std::string Escrever(const ui::Accelerator& atalho);
 // Pra mostrar na tela ("Ctrl+Alt+→"); vazio = "Sem atalho".
 std::u16string Mostrar(std::string_view texto);
+
+// É atalho de alguma ação do navegador (Configurações → Atalhos)? Esses valem
+// antes da página, como os reservados do Chromium (Ctrl+W): o Ctrl+S mostra
+// a lateral mesmo num site que trata o Ctrl+S (gancho no BrowserView).
+bool EDoNavegador(Profile* profile, const ui::Accelerator& atalho);
 
 }  // namespace navegador::atalhos
 

@@ -74,6 +74,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterDictionaryPref(kGruposPref);
   registry->RegisterStringPref(kAtivoPref, "pessoal");
   registry->RegisterDictionaryPref(kAtalhosPref);
+  registry->RegisterBooleanPref(kQuadroDeFavoritosPref, true);
+  registry->RegisterBooleanPref(kBotoesDaJanelaPref, false);
 }
 
 std::vector<Espaco> Todos(Profile* profile) {
@@ -208,12 +210,11 @@ void DefinirAtivo(Profile* profile, std::string_view espaco) {
 }
 
 const std::vector<Atalho>& Atalhos() {
-  // Padrões: os do Zen pra troca de espaço (Ctrl+Alt+setas) e o do Dia pra
-  // mostrar/ocultar a lateral (Ctrl+Shift+S).
+  // Padrões: os do Zen pra troca de espaço (Ctrl+Alt+setas) e o do Arc pra
+  // mostrar/ocultar a lateral (Ctrl+S, no lugar do "Salvar página").
   static const base::NoDestructor<std::vector<Atalho>> atalhos(
       std::vector<Atalho>{
-          {"alternar_lateral", u"Mostrar ou ocultar a lateral",
-           "Ctrl+Shift+S"},
+          {"alternar_lateral", u"Mostrar ou ocultar a lateral", "Ctrl+S"},
           {"proximo_espaco", u"Próximo espaço", "Ctrl+Alt+Right"},
           {"espaco_anterior", u"Espaço anterior", "Ctrl+Alt+Left"},
           {"novo_espaco", u"Novo espaço", "Ctrl+Alt+N"},
@@ -256,6 +257,14 @@ void DefinirAtalho(Profile* profile,
 
 void RestaurarAtalhos(Profile* profile) {
   profile->GetPrefs()->ClearPref(kAtalhosPref);
+}
+
+bool MostrarQuadroDeFavoritos(Profile* profile) {
+  return profile->GetPrefs()->GetBoolean(kQuadroDeFavoritosPref);
+}
+
+bool MostrarBotoesDaJanela(Profile* profile) {
+  return profile->GetPrefs()->GetBoolean(kBotoesDaJanelaPref);
 }
 
 }  // namespace navegador::espacos

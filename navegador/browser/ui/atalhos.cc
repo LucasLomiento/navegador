@@ -6,6 +6,7 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "navegador/browser/containers/espacos_dados.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
@@ -180,6 +181,20 @@ std::u16string Mostrar(std::string_view texto) {
     }
   }
   return resultado + base::UTF8ToUTF16(NomeDe(atalho->key_code()));
+}
+
+bool EDoNavegador(Profile* profile, const ui::Accelerator& atalho) {
+  if (!profile || atalho.key_state() != ui::Accelerator::KeyState::PRESSED) {
+    return false;
+  }
+  for (const espacos::Atalho& acao : espacos::Atalhos()) {
+    if (std::optional<ui::Accelerator> tecla =
+            Ler(espacos::AtalhoDe(profile, acao.acao));
+        tecla && *tecla == atalho) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace navegador::atalhos

@@ -35,6 +35,12 @@ inline constexpr char kAtivoPref[] = "navegador.espacos.ativo";
 // { "<ação>": "Ctrl+Alt+Right" }: só os atalhos trocados pela pessoa
 // ("" = sem atalho); o resto usa o padrão de Atalhos().
 inline constexpr char kAtalhosPref[] = "navegador.atalhos";
+// Quadro tracejado no alto da lateral quando o espaço não tem favoritos.
+inline constexpr char kQuadroDeFavoritosPref[] =
+    "navegador.lateral.quadro_de_favoritos";
+// Botões da janela (fechar, minimizar, maximizar) no canto da barra. Num
+// gerenciador de janelas por atalho (Hyprland) sobram: desligado por padrão.
+inline constexpr char kBotoesDaJanelaPref[] = "navegador.janela.botoes";
 
 struct Espaco {
   std::string id;
@@ -97,6 +103,11 @@ void DefinirAtalho(Profile* profile,
                    std::string_view acao,
                    std::string_view atalho);
 void RestaurarAtalhos(Profile* profile);
+
+// --- Geral -----------------------------------------------------------------
+
+bool MostrarQuadroDeFavoritos(Profile* profile);
+bool MostrarBotoesDaJanela(Profile* profile);
 
 }  // namespace navegador::espacos
 

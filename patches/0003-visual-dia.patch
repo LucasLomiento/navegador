@@ -341,21 +341,52 @@ index 32e5c1a27f..9982ad53fa 100644
      // Set the opaque region.
      std::vector<gfx::Rect> opaque_region;
      if (IsShowingFrame(native_widget_->UseCustomFrame(), window_state)) {
+diff --git i/chrome/browser/ui/views/frame/browser_frame_view_linux.cc w/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
+index 474b8356af..8aba37f23a 100644
+--- i/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
++++ w/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
+@@ -191,12 +191,13 @@ BrowserLayoutParams BrowserFrameViewLinux::GetBrowserLayoutParams() const {
+ 
+ bool BrowserFrameViewLinux::CaptionButtonsOnLeadingEdge() const {
+   auto* const provider = views::WindowButtonOrderProvider::GetInstance();
+-  return !provider->leading_buttons().empty();
++  // navegador: botões escondidos (Configurações do Navegador → Geral).
++  return ShouldShowCaptionButtons() && !provider->leading_buttons().empty();
+ }
+ 
+ bool BrowserFrameViewLinux::CaptionButtonsOnTrailingEdge() const {
+   auto* const provider = views::WindowButtonOrderProvider::GetInstance();
+-  return !provider->trailing_buttons().empty();
++  return ShouldShowCaptionButtons() && !provider->trailing_buttons().empty();
+ }
+ 
+ BrowserFrameViewLinux::BoundsAndMargins
 diff --git i/chrome/browser/ui/views/frame/browser_widget.cc w/chrome/browser/ui/views/frame/browser_widget.cc
-index a335e2d5cc..b9f66d3948 100644
+index a335e2d5cc..9e1616c111 100644
 --- i/chrome/browser/ui/views/frame/browser_widget.cc
 +++ w/chrome/browser/ui/views/frame/browser_widget.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/ui/views/frame/browser_widget.h"
  
 +#include "navegador/browser/ui/cor_da_pagina.h"
 +#include "navegador/browser/ui/cores.h"
++#include "navegador/browser/ui/espacos.h"
 +
  #include <memory>
  #include <utility>
  
-@@ -507,6 +510,12 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
+@@ -503,10 +507,22 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
+     key.user_color = user_color_override().value();
+     key.user_color_source = ui::ColorProviderKey::UserColorSource::kAccent;
+   }
++  // navegador: a cor do espaço da janela tinge a moldura e a lateral desde o
++  // primeiro quadro (a do Chromium, do grupo focado, só vem na troca de foco).
++  if (auto cor = navegador::espacos::CorDaJanela(browser_view_->browser())) {
++    key.user_color = *cor;
++    key.user_color_source = ui::ColorProviderKey::UserColorSource::kAccent;
++  }
+ 
    // Apply BrowserWidget overrides:
    key.app_controller =
        web_app::AppBrowserController::From(browser_view_->browser());
@@ -369,7 +400,7 @@ index a335e2d5cc..b9f66d3948 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914..2b2c8b0c7e 100644
+index 29dfbde914..c7719a9b0b 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -4,6 +4,9 @@
@@ -382,7 +413,23 @@ index 29dfbde914..2b2c8b0c7e 100644
  #include <algorithm>
  #include <memory>
  #include <optional>
-@@ -822,6 +825,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -258,6 +261,15 @@ BrowserViewTabbedLayoutImpl::CalculateSeparatorInfo() const {
+       break;
+   }
+ 
++
++  // navegador: barra de navegação e página no mesmo cartão (Dia), sem a
++  // linha entre elas (fora da tela cheia).
++  if (layout_data_->tab_strip_type == TabStripType::kVertical &&
++      (layout_data_->window_state == WindowState::kNormal ||
++       layout_data_->window_state == WindowState::kMaximized)) {
++    info.multi_contents_separator = false;
++    info.top_container_separator = false;
++  }
+   return info;
+ }
+ 
+@@ -822,6 +834,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                                 GetVerticalTabStripContentOverlap();
        params.InsetHorizontal(inset_amount, /*leading=*/true);
  
@@ -398,7 +445,7 @@ index 29dfbde914..2b2c8b0c7e 100644
        // Let the vertical tab strip animate out over the content.
        if (vertical_tab_strip_animation.current_motion) {
          clip_content_for_animation =
-@@ -855,8 +867,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -855,8 +876,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    if (IsParentedTo(views().vertical_tab_strip_top_corner,
                     views().browser_view)) {
      gfx::Rect corner_bounds;
@@ -409,7 +456,7 @@ index 29dfbde914..2b2c8b0c7e 100644
          vertical_tab_strip_animation.top_corner > 0.0;
  
      // The top corner is drawn when the tabstrip goes all the way to the top.
-@@ -878,8 +892,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -878,8 +901,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    if (IsParentedTo(views().vertical_tab_strip_bottom_corner,
                     views().browser_view)) {
      gfx::Rect corner_bounds;
@@ -420,7 +467,7 @@ index 29dfbde914..2b2c8b0c7e 100644
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -968,7 +984,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -968,7 +993,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    ProposedLayout* main_background_layout = nullptr;
    if (IsParentedTo(views().main_background_region, views().browser_view)) {
      gfx::Rect main_background_bounds;
@@ -436,7 +483,7 @@ index 29dfbde914..2b2c8b0c7e 100644
        // In the future this should just be a 1px shim to avoid covering
        // transparency in the frame/tab strip, instead of extending the entire
        // background to the window edge.
-@@ -1231,6 +1254,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1231,6 +1263,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        }
      }
      views().multi_contents_view->SetBackgroundRadii(content_corners);
@@ -451,7 +498,7 @@ index 29dfbde914..2b2c8b0c7e 100644
    }
  
    // Make final visual adjustments required for child views to paint.
-@@ -1427,9 +1458,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1427,9 +1467,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
  
@@ -470,7 +517,7 @@ index 29dfbde914..2b2c8b0c7e 100644
        layout_data_->window_state == WindowState::kNormal) {
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
-@@ -1524,6 +1562,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1524,6 +1571,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
            animation.expand_on_hover_opacity * expand_on_hover_opacity);
        vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
@@ -486,7 +533,7 @@ index 29dfbde914..2b2c8b0c7e 100644
      } else {
        vertical_tabs_background->SetPrimaryColor(frame_color);
      }
-@@ -1707,6 +1754,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +1763,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -504,13 +551,14 @@ index 29dfbde914..2b2c8b0c7e 100644
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-index 62f69255e0..36ace8e5f7 100644
+index 62f69255e0..f10b693e88 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 +++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-@@ -4,6 +4,14 @@
+@@ -4,6 +4,15 @@
  
  #include "chrome/browser/ui/views/frame/opaque_browser_frame_view.h"
  
++#include "navegador/browser/containers/espacos_dados.h"
 +#include "navegador/browser/ui/cores.h"
 +#include "navegador/browser/ui/visual.h"
 +
@@ -522,7 +570,21 @@ index 62f69255e0..36ace8e5f7 100644
  #include <algorithm>
  #include <utility>
  
-@@ -629,6 +637,35 @@ int OpaqueBrowserFrameView::WebAppButtonHeight() const {
+@@ -531,7 +540,12 @@ gfx::Size OpaqueBrowserFrameView::GetBrowserViewMinimumSize() const {
+ }
+ 
+ bool OpaqueBrowserFrameView::ShouldShowCaptionButtons() const {
+-  return GetShowWindowTitleBar();
++  // navegador: botões da janela só se a pessoa quiser (Configurações do
++  // Navegador → Geral); num gerenciador por atalho, a janela fecha pelo
++  // atalho do sistema.
++  return GetShowWindowTitleBar() &&
++         navegador::espacos::MostrarBotoesDaJanela(
++             GetBrowserView()->browser()->GetProfile());
+ }
+ 
+ bool OpaqueBrowserFrameView::IsRegularOrGuestSession() const {
+@@ -629,6 +643,35 @@ int OpaqueBrowserFrameView::WebAppButtonHeight() const {
  // OpaqueBrowserFrameView, protected:
  
  // views::View:
@@ -558,7 +620,7 @@ index 62f69255e0..36ace8e5f7 100644
  void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    TRACE_EVENT0("views.frame", "OpaqueBrowserFrameView::OnPaint");
    if (browser_widget()->IsFullscreen()) {
-@@ -670,6 +707,19 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -670,6 +713,19 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
      }
    }
  

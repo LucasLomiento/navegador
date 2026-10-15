@@ -18,6 +18,7 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/prefs/pref_change_registrar.h"
@@ -39,6 +40,7 @@
 #include "ui/events/event.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/canvas.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/background.h"
 #include "ui/views/border.h"
@@ -46,6 +48,7 @@
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/button/md_text_button.h"
+#include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/combobox/combobox.h"
 #include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/label.h"
@@ -57,6 +60,7 @@
 #include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/window/dialog_delegate.h"
+#include "ui/views/window/non_client_view.h"
 
 namespace navegador::configuracoes {
 
@@ -584,6 +588,89 @@ class PainelDeAtalhos : public views::View {
 BEGIN_METADATA(PainelDeAtalhos)
 END_METADATA
 
+// --- Geral ------------------------------------------------------------------
+
+// Botões da janela: a moldura (OpaqueBrowserFrameView) lê a pref no layout;
+// refaz o layout de todas as janelas pra mudar na hora.
+void DefinirBotoesDaJanela(Profile* perfil, bool mostrar) {
+  perfil->GetPrefs()->SetBoolean(espacos::kBotoesDaJanelaPref, mostrar);
+  for (BrowserWindowInterface* browser : GetAllBrowserWindowInterfaces()) {
+    BrowserView* view = BrowserView::GetBrowserViewForBrowser(browser);
+    views::Widget* widget = view ? view->GetWidget() : nullptr;
+    if (!widget) {
+      continue;
+    }
+    if (widget->non_client_view() &&
+        widget->non_client_view()->frame_view()) {
+      widget->non_client_view()->frame_view()->InvalidateLayout();
+    }
+    view->InvalidateLayout();
+    widget->GetRootView()->SchedulePaint();
+  }
+}
+
+// Uma opção de ligar/desligar: nome, explicação embaixo e o interruptor.
+std::unique_ptr<views::View> Opcao(std::u16string nome,
+                                   std::u16string explicacao,
+                                   bool ligada,
+                                   base::RepeatingCallback<void(bool)> mudou) {
+  auto linha = std::make_unique<views::View>();
+  auto* layout = linha->SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(4, 6), 16));
+  layout->set_cross_axis_alignment(
+      views::BoxLayout::CrossAxisAlignment::kCenter);
+  auto* textos = linha->AddChildView(std::make_unique<views::View>());
+  textos->SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kVertical, gfx::Insets(), 2));
+  auto* titulo = textos->AddChildView(std::make_unique<views::Label>(nome));
+  titulo->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+  auto* detalhe = textos->AddChildView(Legenda(explicacao));
+  detalhe->SizeToFit(440);
+  layout->SetFlexForView(textos, 1);
+  auto* interruptor =
+      linha->AddChildView(std::make_unique<views::ToggleButton>());
+  interruptor->SetIsOn(ligada);
+  interruptor->GetViewAccessibility().SetName(nome);
+  interruptor->SetCallback(base::BindRepeating(
+      [](views::ToggleButton* botao,
+         base::RepeatingCallback<void(bool)> mudou) {
+        mudou.Run(botao->GetIsOn());
+      },
+      base::Unretained(interruptor), std::move(mudou)));
+  return linha;
+}
+
+class PainelGeral : public views::View {
+  METADATA_HEADER(PainelGeral, views::View)
+
+ public:
+  explicit PainelGeral(Profile* perfil) {
+    SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kVertical, gfx::Insets::VH(16, 10),
+        12));
+    AddChildView(Opcao(
+        u"Quadro de favoritos vazio",
+        u"O quadro tracejado no alto da lateral, quando o espaço ainda não "
+        u"tem favoritos. Os favoritos continuam pelo menu da aba.",
+        espacos::MostrarQuadroDeFavoritos(perfil),
+        base::BindRepeating(
+            [](Profile* perfil, bool mostrar) {
+              perfil->GetPrefs()->SetBoolean(
+                  espacos::kQuadroDeFavoritosPref, mostrar);
+            },
+            perfil)));
+    AddChildView(Opcao(
+        u"Botões da janela",
+        u"Fechar, minimizar e maximizar no canto da barra. Desligados, a "
+        u"janela fecha pelo atalho do sistema.",
+        espacos::MostrarBotoesDaJanela(perfil),
+        base::BindRepeating(&DefinirBotoesDaJanela, perfil)));
+  }
+};
+
+BEGIN_METADATA(PainelGeral)
+END_METADATA
+
 // --- Janela -----------------------------------------------------------------
 
 std::map<BrowserWindowInterface*, base::WeakPtr<views::Widget>>& Abertas() {
@@ -752,6 +839,8 @@ void Mostrar(BrowserWindowInterface* browser, Aba aba) {
     rolagem->SetBackgroundColor(std::nullopt);
     return rolagem;
   };
+  abas->AddTab(u"Geral",
+               rolavel(std::make_unique<PainelGeral>(browser->GetProfile())));
   abas->AddTab(u"Espaços", rolavel(std::make_unique<PainelDeEspacos>(browser)));
   abas->AddTab(u"Containers",
                rolavel(containers::CriarPainel(browser->GetProfile())));

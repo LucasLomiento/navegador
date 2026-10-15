@@ -73,6 +73,7 @@
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/window/non_client_view.h"
 #include "url/gurl.h"
 
 namespace navegador::espacos {
@@ -251,6 +252,10 @@ class TituloDoEspaco : public views::Button,
       espacos::NovoEspaco(browser_);
     } else if (command_id == kEditar) {
       configuracoes::Mostrar(browser_, configuracoes::Aba::kEspacos);
+    } else if (command_id == kAtalhos) {
+      configuracoes::Mostrar(browser_, configuracoes::Aba::kAtalhos);
+    } else if (command_id == kConfiguracoes) {
+      configuracoes::Mostrar(browser_);
     } else if (const size_t i = command_id - kPrimeiro; i < ids_.size()) {
       espacos::IrPara(browser_, ids_[i]);
     }
@@ -281,15 +286,31 @@ class TituloDoEspaco : public views::Button,
     menu_->AddSeparator(ui::NORMAL_SEPARATOR);
     menu_->AddItem(kNovo, u"Novo espaço…");
     menu_->AddItem(kEditar, u"Editar espaços…");
+    menu_->AddSeparator(ui::NORMAL_SEPARATOR);
+    menu_->AddItem(kAtalhos, u"Atalhos do teclado…");
+    menu_->AddItem(kConfiguracoes, u"Configurações do Navegador…");
     runner_ = std::make_unique<views::MenuRunner>(
-        menu_.get(), views::MenuRunner::HAS_MNEMONICS);
+        menu_.get(), views::MenuRunner::HAS_MNEMONICS,
+        base::BindRepeating(&TituloDoEspaco::MenuFechou,
+                            base::Unretained(this)));
     runner_->RunMenuAt(GetWidget(), nullptr, GetAnchorBoundsInScreen(),
                        views::MenuAnchorPosition::kTopLeft,
                        ui::mojom::MenuSourceType::kMouse);
   }
 
+  // O menu pega o mouse: o botão não recebe a saída do ponteiro nem a
+  // soltura do clique, e o destaque ficava preso no nome do espaço.
+  void MenuFechou() {
+    SetState(IsMouseHovered() ? STATE_HOVERED : STATE_NORMAL);
+    views::InkDrop::Get(this)->GetInkDrop()->SnapToHidden();
+    views::InkDrop::Get(this)->GetInkDrop()->SetHovered(IsMouseHovered());
+    SchedulePaint();
+  }
+
   static constexpr int kNovo = 1;
   static constexpr int kEditar = 2;
+  static constexpr int kAtalhos = 3;
+  static constexpr int kConfiguracoes = 4;
   static constexpr int kPrimeiro = 100;
 
   raw_ptr<BrowserWindowInterface> browser_;
@@ -410,6 +431,8 @@ class FaixaDeEspacos : public views::View,
 
     Atualizar();
   }
+
+  std::optional<SkColor> Tom() const { return tom_; }
 
   ~FaixaDeEspacos() override {
     model_->RemoveObserver(this);
@@ -637,6 +660,7 @@ class FaixaDeEspacos : public views::View,
     menu_->AddSeparator(ui::NORMAL_SEPARATOR);
     menu_->AddItem(kNovo, u"Novo espaço");
     menu_->AddItem(kConfigurar, u"Configurar espaços…");
+    menu_->AddItem(kAtalhosCmd, u"Atalhos do teclado…");
     menu_runner_ = std::make_unique<views::MenuRunner>(
         menu_.get(), views::MenuRunner::CONTEXT_MENU);
     menu_runner_->RunMenuAt(GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
@@ -667,6 +691,9 @@ class FaixaDeEspacos : public views::View,
         return;
       case kConfigurar:
         configuracoes::Mostrar(browser_, configuracoes::Aba::kEspacos);
+        return;
+      case kAtalhosCmd:
+        configuracoes::Mostrar(browser_, configuracoes::Aba::kAtalhos);
         return;
       case kSemContainer:
         containers::DefinirContainerDoEspaco(Perfil(), atual, "");
@@ -975,8 +1002,49 @@ class FaixaDeEspacos : public views::View,
                                   weak_factory_.GetWeakPtr()));
   }
 
+  // Cor do espaço da janela pra moldura e a lateral (CorDaJanela, lida no
+  // BrowserWidget::GetColorProviderKey a cada cor pedida). A do Chromium (cor
+  // do grupo focado) só vem na troca de foco com a lateral já montada: na
+  // abertura da janela não vinha, e a janela ficava na cor neutra.
+  void AtualizarTom() {
+    std::optional<SkColor> cor;
+    if (model_->GetFocusedGroup()) {
+      if (std::optional<Espaco> espaco = Get(Perfil(), EspacoAtual())) {
+        cor = containers::Cor(espaco->cor);
+      }
+    }
+    if (tom_ == cor) {
+      return;
+    }
+    tom_ = cor;
+    views::Widget* janela =
+        GetWidget() ? GetWidget()->GetTopLevelWidget() : nullptr;
+    if (!janela) {
+      return;
+    }
+    // Como o Chromium faz na troca de foco do grupo: troca o tema e repinta
+    // a moldura (que pinta o vidro atrás da lateral).
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(
+                       [](base::WeakPtr<views::Widget> janela) {
+                         if (!janela) {
+                           return;
+                         }
+                         janela->ThemeChanged();
+                         if (janela->non_client_view() &&
+                             janela->non_client_view()->frame_view()) {
+                           janela->non_client_view()
+                               ->frame_view()
+                               ->SchedulePaint();
+                         }
+                         janela->GetRootView()->SchedulePaint();
+                       },
+                       janela->GetWeakPtr()));
+  }
+
   void Atualizar() {
     atualizacao_pendente_ = false;
+    AtualizarTom();
     const std::vector<Espaco> todos = Todos(Perfil());
     const std::string atual = EspacoAtual();
     bolinhas_->RemoveAllChildViews();
@@ -1012,6 +1080,7 @@ class FaixaDeEspacos : public views::View,
   static constexpr int kNovo = 2;
   static constexpr int kContainerDoEspaco = 3;
   static constexpr int kConfigurar = 4;
+  static constexpr int kAtalhosCmd = 5;
   static constexpr int kSemContainer = 100;
   static constexpr int kPrimeiroContainer = 101;
 
@@ -1038,6 +1107,8 @@ class FaixaDeEspacos : public views::View,
   views::ViewTracker titulo_do_cabecalho_;
   bool atualizacao_pendente_ = false;
   bool garantia_pendente_ = false;
+  // Cor do espaço da janela (nada = sem espaço focado), ver AtualizarTom.
+  std::optional<SkColor> tom_;
   base::WeakPtrFactory<FaixaDeEspacos> weak_factory_{this};
 };
 
@@ -1050,6 +1121,12 @@ FaixaDeEspacos* FaixaDe(BrowserWindowInterface* browser) {
 }
 
 }  // namespace
+
+std::optional<SkColor> CorDaJanela(BrowserWindowInterface* browser) {
+  auto it = Faixas().find(browser);
+  return it != Faixas().end() && it->second ? it->second->Tom()
+                                             : std::nullopt;
+}
 
 void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
   // "Mover para o espaço" no menu da aba (containers_ui não enxerga daqui).

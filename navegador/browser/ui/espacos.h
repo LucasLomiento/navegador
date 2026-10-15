@@ -19,7 +19,10 @@
 #define NAVEGADOR_BROWSER_UI_ESPACOS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
+
+#include "third_party/skia/include/core/SkColor.h"
 
 class BrowserWindowInterface;
 class Profile;
@@ -39,6 +42,10 @@ void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser);
 // como o nome do perfil no Dia: clicar abre a lista de espaços. Chamar
 // depois do AdicionarFaixa.
 std::unique_ptr<views::View> CriarTitulo(BrowserWindowInterface* browser);
+
+// Cor do espaço em que a janela está, pra tingir a moldura e a lateral
+// (gancho no BrowserWidget::GetColorProviderKey). Nada = sem espaço focado.
+std::optional<SkColor> CorDaJanela(BrowserWindowInterface* browser);
 
 // Leva a janela pro espaço (cria a primeira aba dele se ainda não tiver).
 void IrPara(BrowserWindowInterface* browser, const std::string& espaco);
