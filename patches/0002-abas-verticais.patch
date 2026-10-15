@@ -68,12 +68,16 @@ index 97c6ded1ac..33d48dcb4d 100644
  
    // Append extension items for the 'tab' context if the feature is enabled.
 diff --git i/chrome/browser/ui/tabs/tab_strip_prefs.cc w/chrome/browser/ui/tabs/tab_strip_prefs.cc
-index ca0afc6fd0..aa5c8a660f 100644
+index ca0afc6fd0..bb10475d7c 100644
 --- i/chrome/browser/ui/tabs/tab_strip_prefs.cc
 +++ w/chrome/browser/ui/tabs/tab_strip_prefs.cc
-@@ -24,7 +24,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+@@ -22,9 +22,11 @@ namespace tabs {
+ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref(prefs::kTabSearchPinnedToTabstrip, true);
    registry->RegisterBooleanPref(prefs::kOrganizerPanelPinnedToTabstrip, true);
-   registry->RegisterBooleanPref(prefs::kEverythingMenuPinnedToTabstrip, true);
+-  registry->RegisterBooleanPref(prefs::kEverythingMenuPinnedToTabstrip, true);
++  // navegador: cabeçalho da lateral do Dia, sem o botão de grupos.
++  registry->RegisterBooleanPref(prefs::kEverythingMenuPinnedToTabstrip, false);
    registry->RegisterBooleanPref(prefs::kTabScrollButtonsPinnedToTabstrip, true);
 -  registry->RegisterBooleanPref(prefs::kVerticalTabsEnabled, false);
 +  // navegador: abas sempre na lateral.
@@ -82,10 +86,19 @@ index ca0afc6fd0..aa5c8a660f 100644
        prefs::kVerticalTabsExpandOnHoverEnabled,
        tabs::kVerticalTabsExpandOnHoverDefaultEnabled.Get());
 diff --git i/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc w/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
-index 22ece00a8c..8cda035e98 100644
+index 22ece00a8c..d1b6c5bb40 100644
 --- i/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
 +++ w/chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc
-@@ -183,6 +183,10 @@ bool VerticalTabStripStateController::ShouldDisplayVerticalTabs() const {
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+ 
++#include "chrome/grit/theme_resources.h"
++
+ #include <optional>
+ 
+ #include "base/i18n/rtl.h"
+@@ -183,6 +185,10 @@ bool VerticalTabStripStateController::ShouldDisplayVerticalTabs() const {
  }
  
  void VerticalTabStripStateController::SetVerticalTabsEnabled(bool enabled) {
@@ -96,6 +109,18 @@ index 22ece00a8c..8cda035e98 100644
    // If the user already has a pending mode switch, but tries to change tab
    // strip mode again, ensure the toast is displayed.
    if (enable_state_lock_count_ > 0 && enabled != is_vertical_tabs_enabled_ &&
+@@ -413,8 +419,10 @@ void VerticalTabStripStateController::UpdateCollapseActionItem() {
+       actions::ActionManager::Get().FindAction(kActionToggleCollapseVertical,
+                                                root_action_item_);
+   if (collapse_action) {
++    // navegador: o logo do navegador no cabeçalho da lateral (como o logo
++    // do Dia); clicar continua recolhendo/abrindo a lateral.
+     collapse_action->SetImage(
+-        ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon));
++        ui::ImageModel::FromResourceId(IDR_PRODUCT_LOGO_16));
+     collapse_action->SetText(
+         chrome::GetCleanTitleAndTooltipText(l10n_util::GetStringUTF16(text)));
+ 
 diff --git i/chrome/browser/ui/toolbar/app_menu_model.cc w/chrome/browser/ui/toolbar/app_menu_model.cc
 index f8f6a64f35..b8b058e8c5 100644
 --- i/chrome/browser/ui/toolbar/app_menu_model.cc
