@@ -5,7 +5,7 @@
 #   cd pacote && makepkg -sif
 pkgname=navegador
 pkgver=155.0.8059.79
-pkgrel=1
+pkgrel=2
 pkgdesc="Navegador próprio em cima do Chromium, com o visual do Dia"
 arch=(x86_64)
 url="https://github.com/LucasLomiento/navegador"
@@ -34,6 +34,9 @@ _repo="$(cd "$startdir/.." && pwd)"
 package() {
   local destino="$pkgdir/usr/lib/navegador"
   install -Dm755 "$_out/chrome" "$destino/navegador"
+  # Sem a tabela de símbolos (527 -> 352 MB no release); o resto do pacote
+  # fica como o Chromium entrega (options=!strip).
+  strip --strip-all "$destino/navegador"
   install -Dm755 "$_out/chrome_crashpad_handler" "$destino/chrome_crashpad_handler"
   # Sem ele, o Chromium usa o sandbox de namespaces do kernel (o Arch tem).
   if [[ -e "$_out/chrome_sandbox" ]]; then
