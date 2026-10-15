@@ -471,20 +471,21 @@ index 62f69255e0..f54a0e6328 100644
      PaintMaximizedFrameBorder(canvas);
    } else {
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..8cf7ad5a8d 100644
+index b7cdb8f557..3354c2fab8 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,10 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
 +#include "navegador/browser/ui/cor_da_pagina.h"
 +#include "navegador/browser/ui/espacos.h"
++#include "navegador/browser/ui/menu_do_logo.h"
 +
  #include <algorithm>
  #include <optional>
  
-@@ -136,6 +139,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -136,6 +140,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
    top_button_separator_ = AddChildView(std::make_unique<views::Separator>());
@@ -493,7 +494,7 @@ index b7cdb8f557..8cf7ad5a8d 100644
    // The TopContainer handles the padding distance to the separator so that we
    // can control how far it is in the various states.
    top_button_separator_->SetProperty(
-@@ -147,10 +152,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -147,10 +153,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -507,7 +508,7 @@ index b7cdb8f557..8cf7ad5a8d 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +167,11 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +168,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
@@ -515,6 +516,9 @@ index b7cdb8f557..8cf7ad5a8d 100644
 +  // navegação na cor do site.
 +  navegador::espacos::AdicionarFaixa(this, browser_view->browser());
 +  navegador::cor_da_pagina::Acompanhar(this, browser_view);
++  // navegador: o logo do cabeçalho abre o menu do navegador, como no Dia.
++  navegador::menu_do_logo::Ligar(top_button_container_->GetCollapseButton(),
++                                 browser_view->browser());
 +
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);

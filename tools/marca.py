@@ -4,7 +4,8 @@ traduções.
 
 O grit identifica cada tradução (.xtb) por um hash do texto em inglês da
 mensagem (.grd). Trocar o texto muda o hash e a tradução some (cai pro
-inglês). Então, pra cada mensagem de chrome/app/chromium_strings.grd:
+inglês). Então, pra cada mensagem dos arquivos de INTEIROS
+(chrome/app/chromium_strings.grd e o dos componentes):
 
   1. calcula o id antigo (texto original) e o novo (texto com Navegador);
   2. em cada chromium_strings_*.xtb, renomeia a tradução do id antigo pro
@@ -118,13 +119,29 @@ def trocar_arquivo(src, grd_rel, xtb_glob, trocar_mensagem, antigo):
     return len(mapa), total
 
 
+# Arquivos de texto com a marca inteira (toda mensagem com "Chromium" muda).
+INTEIROS = (
+    ("chrome/app/chromium_strings.grd",
+     "chrome/app/resources/chromium_strings_*.xtb"),
+    # "O Chromium não foi encerrado corretamente" e afins.
+    ("components/components_chromium_strings.grd",
+     "components/strings/components_chromium_strings_*.xtb"),
+)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=os.path.expanduser(
         "~/Work/navegador-chromium/src"))
     args = ap.parse_args()
 
-    grd = os.path.join(args.src, "chrome/app/chromium_strings.grd")
+    for grd_rel, xtb_glob in INTEIROS:
+        trocar_inteiro(args.src, grd_rel, xtb_glob)
+    especificas(args.src)
+
+
+def trocar_inteiro(src, grd_rel, xtb_glob):
+    grd = os.path.join(src, grd_rel)
     original = open(grd, encoding="utf-8").read()
 
     # Só o conteúdo das <message> muda (não comentários nem atributos).
@@ -134,13 +151,12 @@ def main():
     novo = re.sub(r"(<message\b[^>]*>)(.*?)(</message>)", nas_mensagens,
                   original, flags=re.S)
     if novo == original:
-        print("marca: nada a trocar (já aplicado)")
-        especificas(args.src)
+        print(f"marca: {grd_rel}: nada a trocar (já aplicado)")
         return
 
-    ids_antigos = ids_em_ordem(args.src, grd)
+    ids_antigos = ids_em_ordem(src, grd)
     open(grd, "w", encoding="utf-8").write(novo)
-    ids_novos = ids_em_ordem(args.src, grd)
+    ids_novos = ids_em_ordem(src, grd)
 
     assert len(ids_antigos) == len(ids_novos)
     mapa = {antigo: novo_id
@@ -149,8 +165,7 @@ def main():
 
     padrao = re.compile(r'<translation id="(\d+)">(.*?)</translation>', re.S)
     total = 0
-    for xtb in sorted(glob.glob(os.path.join(
-            args.src, "chrome/app/resources/chromium_strings_*.xtb"))):
+    for xtb in sorted(glob.glob(os.path.join(src, xtb_glob))):
         conteudo = open(xtb, encoding="utf-8").read()
 
         def renomear(m):
@@ -163,8 +178,8 @@ def main():
 
         open(xtb, "w", encoding="utf-8").write(padrao.sub(renomear, conteudo))
 
-    print(f"marca: {len(mapa)} mensagens com id novo, {total} traduções movidas")
-    especificas(args.src)
+    print(f"marca: {grd_rel}: {len(mapa)} mensagens com id novo, "
+          f"{total} traduções movidas")
 
 
 def especificas(src):

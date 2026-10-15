@@ -1,0 +1,199 @@
+diff --git i/chrome/browser/ui/browser_command_controller.cc w/chrome/browser/ui/browser_command_controller.cc
+index 3741ba7671..779be59085 100644
+--- i/chrome/browser/ui/browser_command_controller.cc
++++ w/chrome/browser/ui/browser_command_controller.cc
+@@ -2763,14 +2763,15 @@ void BrowserCommandController::UpdateCommandsForTabGroupFocusChanged() {
+   }
+ 
+   if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
+-    const bool is_focused =
+-        browser_->tab_strip_model()->GetFocusedGroup().has_value();
++    // navegador: grupo focado é um espaço do Dia. O cabeçalho fica com o
++    // logo (menu) e sai-se do espaço pela faixa do pé, sem o botão de
++    // "desfocar" no lugar do logo.
+     if (auto* const action = FindAction(kActionUnfocusTabGroup, browser_)) {
+-      action->SetVisible(is_focused);
++      action->SetVisible(false);
+     }
+     if (auto* const action =
+             FindAction(kActionToggleCollapseVertical, browser_)) {
+-      action->SetVisible(!is_focused);
++      action->SetVisible(true);
+     }
+   }
+ }
+diff --git i/chrome/browser/ui/views/frame/browser_view.cc w/chrome/browser/ui/views/frame/browser_view.cc
+index 63c3090b4c..ab42fd2ab6 100644
+--- i/chrome/browser/ui/views/frame/browser_view.cc
++++ w/chrome/browser/ui/views/frame/browser_view.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ 
++#include "navegador/browser/ui/menu_do_logo.h"
++
+ #include <stdint.h>
+ 
+ #include <algorithm>
+@@ -3191,6 +3193,10 @@ void BrowserView::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
+ }
+ 
+ void BrowserView::ShowAppMenu() {
++  // navegador: o menu mora no logo da lateral (a barra não tem o "⋮").
++  if (navegador::menu_do_logo::Abrir(browser(), /*pelo_teclado=*/true)) {
++    return;
++  }
+   auto* control = ToolbarButtonProvider::From(browser_)->GetAppMenuControl();
+   if (!control) {
+     return;
+diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+index d69e4dd30f..f4243e4bb4 100644
+--- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
++++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
+@@ -333,6 +333,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
+     context_menu_runner_.reset();
+ 
+     context_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++    // navegador: o logo abre o menu do navegador; recolher a lateral fica
++    // aqui (e no Ctrl+Shift+L).
++    context_menu_model_->AddItemWithStringId(
++        IDC_TOGGLE_VERTICAL_TABS_COLLAPSE, state_controller_->IsCollapsed()
++                                               ? IDS_EXPAND_VERTICAL_TABS
++                                               : IDS_COLLAPSE_VERTICAL_TABS);
+     context_menu_model_->AddCheckItem(
+         IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER,
+         l10n_util::GetStringUTF16(
+@@ -375,7 +381,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
+ }
+ 
+ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
+-  if (command_id == IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER) {
++  if (command_id == IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER ||
++      command_id == IDC_TOGGLE_VERTICAL_TABS_COLLAPSE) {
+     return true;
+   }
+   return false;
+@@ -383,7 +390,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
+ 
+ void VerticalTabStripTopContainer::ExecuteCommand(int command_id,
+                                                   int event_flags) {
+-  if (command_id == IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER) {
++  if (command_id == IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER ||
++      command_id == IDC_TOGGLE_VERTICAL_TABS_COLLAPSE) {
+     chrome::ExecuteCommand(browser_, command_id);
+   }
+ }
+diff --git i/chrome/browser/ui/views/toolbar/app_menu.cc w/chrome/browser/ui/views/toolbar/app_menu.cc
+index 55f2bf1244..f7f13d9065 100644
+--- i/chrome/browser/ui/views/toolbar/app_menu.cc
++++ w/chrome/browser/ui/views/toolbar/app_menu.cc
+@@ -1145,13 +1145,14 @@ void AppMenu::RunMenu(views::MenuButtonController* host,
+ 
+ void AppMenu::RunMenu(views::Widget* parent,
+                       const gfx::Rect& anchor_screen_bounds,
+-                      ui::mojom::MenuSourceType source_type) {
++                      ui::mojom::MenuSourceType source_type,
++                      views::MenuAnchorPosition anchor_position) {
+   base::RecordAction(UserMetricsAction("ShowAppMenu"));
+   UMA_HISTOGRAM_ENUMERATION("WrenchMenu.MenuAction", MENU_ACTION_MENU_OPENED,
+                             LIMIT_MENU_ACTION);
+ 
+   menu_runner_->RunMenuAt(parent, nullptr, anchor_screen_bounds,
+-                          views::MenuAnchorPosition::kTopRight, source_type,
++                          anchor_position, source_type,
+                           /*native_view_for_gestures=*/gfx::NativeView(),
+                           /*corners=*/std::nullopt,
+                           "Chrome.AppMenu.MenuHostInitToNextFramePresented");
+diff --git i/chrome/browser/ui/views/toolbar/app_menu.h w/chrome/browser/ui/views/toolbar/app_menu.h
+index e23cc845fa..609e7eae4f 100644
+--- i/chrome/browser/ui/views/toolbar/app_menu.h
++++ w/chrome/browser/ui/views/toolbar/app_menu.h
+@@ -55,10 +55,13 @@ class AppMenu final : public views::MenuDelegate,
+       ui::mojom::MenuSourceType source_type = ui::mojom::MenuSourceType::kNone);
+ 
+   // Shows the menu with an anchor in the parent widget given its bounds.
++  // navegador: `anchor_position` pra abrir no logo da lateral (à esquerda).
+   void RunMenu(
+       views::Widget* parent,
+       const gfx::Rect& anchor_screen_bounds,
+-      ui::mojom::MenuSourceType source_type = ui::mojom::MenuSourceType::kNone);
++      ui::mojom::MenuSourceType source_type = ui::mojom::MenuSourceType::kNone,
++      views::MenuAnchorPosition anchor_position =
++          views::MenuAnchorPosition::kTopRight);
+ 
+   // Closes the menu if it is open, otherwise does nothing.
+   void CloseMenu();
+diff --git i/chrome/browser/ui/views/toolbar/toolbar_view.cc w/chrome/browser/ui/views/toolbar/toolbar_view.cc
+index bfc981b7ee..01e718df14 100644
+--- i/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ w/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -211,8 +211,8 @@ auto& GetViewCommandMap() {
+   return kViewCommandMap;
+ }
+ 
+-constexpr int kBrowserAppMenuRefreshExpandedMargin = 5;
+-constexpr int kBrowserAppMenuRefreshCollapsedMargin = 2;
++[[maybe_unused]] constexpr int kBrowserAppMenuRefreshExpandedMargin = 5;
++[[maybe_unused]] constexpr int kBrowserAppMenuRefreshCollapsedMargin = 2;
+ constexpr int kLargeSpaceBetweenButtons = 6;
+ constexpr int kInsideBorderAroundGlicButtons = 2;
+ constexpr int kGlicButtonMargin = 5;
+@@ -250,10 +250,25 @@ bool IsPositionInWindowCaptionForView(const views::View* view,
+ }
+ 
+ void SetRefreshMargins(views::View* button, bool expanded) {
+-  button->SetProperty(
+-      views::kMarginsKey,
+-      gfx::Insets::VH(0, expanded ? kBrowserAppMenuRefreshExpandedMargin
+-                                  : kBrowserAppMenuRefreshCollapsedMargin));
++  // navegador: só o avatar e o "⋮" usam isto, e os dois ficam com largura
++  // zero (EsconderNaBarra), sem margem.
++  button->SetProperty(views::kMarginsKey, gfx::Insets());
++}
++
++// navegador: como no Dia, sem avatar nem "⋮" na barra (os dois moram no menu
++// do logo da lateral). Os botões continuam "desenhados" porque bolhas do
++// Chromium se ancoram neles (sessão restaurada, perfil novo...): escondido, o
++// AppMenuButton::GetAnchor fecha o navegador com "Check failed: element".
++// Ficam com 1 px (com zero o FlexLayout esconde) numa camada transparente,
++// sem foco e sem receber clique.
++void EsconderNaBarra(views::View* botao) {
++  botao->SetPreferredSize(gfx::Size(
++      1, GetLayoutConstant(LayoutConstant::kToolbarButtonHeight)));
++  botao->SetFocusBehavior(views::View::FocusBehavior::NEVER);
++  botao->SetCanProcessEventsWithinSubtree(false);
++  botao->SetPaintToLayer();
++  botao->layer()->SetFillsBoundsOpaquely(false);
++  botao->layer()->SetOpacity(0.0f);
+ }
+ 
+ }  // namespace
+@@ -599,6 +614,9 @@ void ToolbarView::Init() {
+     bool show_avatar_toolbar_button =
+         AvatarToolbarButtonInterface::CanShowForProfile(browser_->GetProfile());
+     avatar_->SetVisible(show_avatar_toolbar_button);
++    // navegador: como no Dia, sem avatar na barra; os perfis ficam no
++    // submenu "Perfil" do menu (no logo da lateral).
++    EsconderNaBarra(avatar_);
+   }
+ 
+   // Only manage the overflow button when there are at least some views
+@@ -620,6 +638,8 @@ void ToolbarView::Init() {
+         l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP));
+     app_menu_button->SetID(VIEW_ID_APP_MENU);
+     app_menu_button_ = AddChildView(std::move(app_menu_button));
++    // navegador: o menu mora no logo da lateral, como no Dia.
++    EsconderNaBarra(app_menu_button_);
+   }
+ 
+   if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks) &&
+@@ -1779,7 +1799,8 @@ void ToolbarView::LayoutCommon() {
+ 
+   if (toolbar_divider_ && extensions_container_) {
+     views::ManualLayoutUtil(layout_manager_)
+-        .SetViewHidden(toolbar_divider_, !extensions_container_->GetVisible());
++        // navegador: sem a linha entre as extensões e o resto (como no Dia).
++        .SetViewHidden(toolbar_divider_, true);
+   }
+   // Cast button visibility is controlled externally.
+ }
