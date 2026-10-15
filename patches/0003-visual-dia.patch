@@ -525,3 +525,18 @@ index d8f32a1ca6..0f9d4e3d3b 100644
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
    registry->RegisterBooleanPref(
        prefs::kShowManagedBookmarksInBookmarkBar, true,
+diff --git i/components/omnibox/browser/location_bar_model_delegate.cc w/components/omnibox/browser/location_bar_model_delegate.cc
+index ec0eddc10f..264513595e 100644
+--- i/components/omnibox/browser/location_bar_model_delegate.cc
++++ w/components/omnibox/browser/location_bar_model_delegate.cc
+@@ -9,7 +9,9 @@ bool LocationBarModelDelegate::ShouldPreventElision() {
+ }
+ 
+ bool LocationBarModelDelegate::ShouldTrimDisplayUrlAfterHostName() const {
+-  return false;
++  // navegador: parada, a barra mostra só o domínio (como o Dia); ao clicar,
++  // o endereço inteiro volta pra editar.
++  return true;
+ }
+ 
+ bool LocationBarModelDelegate::ShouldDisplayURL() const {
