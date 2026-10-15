@@ -8,9 +8,11 @@
 #ifndef NAVEGADOR_BROWSER_UI_CORES_H_
 #define NAVEGADOR_BROWSER_UI_CORES_H_
 
+#include "third_party/skia/include/core/SkColor.h"
+#include "ui/color/color_provider_key.h"
+
 namespace ui {
 class ColorProvider;
-struct ColorProviderKey;
 }  // namespace ui
 
 namespace navegador::cores {
@@ -25,6 +27,15 @@ inline constexpr unsigned char kVidroAlfaEscuro = 0xC0;
 
 void AddColorMixer(ui::ColorProvider* provider,
                    const ui::ColorProviderKey& key);
+
+// Barra de navegação na cor da página ativa (o Dia faz a barra parecer parte
+// do site). A janela põe um destes no `app_controller` da chave de cores
+// (BrowserWidget::GetColorProviderKey) quando a página tem cor; o mixer
+// acima reconhece e pinta a barra por cima da paleta.
+//
+// Um por cor, nunca apagados: a chave guarda o ponteiro cru e o
+// ColorProviderManager guarda os provedores em cache por chave.
+ui::ColorProviderKey::InitializerSupplier* FornecedorDaBarra(SkColor cor);
 
 }  // namespace navegador::cores
 

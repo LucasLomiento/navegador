@@ -1,5 +1,9 @@
 #include "navegador/browser/ui/cores.h"
 
+#include <map>
+
+#include "base/no_destructor.h"
+
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/color_utils.h"
@@ -59,12 +63,74 @@ constexpr Paleta kEscuro = {
     .destaque = SkColorSetRGB(0x60, 0xCD, 0xFF),
 };
 
+// Cor da página na barra de navegação, com texto e ícones no contraste.
+class Barra : public ui::ColorProviderKey::InitializerSupplier {
+ public:
+  explicit Barra(SkColor cor) : cor_(SkColorSetA(cor, SK_AlphaOPAQUE)) {}
+
+  // Só a janela do navegador chama isto (pela chave); o trabalho de verdade
+  // é o Pintar, chamado no fim do mixer do navegador, depois da paleta.
+  void AddColorMixers(ui::ColorProvider* provider,
+                      const ui::ColorProviderKey& key) const override {}
+
+  void Pintar(ui::ColorMixer& mixer) const {
+    const bool escura = color_utils::IsDark(cor_);
+    const SkColor texto =
+        escura ? SK_ColorWHITE : SkColorSetARGB(0xE4, 0x00, 0x00, 0x00);
+    mixer[kColorToolbar] = {cor_};
+    mixer[kColorWebContentsBackground] = {cor_};
+    mixer[kColorLocationBarBackground] = {cor_};
+    mixer[kColorLocationBarBackgroundHovered] = {
+        color_utils::BlendTowardMaxContrast(cor_, 0x16)};
+    mixer[kColorToolbarText] = {texto};
+    mixer[kColorOmniboxText] = {texto};
+    mixer[kColorOmniboxTextDimmed] = {SkColorSetA(texto, 0x99)};
+    mixer[kColorToolbarButtonIcon] = {texto};
+    mixer[kColorToolbarButtonIconHovered] = {texto};
+    mixer[kColorToolbarButtonIconPressed] = {texto};
+    mixer[kColorToolbarButtonIconInactive] = {SkColorSetA(texto, 0x5C)};
+    mixer[kColorToolbarInkDrop] = {texto};
+    mixer[kColorToolbarContentAreaSeparator] = {SkColorSetA(texto, 0x1A)};
+  }
+
+ private:
+  SkColor cor_;
+};
+
+std::map<SkColor, Barra*>& Barras() {
+  static base::NoDestructor<std::map<SkColor, Barra*>> barras;
+  return *barras;
+}
+
+const Barra* BarraDe(const ui::ColorProviderKey::InitializerSupplier* s) {
+  if (!s) {
+    return nullptr;
+  }
+  for (const auto& [cor, barra] : Barras()) {
+    if (barra == s) {
+      return barra;
+    }
+  }
+  return nullptr;
+}
+
 }  // namespace
+
+ui::ColorProviderKey::InitializerSupplier* FornecedorDaBarra(SkColor cor) {
+  cor = SkColorSetA(cor, SK_AlphaOPAQUE);
+  Barra*& barra = Barras()[cor];
+  if (!barra) {
+    barra = new Barra(cor);  // Vive até o fim do processo (ver cores.h).
+  }
+  return barra;
+}
 
 void AddColorMixer(ui::ColorProvider* provider,
                    const ui::ColorProviderKey& key) {
-  // Janelas de app (PWA) seguem a cor do app.
-  if (key.app_controller) {
+  // Janelas de app (PWA) seguem a cor do app; a barra na cor da página é
+  // nossa e entra no fim.
+  const Barra* barra = BarraDe(key.app_controller.get());
+  if (key.app_controller && !barra) {
     return;
   }
   const Paleta& p = key.color_mode == ui::ColorProviderKey::ColorMode::kDark
@@ -120,6 +186,10 @@ void AddColorMixer(ui::ColorProvider* provider,
 
   // Destaque (barra de carregamento, foco, botões principais).
   mixer[ui::kColorAccent] = {p.destaque};
+
+  if (barra) {
+    barra->Pintar(mixer);
+  }
 }
 
 }  // namespace navegador::cores

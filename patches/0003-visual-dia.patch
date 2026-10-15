@@ -241,6 +241,33 @@ index 32e5c1a27f..9982ad53fa 100644
      // Set the opaque region.
      std::vector<gfx::Rect> opaque_region;
      if (IsShowingFrame(native_widget_->UseCustomFrame(), window_state)) {
+diff --git i/chrome/browser/ui/views/frame/browser_widget.cc w/chrome/browser/ui/views/frame/browser_widget.cc
+index a335e2d5cc..b9f66d3948 100644
+--- i/chrome/browser/ui/views/frame/browser_widget.cc
++++ w/chrome/browser/ui/views/frame/browser_widget.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/frame/browser_widget.h"
+ 
++#include "navegador/browser/ui/cor_da_pagina.h"
++#include "navegador/browser/ui/cores.h"
++
+ #include <memory>
+ #include <utility>
+ 
+@@ -507,6 +510,12 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
+   // Apply BrowserWidget overrides:
+   key.app_controller =
+       web_app::AppBrowserController::From(browser_view_->browser());
++  // navegador: barra de navegação na cor da página ativa.
++  if (!key.app_controller) {
++    if (auto cor = navegador::cor_da_pagina::CorDaBarra(browser_view_)) {
++      key.app_controller = navegador::cores::FornecedorDaBarra(*cor);
++    }
++  }
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+   // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 index 29dfbde914..f76664dca1 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
@@ -327,19 +354,20 @@ index 29dfbde914..f76664dca1 100644
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..8a3d919efb 100644
+index b7cdb8f557..8cf7ad5a8d 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
++#include "navegador/browser/ui/cor_da_pagina.h"
 +#include "navegador/browser/ui/espacos.h"
 +
  #include <algorithm>
  #include <optional>
  
-@@ -136,6 +138,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -136,6 +139,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
    top_button_separator_ = AddChildView(std::make_unique<views::Separator>());
@@ -348,7 +376,7 @@ index b7cdb8f557..8a3d919efb 100644
    // The TopContainer handles the padding distance to the separator so that we
    // can control how far it is in the various states.
    top_button_separator_->SetProperty(
-@@ -147,10 +151,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -147,10 +152,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -362,12 +390,14 @@ index b7cdb8f557..8a3d919efb 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +166,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +167,11 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
-+  // navegador: espaços do Dia no pé da barra lateral.
++  // navegador: espaços do Dia no pé da barra lateral, e a barra de
++  // navegação na cor do site.
 +  navegador::espacos::AdicionarFaixa(this, browser_view->browser());
++  navegador::cor_da_pagina::Acompanhar(this, browser_view);
 +
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
