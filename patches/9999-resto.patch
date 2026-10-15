@@ -1,0 +1,14 @@
+diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
+index bc3b0459ed..ef066aecd1 100644
+--- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
++++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc
+@@ -36,6 +36,9 @@ VerticalTabStripBottomContainer::VerticalTabStripBottomContainer(
+       &VerticalTabStripBottomContainer::OnNewTabButtonContextMenuClosed,
+       base::Unretained(this)));
+ 
++  // navegador: "+ Nova aba" como linha de texto, no estilo do Dia.
++  new_tab_button->SetShouldShowLabel(true);
++
+   new_tab_button_pressed_subscription_ =
+       new_tab_button->RegisterWillInvokeActionCallback(
+           record_new_tab_button_pressed);

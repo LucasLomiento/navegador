@@ -184,6 +184,13 @@ void AddColorMixer(ui::ColorProvider* provider,
   mixer[kColorTabDividerFrameInactive] = {p.divisor};
   mixer[kColorVerticalTabStripShadow] = {SK_ColorTRANSPARENT};
 
+  // "+ Nova aba" e os botões do topo da lateral: sem fundo, texto discreto
+  // (o realce do hover vem do ink drop).
+  mixer[kColorNewTabButtonCRBackgroundFrameActive] = {SK_ColorTRANSPARENT};
+  mixer[kColorNewTabButtonCRBackgroundFrameInactive] = {SK_ColorTRANSPARENT};
+  mixer[kColorTabSearchButtonCRForegroundFrameActive] = {p.texto_inativo};
+  mixer[kColorTabSearchButtonCRForegroundFrameInactive] = {p.texto_inativo};
+
   // Destaque (barra de carregamento, foco, botões principais).
   mixer[ui::kColorAccent] = {p.destaque};
 

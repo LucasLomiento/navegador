@@ -11,6 +11,11 @@ std::optional<int> LayoutConstantOverride(LayoutConstant constant) {
       return 41;
     case LayoutConstant::kVerticalTabCornerRadius:
       return 8;
+    // "+ Nova aba": linha do tamanho de uma aba, ícone 16.
+    case LayoutConstant::kVerticalTabStripNewTabButtonSize:
+      return 30;
+    case LayoutConstant::kVerticalTabStripButtonIconSize:
+      return 16;
     // Recuo lateral da lista do Dia: 8 de cada lado.
     case LayoutConstant::kVerticalTabStripHorizontalPadding:
       return 8;
