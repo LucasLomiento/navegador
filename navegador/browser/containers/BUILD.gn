@@ -1,0 +1,16 @@
+# Containers: núcleo sem dependência de UI, pra poder ser usado pelos
+# módulos pequenos do chrome/browser (navigator, tabrestore, sessions).
+source_set("containers") {
+  sources = [
+    "containers.cc",
+    "containers.h",
+  ]
+  deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//components/pref_registry",
+    "//components/prefs",
+    "//content/public/browser",
+    "//url",
+  ]
+}

@@ -1,0 +1,104 @@
+// Containers: identidades separadas dentro do mesmo perfil, como os
+// containers do Firefox. Cada container é uma StoragePartition própria
+// (cookies, localStorage, IndexedDB, cache e service workers separados);
+// histórico, favoritos e senhas continuam sendo do perfil.
+//
+// Uma aba de container nasce com um SiteInstance de partição fixa, e o
+// content/ mantém essa partição em qualquer navegação da aba (o mesmo
+// mecanismo do <webview>). Por isso o container de uma aba se descobre pela
+// própria aba, sem tabela paralela.
+
+#ifndef NAVEGADOR_BROWSER_CONTAINERS_CONTAINERS_H_
+#define NAVEGADOR_BROWSER_CONTAINERS_CONTAINERS_H_
+
+#include <map>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "base/memory/scoped_refptr.h"
+#include "content/public/browser/storage_partition_config.h"
+
+class GURL;
+class Profile;
+
+namespace content {
+class SiteInstance;
+class WebContents;
+}  // namespace content
+
+namespace user_prefs {
+class PrefRegistrySyncable;
+}  // namespace user_prefs
+
+namespace navegador::containers {
+
+// Domínio das partições dos containers ([a-z]*, regra do content/).
+inline constexpr char kPartitionDomain[] = "navegador";
+// Lista de containers do perfil.
+inline constexpr char kContainersPref[] = "navegador.containers";
+// Chave no extra_data da aba na sessão.
+inline constexpr char kSessionExtraDataKey[] = "navegador_container";
+
+struct Container {
+  std::string id;
+  std::string name;
+  // Nome da cor da paleta (azul, laranja, verde, rosa, roxo, amarelo,
+  // vermelho, cinza), não um hexadecimal: a cor de verdade vem do tema.
+  std::string color;
+  // Nome do ícone (pessoa, maleta, cifrao, carrinho, ...).
+  std::string icon;
+};
+
+void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
+
+std::vector<Container> GetAll(Profile* profile);
+std::optional<Container> Get(Profile* profile, std::string_view id);
+// Cria com um id novo e devolve o container criado.
+Container Add(Profile* profile,
+              std::string_view name,
+              std::string_view color,
+              std::string_view icon);
+// Atualiza nome, cor e ícone do container com o mesmo id.
+void Update(Profile* profile, const Container& container);
+// Tira da lista. Os dados da partição são apagados por quem chamou
+// (StoragePartition::ClearData), porque pode ter aba aberta nela.
+void Remove(Profile* profile, std::string_view id);
+
+content::StoragePartitionConfig PartitionConfig(Profile* profile,
+                                                std::string_view id);
+
+// Container da aba, ou nada se a aba é da partição normal do perfil.
+std::optional<std::string> IdForWebContents(content::WebContents* contents);
+std::optional<std::string> IdForSiteInstance(content::SiteInstance* instance);
+
+// SiteInstance de uma aba nova dentro do container `id`.
+scoped_refptr<content::SiteInstance> CreateSiteInstance(Profile* profile,
+                                                        const GURL& url,
+                                                        std::string_view id);
+
+// --- Ganchos no Chromium -------------------------------------------------
+
+// browser_navigator.cc (CreateTargetContents), só quando não há opener:
+// a aba nova herda o container de quem a abriu (Ctrl+clique, "abrir em nova
+// aba"). Devolve nullptr quando a aba não é de container.
+scoped_refptr<content::SiteInstance> SiteInstanceForNewTab(
+    Profile* profile,
+    content::WebContents* source_contents,
+    const GURL& url);
+
+// browser_tabrestore.cc (CreateRestoredTab): recria a aba no container que
+// estava salvo na sessão. Devolve nullptr quando não havia container ou ele
+// não existe mais.
+scoped_refptr<content::SiteInstance> SiteInstanceForRestoredTab(
+    Profile* profile,
+    const std::map<std::string, std::string>& extra_data);
+
+// Coleta do extra_data (sessão e "reabrir aba fechada").
+void AddExtraData(content::WebContents* contents,
+                  std::map<std::string, std::string>& extra_data);
+
+}  // namespace navegador::containers
+
+#endif  // NAVEGADOR_BROWSER_CONTAINERS_CONTAINERS_H_

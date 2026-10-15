@@ -1,0 +1,169 @@
+diff --git i/chrome/browser/prefs/BUILD.gn w/chrome/browser/prefs/BUILD.gn
+index 817cd91bda..27fafcf284 100644
+--- i/chrome/browser/prefs/BUILD.gn
++++ w/chrome/browser/prefs/BUILD.gn
+@@ -58,6 +58,7 @@ source_set("impl") {
+   ]
+ 
+   deps = [
++    "//navegador/browser/containers",  # navegador
+     ":prefs",
+     ":util",
+     "//chrome/browser:browser_process",
+diff --git i/chrome/browser/prefs/browser_prefs.cc w/chrome/browser/prefs/browser_prefs.cc
+index 2653e37bec..b726815ec5 100644
+--- i/chrome/browser/prefs/browser_prefs.cc
++++ w/chrome/browser/prefs/browser_prefs.cc
+@@ -221,6 +221,7 @@
+ #include "components/webui/chrome_urls/pref_names.h"
+ #include "components/webui/flags/pref_service_flags_storage.h"
+ #include "content/public/browser/render_process_host.h"
++#include "navegador/browser/containers/containers.h"
+ #include "content/public/common/buildflags.h"
+ #include "extensions/buildflags/buildflags.h"
+ #include "net/http/http_server_properties_manager.h"
+@@ -1747,6 +1748,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+                           const std::string& locale) {
+   TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
+   // User prefs. Please keep this list alphabetized.
++  navegador::containers::RegisterProfilePrefs(registry);  // navegador
+   AccessibilityLabelsService::RegisterProfilePrefs(registry);
+   registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
+   AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
+diff --git i/chrome/browser/sessions/BUILD.gn w/chrome/browser/sessions/BUILD.gn
+index 3c44e7f7a5..56c864ee98 100644
+--- i/chrome/browser/sessions/BUILD.gn
++++ w/chrome/browser/sessions/BUILD.gn
+@@ -123,6 +123,7 @@ source_set("impl") {
+     ]
+ 
+     deps += [
++      "//navegador/browser/containers",  # navegador
+       "//chrome/browser:after_startup_task_utils",
+       "//chrome/browser/content_settings:content_settings_factory",
+       "//chrome/browser/devtools",
+diff --git i/chrome/browser/sessions/session_service_base.cc w/chrome/browser/sessions/session_service_base.cc
+index 0fdde07d4d..9678049423 100644
+--- i/chrome/browser/sessions/session_service_base.cc
++++ w/chrome/browser/sessions/session_service_base.cc
+@@ -68,6 +68,7 @@
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+ #include "chrome/browser/web_applications/web_app_provider.h"
+ #include "chrome/browser/web_applications/web_app_registrar.h"
++#include "navegador/browser/containers/containers.h"
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+ #if BUILDFLAG(IS_OZONE)
+@@ -285,6 +286,12 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
+     SetTabExtensionAppID(session_tab_helper->window_id(),
+                          session_tab_helper->session_id(), app_id);
+   }
++  // navegador: container da aba.
++  if (auto container = navegador::containers::IdForWebContents(contents)) {
++    ScheduleCommand(sessions::CreateAddTabExtraDataCommand(
++        session_tab_helper->session_id(),
++        navegador::containers::kSessionExtraDataKey, *container));
++  }
+ 
+   // Record the association between the SessionStorageNamespaceHandle and the
+   // tab.
+@@ -672,6 +679,14 @@ void SessionServiceBase::BuildCommandsForTab(
+         sessions::CreatePinnedStateCommand(session_id, true));
+   }
+ 
++  // navegador: container da aba.
++  if (auto container = navegador::containers::IdForWebContents(tab)) {
++    command_storage_manager()->AppendRebuildCommand(
++        sessions::CreateAddTabExtraDataCommand(
++            session_id, navegador::containers::kSessionExtraDataKey,
++            *container));
++  }
++
+   // Record the association between the sessionStorage namespace and the tab.
+   content::SessionStorageNamespaceHandle* session_storage_namespace =
+       tab->GetController().GetDefaultSessionStorageNamespace();
+diff --git i/chrome/browser/ui/browser_live_tab_context.cc w/chrome/browser/ui/browser_live_tab_context.cc
+index b220ba6c8f..d4d95562e6 100644
+--- i/chrome/browser/ui/browser_live_tab_context.cc
++++ w/chrome/browser/ui/browser_live_tab_context.cc
+@@ -58,6 +58,7 @@
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/session_storage_namespace_handle.h"
+ #include "content/public/browser/web_contents.h"
++#include "navegador/browser/containers/containers.h"
+ #include "ui/base/mojom/window_show_state.mojom.h"
+ #include "ui/base/window_open_disposition.h"
+ 
+@@ -172,6 +173,8 @@ std::map<std::string, std::string> BrowserLiveTabContext::GetExtraDataForTab(
+ 
+   glic::PopulateGlicExtraData(tab_strip_model_->GetTabAtIndex(index),
+                               &extra_data);
++  navegador::containers::AddExtraData(
++      tab_strip_model_->GetWebContentsAt(index), extra_data);
+ 
+   return extra_data;
+ }
+diff --git i/chrome/browser/ui/browser_tabrestore.cc w/chrome/browser/ui/browser_tabrestore.cc
+index 6aca93a450..b2d794a525 100644
+--- i/chrome/browser/ui/browser_tabrestore.cc
++++ w/chrome/browser/ui/browser_tabrestore.cc
+@@ -36,6 +36,7 @@
+ #include "content/public/browser/restore_type.h"
+ #include "content/public/browser/session_storage_namespace_handle.h"
+ #include "content/public/browser/web_contents.h"
++#include "navegador/browser/containers/containers.h"
+ #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+ #include "ui/gfx/geometry/size.h"
+ #include "ui/gfx/range/range.h"
+@@ -70,7 +71,10 @@ std::unique_ptr<WebContents> CreateRestoredTab(
+   content::SessionStorageNamespaceHandleMap session_storage_namespace_map =
+       content::CreateMapWithDefaultSessionStorageNamespace(
+           browser->GetProfile(), session_storage_namespace);
+-  WebContents::CreateParams create_params(browser->GetProfile());
++  WebContents::CreateParams create_params(
++      browser->GetProfile(),
++      navegador::containers::SiteInstanceForRestoredTab(browser->GetProfile(),
++                                                        extra_data));
+   create_params.initially_hidden = initially_hidden;
+   create_params.desired_renderer_state =
+       WebContents::CreateParams::kNoRendererProcess;
+diff --git i/chrome/browser/ui/navigator/BUILD.gn w/chrome/browser/ui/navigator/BUILD.gn
+index 812ea8e40e..1cf918e2fe 100644
+--- i/chrome/browser/ui/navigator/BUILD.gn
++++ w/chrome/browser/ui/navigator/BUILD.gn
+@@ -83,6 +83,7 @@ source_set("impl") {
+     ]
+ 
+     deps += [
++      "//navegador/browser/containers",  # navegador
+       "//chrome/browser/apps/app_service",
+       "//chrome/browser/apps/link_capturing",
+       "//chrome/browser/ui:browser_init_state",
+diff --git i/chrome/browser/ui/navigator/browser_navigator.cc w/chrome/browser/ui/navigator/browser_navigator.cc
+index 5029e26405..ce10242bac 100644
+--- i/chrome/browser/ui/navigator/browser_navigator.cc
++++ w/chrome/browser/ui/navigator/browser_navigator.cc
+@@ -74,6 +74,7 @@
+ #include "content/public/browser/render_view_host.h"
+ #include "content/public/browser/site_isolation_policy.h"
+ #include "content/public/browser/web_contents.h"
++#include "navegador/browser/containers/containers.h"
+ #include "extensions/buildflags/buildflags.h"
+ #include "ui/base/page_transition_types.h"
+ #include "ui/base/window_open_disposition.h"
+@@ -504,8 +505,13 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
+   // preserving the requested opener relationship along the way.
+   scoped_refptr<content::SiteInstance> initial_site_instance_for_new_contents =
+       params.opener ? params.opener->GetSiteInstance()
+-                    : tab_util::GetSiteInstanceForNewTab(
+-                          params.browser->GetProfile(), url);
++                    : navegador::containers::SiteInstanceForNewTab(
++                          params.browser->GetProfile(),
++                          params.source_contents.get(), url);
++  if (!initial_site_instance_for_new_contents) {
++    initial_site_instance_for_new_contents = tab_util::GetSiteInstanceForNewTab(
++        params.browser->GetProfile(), url);
++  }
+ 
+   WebContents::CreateParams create_params(
+       params.browser->GetProfile(), initial_site_instance_for_new_contents);

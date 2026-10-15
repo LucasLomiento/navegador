@@ -1,2 +1,4 @@
 # <arquivo>.patch <caminhos no src do Chromium>
 # Um patch por área; o que não estiver listado cai no 9999-resto.patch.
+0000-build-ui.patch chrome/browser/ui/BUILD.gn
+0001-containers.patch chrome/browser/sessions/session_service_base.cc chrome/browser/sessions/BUILD.gn chrome/browser/ui/navigator/browser_navigator.cc chrome/browser/ui/navigator/BUILD.gn chrome/browser/ui/browser_tabrestore.cc chrome/browser/ui/browser_live_tab_context.cc chrome/browser/prefs/browser_prefs.cc chrome/browser/prefs/BUILD.gn

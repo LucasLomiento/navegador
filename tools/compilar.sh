@@ -2,7 +2,7 @@
 # Compila o navegador no menor peso possível pro resto do PC:
 # prioridade ociosa de CPU e de disco, e poucos processos ao mesmo tempo
 # (30 GB de RAM: cada compilação do Blink chega a 2 GB).
-#   tools/compilar.sh            -> out/dev, alvo chrome
+#   tools/compilar.sh            -> out/dev, alvo chrome (JOBS=8, teto de 22 GB de RAM)
 #   JOBS=12 tools/compilar.sh    -> mais rápido, mais pesado
 #   tools/compilar.sh out/dev chrome chrome_sandbox
 set -euo pipefail
@@ -18,4 +18,10 @@ if [ ! -f "$OUT/args.gn" ]; then
   cp "$RAIZ/tools/args-dev.gn" "$OUT/args.gn"
   gn gen "$OUT"
 fi
-exec chrt --idle 0 nice -n 19 ionice -c3 autoninja -j "$JOBS" -C "$OUT" "${ALVOS[@]}"
+# Num escopo do systemd com teto de memória: se a RAM apertar, quem morre é
+# a compilação, não os apps abertos do usuário.
+MEMORIA="${MEMORIA:-22G}"
+exec systemd-run --user --scope --quiet --collect \
+  -p MemoryHigh="$MEMORIA" -p MemoryMax="$MEMORIA" \
+  chrt --idle 0 nice -n 19 ionice -c3 \
+  autoninja -j "$JOBS" -C "$OUT" "${ALVOS[@]}"

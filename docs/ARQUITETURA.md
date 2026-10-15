@@ -27,10 +27,17 @@ Perfis do Chromium como estão (cada um com cookies, histórico, extensões e ja
 
 O Chromium não tem. A ideia: **cada container é uma `StoragePartition` própria dentro do mesmo perfil** (cookies, localStorage, IndexedDB, cache e service workers separados; histórico, favoritos e senhas continuam do perfil, como nos containers do Firefox). A aba de um container nasce com um `SiteInstance` de partição fixa (`SiteInstance::CreateForFixedStoragePartition`, o mesmo mecanismo das Isolated Web Apps e do `<webview>`).
 
-Pontos a confirmar no código antes de construir:
-- se a navegação para outro site, digitada na barra (troca de BrowsingInstance), mantém a partição;
-- abrir link em nova aba (Ctrl+clique, `noopener`) tem que herdar o container: gancho na criação da aba;
-- restaurar sessão: guardar o container de cada aba e recriar com a mesma partição.
+Conferido no código do 155:
+- **Navegar pra outro site mantém a partição**: `RenderFrameHostManager` (content/browser/renderer_host/render_frame_host_manager.cc, ~4076) copia a `StoragePartitionConfig` pra BrowsingInstance nova quando a atual é de partição fixa. Então o container é da aba inteira, pra sempre.
+- **O container de uma aba se descobre pela própria aba**: a `StoragePartitionConfig` do `SiteInstance` dela (domínio `navegador-container`, nome = id do container). Não precisa de tabela paralela.
+
+Ganchos (uma linha cada no Chromium, o resto em `navegador/containers/`):
+- **Aba nova**: `CreateTargetContents` (chrome/browser/ui/navigator/browser_navigator.cc). Sem `opener`, pergunta pro nosso código: herda o container de `params.source_contents` (Ctrl+clique, "abrir em nova aba") ou usa o container padrão do espaço atual.
+- **Restaurar sessão**: `CreateRestoredTab` (chrome/browser/ui/browser_tabrestore.cc) lê `extra_data["navegador_container"]` e põe o `site_instance` no `CreateParams`, como o glic e o send-tab-to-self já fazem com o `extra_data`.
+- **Salvar sessão**: um tab helper nosso grava o container com `SessionService::AddTabExtraData` (padrão do `SendTabToSelfActivationTracker::PersistGUID`). Atenção: `BuildCommandsForTab` (chrome/browser/sessions/session_service_base.cc) **não** regrava `extra_data` quando a sessão é reconstruída; precisa de gancho ali senão o container some depois de um tempo.
+- **Reabrir aba fechada** (Ctrl+Shift+T): o `TabRestoreService` já guarda `extra_data`; falta só incluir o nosso na coleta.
+- **sessionStorage**: na restauração, o namespace criado é o da partição padrão; o container ganha um novo vazio (perde o sessionStorage ao reiniciar, como no Firefox).
+- **Página de nova aba**: WebUI (`chrome://`) numa partição de container é arriscado; a aba nova de container abre a nossa página simples (ou `about:blank` com a barra focada).
 
 Os containers aparecem como cor e ícone na aba, com "Abrir em container" no menu de contexto e uma tela pra gerenciar.
 

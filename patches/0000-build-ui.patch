@@ -1,0 +1,20 @@
+diff --git i/chrome/browser/ui/BUILD.gn w/chrome/browser/ui/BUILD.gn
+index 82f397571f..02da2570ee 100644
+--- i/chrome/browser/ui/BUILD.gn
++++ w/chrome/browser/ui/BUILD.gn
+@@ -399,6 +399,7 @@ if (!is_android) {
+       "//chrome/browser:browser_public_dependencies",
+     ]
+     deps = [
++      "//navegador/browser/containers",  # navegador
+       ":tab_ui_helper",
+       "//base",
+       "//chrome/browser/apps/app_service",
+@@ -1558,6 +1559,7 @@ static_library("ui") {
+ 
+     # Non-android deps for "ui" target.
+     deps += [
++      "//navegador/browser/containers",  # navegador
+       ":accelerator_table",
+       ":browser_actions",
+       ":browser_select_file_dialog_controller",
