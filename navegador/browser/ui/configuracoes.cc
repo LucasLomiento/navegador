@@ -39,6 +39,7 @@
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "navegador/browser/ui/espacos.h"
+#include "navegador/browser/ui/importar_zen.h"
 #include "navegador/browser/ui/seletor_de_cor.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -424,6 +425,84 @@ std::unique_ptr<views::View> Rolando(std::unique_ptr<views::View> pagina) {
 
 // --- Geral -------------------------------------------------------------------
 
+// "Importar do Zen": a linha mostra o andamento e o resumo no lugar da
+// descrição.
+class LinhaDeImportar : public views::View {
+  METADATA_HEADER(LinhaDeImportar, views::View)
+
+ public:
+  explicit LinhaDeImportar(Profile* perfil) : perfil_(perfil) {
+    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(10, 14),
+        16));
+    layout->set_cross_axis_alignment(
+        views::BoxLayout::CrossAxisAlignment::kCenter);
+    layout->set_minimum_cross_axis_size(44);
+    auto* textos = AddChildView(std::make_unique<views::View>());
+    textos->SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kVertical, gfx::Insets(), 2));
+    textos->AddChildView(
+        Titulo(u"Importar do Zen", 14, gfx::Font::Weight::NORMAL));
+    situacao_ = textos->AddChildView(Descricao(
+        u"Containers, espaços, sites fixados e pastas, cookies de cada "
+        u"container (os logins dos sites), senhas, favoritos e histórico. "
+        u"Pode deixar o Zen aberto."));
+    layout->SetFlexForView(textos, 1);
+    botao_ = AddChildView(Botao(
+        u"Importar", base::BindRepeating(&LinhaDeImportar::Importar,
+                                         base::Unretained(this))));
+    botao_->SetEnabled(false);
+    importar_zen::ProcurarZen(base::BindOnce(&LinhaDeImportar::Achou,
+                                             weak_factory_.GetWeakPtr()));
+  }
+
+ private:
+  void Achou(bool achou) {
+    botao_->SetEnabled(achou);
+    if (!achou) {
+      Escrever(u"O Zen não foi encontrado neste computador.");
+    }
+  }
+
+  void Importar() {
+    botao_->SetEnabled(false);
+    importar_zen::Importar(
+        perfil_,
+        base::BindRepeating(&LinhaDeImportar::Escrever,
+                            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&LinhaDeImportar::Pronto, weak_factory_.GetWeakPtr()));
+  }
+
+  void Pronto(const importar_zen::Resumo& resumo) {
+    botao_->SetEnabled(true);
+    if (!resumo.ok) {
+      Escrever(resumo.erro);
+      return;
+    }
+    Escrever(u"Pronto: " + base::NumberToString16(resumo.cookies) +
+             u" cookies, " + base::NumberToString16(resumo.containers) +
+             u" containers e " + base::NumberToString16(resumo.espacos) +
+             u" espaços novos, " + base::NumberToString16(resumo.fixados) +
+             u" sites fixados, mais senhas, favoritos e histórico. Os sites "
+             u"que guardam o login fora dos cookies podem pedir login de "
+             u"novo.");
+  }
+
+  void Escrever(const std::u16string& texto) {
+    situacao_->SetText(texto);
+    situacao_->SizeToFit(kLarguraDescricao);
+    PreferredSizeChanged();
+  }
+
+  raw_ptr<Profile> perfil_;
+  raw_ptr<views::Label> situacao_ = nullptr;
+  raw_ptr<views::View> botao_ = nullptr;
+  base::WeakPtrFactory<LinhaDeImportar> weak_factory_{this};
+};
+
+BEGIN_METADATA(LinhaDeImportar)
+END_METADATA
+
 std::unique_ptr<views::View> PaginaGeral(BrowserWindowInterface* browser) {
   Profile* perfil = browser->GetProfile();
   auto pagina = std::make_unique<Pagina>(u"Geral");
@@ -444,6 +523,9 @@ std::unique_ptr<views::View> PaginaGeral(BrowserWindowInterface* browser) {
                                                : SessionStartupPref::DEFAULT));
                   },
                   perfil))));
+
+  Cartao* importar = pagina->Secao(u"Trazer de outro navegador");
+  importar->Adicionar(std::make_unique<LinhaDeImportar>(perfil));
 
   Cartao* janela = pagina->Secao(u"Janela");
   janela->Adicionar(Linha(
