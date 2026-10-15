@@ -83,6 +83,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterIntegerPref(kFlutuanteDesfoquePref,
                                 kFlutuanteDesfoquePadrao);
   registry->RegisterIntegerPref(kEsconderDepoisPref, kEsconderDepoisPadrao);
+  registry->RegisterIntegerPref(kEsconderForaPref, kEsconderForaPadrao);
   registry->RegisterBooleanPref(kMostrarNaBordaPref, true);
 }
 
@@ -285,6 +286,11 @@ bool MostrarNaBorda(const Profile* profile) {
 
 int EsconderDepoisMs(const Profile* profile) {
   return std::clamp(profile->GetPrefs()->GetInteger(kEsconderDepoisPref), 0,
+                    3000);
+}
+
+int EsconderForaMs(const Profile* profile) {
+  return std::clamp(profile->GetPrefs()->GetInteger(kEsconderForaPref), 0,
                     3000);
 }
 

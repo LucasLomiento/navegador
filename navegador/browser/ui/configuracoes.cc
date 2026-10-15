@@ -545,13 +545,23 @@ std::unique_ptr<views::View> PaginaLateral(BrowserWindowInterface* browser) {
                       },
                       perfil))));
   escondida->Adicionar(Linha(
-      u"Esconder depois de",
-      u"Folga pra tirar o ponteiro sem querer e voltar sem ela fechar.",
+      u"Esconder ao ir pra página",
+      u"Quanto ela espera depois que o ponteiro sai dela pra página: folga "
+      u"pra tirar sem querer e voltar.",
       std::make_unique<Deslizador>(
-          0, 1000, 50, espacos::EsconderDepoisMs(perfil), u" ms",
-          u"Esconder depois de",
+          0, 2000, 50, espacos::EsconderDepoisMs(perfil), u" ms",
+          u"Esconder ao ir pra página",
           base::BindRepeating(&DefinirInteiro, perfil,
                               espacos::kEsconderDepoisPref))));
+  escondida->Adicionar(Linha(
+      u"Esconder ao sair da janela",
+      u"Quando o ponteiro sai da janela (ou vai pra outra janela). Também é o "
+      u"tempo que ela fica aberta ao jogar o ponteiro pro canto da tela.",
+      std::make_unique<Deslizador>(
+          0, 2000, 50, espacos::EsconderForaMs(perfil), u" ms",
+          u"Esconder ao sair da janela",
+          base::BindRepeating(&DefinirInteiro, perfil,
+                              espacos::kEsconderForaPref))));
 
   Cartao* flutuante = pagina->Secao(u"Por cima da página");
   flutuante->Adicionar(Linha(

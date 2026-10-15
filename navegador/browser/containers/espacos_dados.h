@@ -55,6 +55,11 @@ inline constexpr char kFlutuanteDesfoquePref[] =
     "navegador.lateral.flutuante.desfoque";
 inline constexpr char kEsconderDepoisPref[] =
     "navegador.lateral.esconder_depois_ms";
+// O mesmo, quando o ponteiro sai da janela (ou a janela perde o foco, que no
+// Hyprland vai com o ponteiro); também o tempo que ela fica aberta quando o
+// ponteiro sai pela borda esquerda da janela.
+inline constexpr char kEsconderForaPref[] =
+    "navegador.lateral.esconder_fora_ms";
 inline constexpr char kMostrarNaBordaPref[] = "navegador.lateral.mostrar_na_borda";
 
 struct Espaco {
@@ -126,6 +131,7 @@ bool MostrarBotoesDaJanela(Profile* profile);
 int Moldura(const Profile* profile);
 bool MostrarNaBorda(const Profile* profile);
 int EsconderDepoisMs(const Profile* profile);
+int EsconderForaMs(const Profile* profile);
 // 0-100.
 int FlutuanteOpacidade(const Profile* profile);
 // px.
@@ -137,6 +143,7 @@ inline constexpr int kFlutuanteOpacidadePadrao = 90;
 inline constexpr int kFlutuanteDesfoquePadrao = 20;
 // Como o Zen (zen.view.compact.sidebar-keep-hover.duration = 150).
 inline constexpr int kEsconderDepoisPadrao = 150;
+inline constexpr int kEsconderForaPadrao = 500;
 
 }  // namespace navegador::espacos
 

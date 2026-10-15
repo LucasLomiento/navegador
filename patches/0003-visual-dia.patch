@@ -743,7 +743,7 @@ index cd6fa39dad..6b9401874b 100644
    // BrowserFrameView:
    BoundsAndMargins GetCaptionButtonBounds() const override;
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..77529fe4a4 100644
+index b7cdb8f557..b084a09a00 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,15 @@
@@ -812,13 +812,14 @@ index b7cdb8f557..77529fe4a4 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
-@@ -363,9 +389,17 @@ void VerticalTabStripRegionView::AddedToWidget() {
+@@ -363,9 +389,18 @@ void VerticalTabStripRegionView::AddedToWidget() {
    if (GetFocusManager()) {
      GetFocusManager()->AddFocusChangeListener(&focus_listener_);
    }
-+  if (aura::Window* janela = GetWidget()->GetNativeWindow()) {
-+    janela->AddPreTargetHandler(&saida_da_janela_);
-+    janela_observada_ = janela;
++  if (aura::Window* janela = GetWidget()->GetNativeWindow();
++      janela && janela->GetRootWindow()) {
++    janela_observada_ = janela->GetRootWindow();
++    janela_observada_->AddPreTargetHandler(&saida_da_janela_);
 +  }
  }
  
@@ -830,7 +831,7 @@ index b7cdb8f557..77529fe4a4 100644
    if (GetFocusManager()) {
      GetFocusManager()->RemoveFocusChangeListener(&focus_listener_);
    }
-@@ -373,7 +407,31 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+@@ -373,7 +408,31 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
  }
  
  void VerticalTabStripRegionView::Layout(PassKey) {
@@ -863,7 +864,7 @@ index b7cdb8f557..77529fe4a4 100644
  
    // Manually position the resize area as it overlaps views handled by the flex
    // layout.
-@@ -459,6 +517,7 @@ bool VerticalTabStripRegionView::OnKeyPressed(const ui::KeyEvent& event) {
+@@ -459,6 +518,7 @@ bool VerticalTabStripRegionView::OnKeyPressed(const ui::KeyEvent& event) {
  }
  
  void VerticalTabStripRegionView::OnMouseEntered(const ui::MouseEvent& event) {
@@ -871,7 +872,7 @@ index b7cdb8f557..77529fe4a4 100644
    if (mouse_exit_timer_.IsRunning()) {
      mouse_exit_timer_.Stop();
      return;
-@@ -467,6 +526,7 @@ void VerticalTabStripRegionView::OnMouseEntered(const ui::MouseEvent& event) {
+@@ -467,6 +527,7 @@ void VerticalTabStripRegionView::OnMouseEntered(const ui::MouseEvent& event) {
  }
  
  void VerticalTabStripRegionView::OnMouseMoved(const ui::MouseEvent& event) {
@@ -879,7 +880,7 @@ index b7cdb8f557..77529fe4a4 100644
    if (mouse_exit_timer_.IsRunning()) {
      mouse_exit_timer_.Stop();
    }
-@@ -491,9 +551,104 @@ void VerticalTabStripRegionView::HandleMouseExited() {
+@@ -491,9 +552,118 @@ void VerticalTabStripRegionView::HandleMouseExited() {
      return;
    }
  #endif
@@ -887,6 +888,10 @@ index b7cdb8f557..77529fe4a4 100644
 +  // página espera um pouco antes de esconder: tirar o ponteiro sem querer e
 +  // voltar não fecha. O tempo é das Configurações do Navegador (Lateral).
 +  if (is_expanded_on_hover_) {
++    // Saiu da janela (a folga de fora já está correndo): não troca por esta.
++    if (!segurar_ate_.is_null() && mouse_exit_timer_.IsRunning()) {
++      return;
++    }
 +    const int ms = navegador::espacos::EsconderDepoisMs(Perfil());
 +    if (ms > 0 || !segurar_ate_.is_null()) {
 +      mouse_exit_timer_.Start(
@@ -945,12 +950,19 @@ index b7cdb8f557..77529fe4a4 100644
 +    return;
 +  }
 +  segurar_ate_ = base::TimeTicks();
++  folga_acabou_ = true;
 +  UpdateExpandOnHoverState(std::nullopt);
++  folga_acabou_ = false;
 +}
 +
 +void VerticalTabStripRegionView::SaidaDaJanela::OnMouseEvent(
 +    ui::MouseEvent* event) {
-+  if (event->type() == ui::EventType::kMouseExited) {
++  // Só a saída de verdade (o evento da plataforma, na janela raiz). Passar
++  // da lateral pra página (outra janela do aura, a da página) também gera
++  // saídas, mas nas janelas de dentro.
++  if (event->type() == ui::EventType::kMouseExited &&
++      event->target() == lateral_->janela_observada_.get() &&
++      !(event->flags() & ui::EF_IS_SYNTHESIZED)) {
 +    lateral_->SaiuDaJanela(event->root_location());
 +  }
 +}
@@ -965,18 +977,21 @@ index b7cdb8f557..77529fe4a4 100644
 +      !navegador::espacos::MostrarNaBorda(Perfil()) || !IsFrameActive()) {
 +    return;
 +  }
-+  const gfx::Rect lateral = ConvertRectToWidget(GetLocalBounds());
-+  constexpr int kDistancia = 10;
-+  if (ponto.x() > lateral.right() + kDistancia ||
-+      ponto.y() < lateral.y() - 7 || ponto.y() > lateral.bottom() + 7) {
++  // O Zen faz o mesmo: o ponteiro saiu pela borda esquerda da janela (jogado
++  // pro canto da tela, além do vão entre as janelas) abre a lateral.
++  constexpr int kDistanciaDaBorda = 10;
++  const bool pela_esquerda = ponto.x() <= kDistanciaDaBorda;
++  if (!is_expanded_on_hover_ && !pela_esquerda) {
 +    return;
 +  }
-+  segurar_ate_ = base::TimeTicks::Now() + base::Milliseconds(1000);
++  // Aberta (ou abrindo pela borda): espera a folga de fora da janela.
++  const int ms = navegador::espacos::EsconderForaMs(Perfil());
++  segurar_ate_ = base::TimeTicks::Now() + base::Milliseconds(ms);
 +  if (!is_expanded_on_hover_) {
 +    AnimateExpandOnHover(/*expand=*/true);
 +  }
 +  mouse_exit_timer_.Start(
-+      FROM_HERE, base::Milliseconds(1000),
++      FROM_HERE, base::Milliseconds(ms),
 +      base::BindOnce(&VerticalTabStripRegionView::FimDaFolga,
 +                     base::Unretained(this)));
 +}
@@ -984,7 +999,7 @@ index b7cdb8f557..77529fe4a4 100644
  std::unique_ptr<ExpandOnHoverLock>
  VerticalTabStripRegionView::GetExpandOnHoverLock(
      ExpandOnHoverLockType lock_type) {
-@@ -744,6 +899,10 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -744,6 +914,10 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
    CHECK(separator_index.has_value());
    ReorderChildView(tab_strip_view(), separator_index.value() + 1);
  
@@ -995,7 +1010,7 @@ index b7cdb8f557..77529fe4a4 100644
    OnCollapseStateChanged(state_controller_->GetCollapseState());
  }
  
-@@ -768,8 +927,11 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+@@ -768,8 +942,11 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
  
    resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
  
@@ -1008,7 +1023,28 @@ index b7cdb8f557..77529fe4a4 100644
    }
  
    if ((state == tabs::VerticalTabStripCollapseState::kCollapsing) ||
-@@ -907,6 +1069,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+@@ -877,6 +1054,20 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+   // open.
+   if (!IsFrameActive()) {
+     if (is_expanded_on_hover_) {
++      // navegador: no Hyprland o foco vai com o ponteiro pra outra janela;
++      // recolher na hora não deixava folga nenhuma. Espera a folga de fora
++      // da janela (Configurações do Navegador → Lateral).
++      const int ms = navegador::espacos::EsconderForaMs(Perfil());
++      if (!folga_acabou_ && ms > 0) {
++        if (!mouse_exit_timer_.IsRunning()) {
++          segurar_ate_ = base::TimeTicks::Now() + base::Milliseconds(ms);
++          mouse_exit_timer_.Start(
++              FROM_HERE, base::Milliseconds(ms),
++              base::BindOnce(&VerticalTabStripRegionView::FimDaFolga,
++                             base::Unretained(this)));
++        }
++        return;
++      }
+       AnimateExpandOnHover(/*expand=*/false);
+     }
+     return;
+@@ -907,6 +1098,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
          hover_card_controller()->GetHoverCardHideLock();
    }
  
@@ -1022,7 +1058,7 @@ index b7cdb8f557..77529fe4a4 100644
    if (tabs::kVerticalTabsExpandOnHoverUseVelocityHeuristic.Get()) {
      CalculateMouseVelocityForExpandOnHover();
    } else if (expand_on_hover_timer_.IsRunning()) {
-@@ -1027,6 +1196,12 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
+@@ -1027,6 +1225,12 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
  void VerticalTabStripRegionView::AnimateExpandOnHover(bool expand) {
    is_expanded_on_hover_ = expand;
    ResetExpandOnHoverTimers();
@@ -1036,7 +1072,7 @@ index b7cdb8f557..77529fe4a4 100644
    if (expand) {
      expand_on_hover_start_time_ = base::TimeTicks::Now();
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d6..d293e738b1 100644
+index 76f8e997d6..4e87e08638 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 @@ -7,6 +7,8 @@
@@ -1073,7 +1109,7 @@ index 76f8e997d6..d293e738b1 100644
    // TODO(crbug.com/465833741): Determine snapping behavior.
    static constexpr int kCollapseSnapWidth =
        (kUncollapsedMinWidth + kCollapsedWidth) / 2;
-@@ -304,6 +315,27 @@ class VerticalTabStripRegionView final
+@@ -304,6 +315,29 @@ class VerticalTabStripRegionView final
    // The mouse exit event debounce timer.
    base::OneShotTimer mouse_exit_timer_;
  
@@ -1095,8 +1131,10 @@ index 76f8e997d6..d293e738b1 100644
 +  };
 +  SaidaDaJanela saida_da_janela_{this};
 +  raw_ptr<aura::Window> janela_observada_ = nullptr;
-+  // Aberta pela saída na borda: fica aberta pelo menos até aqui.
++  // Saiu da janela: a folga é a de fora, não a da página, até aqui.
 +  base::TimeTicks segurar_ate_;
++  // A folga acabou: aí pode recolher mesmo com a janela sem foco.
++  bool folga_acabou_ = false;
 +
    base::CallbackListSubscription paint_as_active_subscription_;
  };
