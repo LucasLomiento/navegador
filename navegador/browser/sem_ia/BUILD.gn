@@ -1,0 +1,8 @@
+# Sem as funções de IA do Google.
+source_set("sem_ia") {
+  sources = [
+    "sem_ia.cc",
+    "sem_ia.h",
+  ]
+  deps = [ "//base" ]
+}

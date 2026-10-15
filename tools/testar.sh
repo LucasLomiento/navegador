@@ -6,6 +6,8 @@
 #   tools/testar.sh foto [arquivo]   -> captura da janela de teste (padrão: /tmp/navegador-teste.png)
 #   tools/testar.sh fechar           -> fecha só o processo que este script abriu
 #   tools/testar.sh limpar           -> fecha e apaga o perfil de teste
+#   tools/testar.sh url <endereço>   -> abre o endereço numa aba nova (DevTools na 9333)
+#   tools/testar.sh abas             -> lista as abas
 #
 # A janela tem app_id "navegador-teste" (CHROME_DESKTOP), pra não pegar as
 # regras do navegador de verdade. Variáveis: OUT (padrão out/dev),
@@ -37,6 +39,7 @@ case "${1:-abrir}" in
     CHROME_DESKTOP="$CLASSE.desktop" LANGUAGE=pt_BR setsid "$SRC/$OUT/chrome" \
       --user-data-dir="$PERFIL" --ozone-platform=wayland --lang=pt-BR \
       --no-first-run --no-default-browser-check \
+      --remote-debugging-address=127.0.0.1 --remote-debugging-port=9333 \
       --force-device-scale-factor="${ESCALA:-1}" \
       "$@" >/tmp/navegador-teste.log 2>&1 &
     echo $! > "$PIDFILE"
@@ -62,6 +65,16 @@ case "${1:-abrir}" in
       kill "$(cat "$PIDFILE")" 2>/dev/null || true
       rm -f "$PIDFILE"
     fi
+    ;;
+  url)
+    curl -fsS -X PUT "http://127.0.0.1:9333/json/new?$2" >/dev/null && echo "aberto: $2"
+    ;;
+  abas)
+    curl -fsS http://127.0.0.1:9333/json/list | python3 -c '
+import json, sys
+for t in json.load(sys.stdin):
+    if t["type"] == "page":
+        print(t["id"], t["url"][:80], "|", t["title"][:50])'
     ;;
   limpar)
     "$0" fechar

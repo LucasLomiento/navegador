@@ -1,0 +1,49 @@
+diff --git i/chrome/browser/metrics/BUILD.gn w/chrome/browser/metrics/BUILD.gn
+index 34da8786ae..a1085836d7 100644
+--- i/chrome/browser/metrics/BUILD.gn
++++ w/chrome/browser/metrics/BUILD.gn
+@@ -272,6 +272,7 @@ source_set("impl") {
+   ]
+ 
+   deps = [
++    "//navegador/browser/sem_ia",  # navegador
+     "//build/config/compiler:compiler_buildflags",
+     "//chrome/browser:browser_process_platform_part",
+     "//chrome/browser:chrome_browser_main",
+diff --git i/chrome/browser/metrics/chrome_feature_list_creator.cc w/chrome/browser/metrics/chrome_feature_list_creator.cc
+index 90e572fe4e..d1171582ea 100644
+--- i/chrome/browser/metrics/chrome_feature_list_creator.cc
++++ w/chrome/browser/metrics/chrome_feature_list_creator.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/metrics/chrome_feature_list_creator.h"
+ 
++#include "navegador/browser/sem_ia/sem_ia.h"
++
+ #include <vector>
+ 
+ #include "base/command_line.h"
+@@ -63,6 +65,8 @@ ChromeFeatureListCreator::~ChromeFeatureListCreator() = default;
+ void ChromeFeatureListCreator::CreateFeatureList() {
+   CreatePrefService();
+   ConvertFlagsToSwitches();
++  // navegador: sem as funções de IA do Google.
++  navegador::DesligarIA(base::CommandLine::ForCurrentProcess());
+   CreateMetricsServices();
+   SetupInitialPrefs();
+   SetUpFieldTrials();
+diff --git i/components/signin/internal/identity_manager/primary_account_manager.cc w/components/signin/internal/identity_manager/primary_account_manager.cc
+index cb7399be2c..2efe80cb60 100644
+--- i/components/signin/internal/identity_manager/primary_account_manager.cc
++++ w/components/signin/internal/identity_manager/primary_account_manager.cc
+@@ -391,7 +391,9 @@ void PrimaryAccountManager::RegisterProfilePrefs(PrefRegistrySimple* registry) {
+       prefs::kGoogleServicesSyncingUsernameMigratedToSignedIn, std::string());
+   registry->RegisterIntegerPref(prefs::kGoogleServicesSyncingUserMigrationType,
+                                 /*SyncToSigninMigrationType::kUnknown=*/0);
+-  registry->RegisterBooleanPref(prefs::kSigninAllowed, true);
++  // navegador: sem login na conta Google (não há chaves de API pra
++  // sincronizar), então sem convite pra entrar.
++  registry->RegisterBooleanPref(prefs::kSigninAllowed, false);
+   registry->RegisterBooleanPref(prefs::kSignedInWithCredentialProvider, false);
+   registry->RegisterBooleanPref(prefs::kExplicitBrowserSignin, false);
+   registry->RegisterBooleanPref(
