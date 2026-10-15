@@ -15,6 +15,14 @@ struct ColorProviderKey;
 
 namespace navegador::cores {
 
+// Vidro (o "acrílico" do Dia): a moldura, que é o fundo da barra lateral e
+// da margem em volta do cartão, sai translúcida e a janela não se declara
+// opaca, pro desfoque do compositor (Hyprland) aparecer atrás. O cartão
+// (barra de navegação e página) continua opaco.
+inline constexpr bool kVidro = true;
+inline constexpr unsigned char kVidroAlfaClaro = 0xC8;
+inline constexpr unsigned char kVidroAlfaEscuro = 0xC0;
+
 void AddColorMixer(ui::ColorProvider* provider,
                    const ui::ColorProviderKey& key);
 

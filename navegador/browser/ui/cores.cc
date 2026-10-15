@@ -72,8 +72,13 @@ void AddColorMixer(ui::ColorProvider* provider,
   ui::ColorMixer& mixer = provider->AddMixer();
 
   // Moldura = fundo da barra lateral. Igual com a janela focada ou não.
-  mixer[ui::kColorFrameActive] = {p.fundo};
-  mixer[ui::kColorFrameInactive] = {p.fundo};
+  // Com o vidro, translúcida.
+  const bool escuro = key.color_mode == ui::ColorProviderKey::ColorMode::kDark;
+  const SkColor moldura =
+      kVidro ? SkColorSetA(p.fundo, escuro ? kVidroAlfaEscuro : kVidroAlfaClaro)
+             : p.fundo;
+  mixer[ui::kColorFrameActive] = {moldura};
+  mixer[ui::kColorFrameInactive] = {moldura};
 
   // Cartão: barra de navegação e página.
   mixer[kColorToolbar] = {p.barra};

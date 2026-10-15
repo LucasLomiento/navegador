@@ -82,6 +82,32 @@ index 7a0e331ded..8d2dee8dfa 100644
  
  BASE_FEATURE_PARAM(bool, kTabGroupsFocusFreezing, &kTabGroupsFocusing, true);
  
+diff --git i/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc w/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc
+index 32e5c1a27f..9982ad53fa 100644
+--- i/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc
++++ w/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
+ #include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
++#include "navegador/browser/ui/cores.h"
+ #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
+ #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-shared.h"
+ #include "ui/base/mojom/window_show_state.mojom.h"
+@@ -178,7 +179,12 @@ void BrowserDesktopWindowTreeHostLinux::UpdateFrameHints() {
+     }
+   }
+ 
+-  if (ui::OzonePlatform::GetInstance()->IsWindowCompositingSupported()) {
++  if (ui::OzonePlatform::GetInstance()->IsWindowCompositingSupported() &&
++      navegador::cores::kVidro) {
++    // navegador: vidro. Nada é declarado opaco, pro compositor desfocar
++    // atrás da moldura translúcida; a página é pintada opaca de todo jeito.
++    window->SetOpaqueRegion(std::nullopt);
++  } else if (ui::OzonePlatform::GetInstance()->IsWindowCompositingSupported()) {
+     // Set the opaque region.
+     std::vector<gfx::Rect> opaque_region;
+     if (IsShowingFrame(native_widget_->UseCustomFrame(), window_state)) {
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 index 29dfbde914..f76664dca1 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
