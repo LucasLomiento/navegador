@@ -339,7 +339,7 @@ index a335e2d5cc..b9f66d3948 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914..a54fcca405 100644
+index 29dfbde914..2b2c8b0c7e 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -4,6 +4,9 @@
@@ -390,7 +390,23 @@ index 29dfbde914..a54fcca405 100644
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -1231,6 +1247,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -968,7 +984,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+   ProposedLayout* main_background_layout = nullptr;
+   if (IsParentedTo(views().main_background_region, views().browser_view)) {
+     gfx::Rect main_background_bounds;
+-    if (layout_data_->separator_info.adjust_for_missing_separator) {
++    // navegador: com a lateral de vidro, o fundo (na cor da barra, opaco) não
++    // pode passar por trás dela: com um painel lateral aberto a lateral ficava
++    // cinza, sem o vidro e sem a cor escolhida.
++    const bool lateral_de_vidro =
++        navegador::cores::kVidro &&
++        layout_data_->tab_strip_type == TabStripType::kVertical;
++    if (layout_data_->separator_info.adjust_for_missing_separator &&
++        !lateral_de_vidro) {
+       // In the future this should just be a 1px shim to avoid covering
+       // transparency in the frame/tab strip, instead of extending the entire
+       // background to the window edge.
+@@ -1231,6 +1254,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        }
      }
      views().multi_contents_view->SetBackgroundRadii(content_corners);
@@ -405,7 +421,7 @@ index 29dfbde914..a54fcca405 100644
    }
  
    // Make final visual adjustments required for child views to paint.
-@@ -1427,9 +1451,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1427,9 +1458,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
  
@@ -424,7 +440,7 @@ index 29dfbde914..a54fcca405 100644
        layout_data_->window_state == WindowState::kNormal) {
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
-@@ -1524,6 +1555,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1524,6 +1562,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
            animation.expand_on_hover_opacity * expand_on_hover_opacity);
        vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
@@ -440,7 +456,7 @@ index 29dfbde914..a54fcca405 100644
      } else {
        vertical_tabs_background->SetPrimaryColor(frame_color);
      }
-@@ -1707,6 +1747,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +1754,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
