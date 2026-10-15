@@ -2,6 +2,7 @@
 
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "third_party/skia/include/core/SkColor.h"
+#include "ui/gfx/color_utils.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_mixer.h"
 #include "ui/color/color_provider.h"
@@ -72,11 +73,18 @@ void AddColorMixer(ui::ColorProvider* provider,
   ui::ColorMixer& mixer = provider->AddMixer();
 
   // Moldura = fundo da barra lateral. Igual com a janela focada ou não.
-  // Com o vidro, translúcida.
+  // A cor escolhida no "Personalizar" do navegador (key.user_color) tinge o
+  // fundo; sem escolha, fica neutro. Com o vidro, translúcida.
   const bool escuro = key.color_mode == ui::ColorProviderKey::ColorMode::kDark;
+  SkColor fundo = p.fundo;
+  if (key.user_color &&
+      key.user_color_source == ui::ColorProviderKey::UserColorSource::kAccent) {
+    fundo = color_utils::AlphaBlend(*key.user_color, p.fundo,
+                                    escuro ? 0.22f : 0.18f);
+  }
   const SkColor moldura =
-      kVidro ? SkColorSetA(p.fundo, escuro ? kVidroAlfaEscuro : kVidroAlfaClaro)
-             : p.fundo;
+      kVidro ? SkColorSetA(fundo, escuro ? kVidroAlfaEscuro : kVidroAlfaClaro)
+             : fundo;
   mixer[ui::kColorFrameActive] = {moldura};
   mixer[ui::kColorFrameInactive] = {moldura};
 
