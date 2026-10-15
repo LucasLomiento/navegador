@@ -21,6 +21,16 @@ padrão.
 - Políticas (se um dia precisar): `/etc/navegador/policies/managed/*.json`.
 - Idioma: português por padrão; `NAVEGADOR_IDIOMA=en-US navegador` troca.
 
+## Menu e perfis
+
+- O menu do navegador fica no logo, no canto de cima da lateral (como no
+  Dia); `Alt+F` também abre. Clique direito no logo: recolher/abrir a lateral
+  (ou `Ctrl+Shift+L`).
+- Perfis: menu do logo → o primeiro submenu (com o nome do perfil) → outros
+  perfis, "Adicionar novo perfil" (escolhe nome e cor; a cor tinge a
+  lateral), visitante e "Gerenciar perfis". Cada perfil abre na própria
+  janela.
+
 ## Atalhos próprios
 
 - `Ctrl+Alt+N`: novo espaço.
@@ -31,7 +41,7 @@ padrão.
   containers…".
 - Clique direito na faixa de espaços (embaixo da lateral): editar o espaço,
   escolher o container padrão dele, novo espaço.
-- A cor da lateral: menu ⋮ → Mais ferramentas → Personalizar (ou
+- A cor da lateral: menu do logo → Mais ferramentas → Personalizar (ou
   Configurações → Aparência).
 
 ## Netflix
