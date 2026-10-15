@@ -9,4 +9,9 @@ if [[ -f "$XDG_CONFIG_HOME/navegador-flags.conf" ]]; then
     FLAGS+=($linha)
   done < "$XDG_CONFIG_HOME/navegador-flags.conf"
 fi
-exec /usr/lib/navegador/navegador --ozone-platform-hint=auto "${FLAGS[@]}" "$@"
+# Interface em português (os textos próprios do navegador são em português).
+# Pra trocar: NAVEGADOR_IDIOMA=en-US no ambiente.
+IDIOMA="${NAVEGADOR_IDIOMA:-pt-BR}"
+export LANGUAGE="${IDIOMA/-/_}"
+exec /usr/lib/navegador/navegador --ozone-platform-hint=auto --lang="$IDIOMA" \
+  "${FLAGS[@]}" "$@"

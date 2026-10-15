@@ -34,8 +34,8 @@ case "${1:-abrir}" in
     # Flutuante e centralizada (regra vale até o próximo reload do Hyprland).
     hyprctl eval "hl.window_rule({ match = { class = \"$CLASSE\" }, float = true, center = true, size = { 1440, 900 } })" >/dev/null
     mkdir -p "$PERFIL"
-    CHROME_DESKTOP="$CLASSE.desktop" setsid "$SRC/$OUT/chrome" \
-      --user-data-dir="$PERFIL" --ozone-platform=wayland \
+    CHROME_DESKTOP="$CLASSE.desktop" LANGUAGE=pt_BR setsid "$SRC/$OUT/chrome" \
+      --user-data-dir="$PERFIL" --ozone-platform=wayland --lang=pt-BR \
       --no-first-run --no-default-browser-check \
       --force-device-scale-factor="${ESCALA:-1}" \
       "$@" >/tmp/navegador-teste.log 2>&1 &
