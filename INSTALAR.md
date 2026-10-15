@@ -53,6 +53,8 @@ padrão.
 
 ## Netflix
 
-O DRM (Widevine) é baixado sozinho na primeira vez que precisa (alguns
-segundos depois de abrir). No Linux o Netflix limita a resolução em qualquer
-navegador.
+O DRM (Widevine) é baixado sozinho cerca de um minuto depois da primeira
+abertura, e o Chromium no Linux só carrega ele na abertura seguinte: na
+primeira vez, abrir o navegador, esperar um minuto, fechar e abrir de novo
+(testado no pacote em 15/10: depois de reabrir, o Widevine responde). No
+Linux o Netflix limita a resolução em qualquer navegador.

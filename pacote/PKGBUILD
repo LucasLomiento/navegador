@@ -24,12 +24,20 @@ _repo="$(cd "$startdir/.." && pwd)"
 package() {
   local destino="$pkgdir/usr/lib/navegador"
   install -Dm755 "$_out/chrome" "$destino/navegador"
-  install -Dm4755 "$_out/chrome_sandbox" "$destino/chrome-sandbox"
   install -Dm755 "$_out/chrome_crashpad_handler" "$destino/chrome_crashpad_handler"
+  # Sem ele, o Chromium usa o sandbox de namespaces do kernel (o Arch tem).
+  if [[ -e "$_out/chrome_sandbox" ]]; then
+    install -Dm4755 "$_out/chrome_sandbox" "$destino/chrome-sandbox"
+  fi
+  # Compilação em componentes (out/dev): o programa carrega as bibliotecas
+  # do lado dele (RPATH $ORIGIN). Pacote provisório; o de verdade é o release.
+  if [[ -e "$_out/libbase.so" ]]; then
+    cp "$_out"/*.so "$destino/"
+  fi
 
   local arquivos=(
     chrome_100_percent.pak chrome_200_percent.pak resources.pak
-    icudtl.dat v8_context_snapshot.bin
+    icudtl.dat v8_context_snapshot.bin snapshot_blob.bin
     libEGL.so libGLESv2.so
     libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
     libqt5_shim.so libqt6_shim.so
