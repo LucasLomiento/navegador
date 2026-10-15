@@ -208,7 +208,7 @@ index 29dfbde914..f76664dca1 100644
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..b792d57d7f 100644
+index b7cdb8f557..8a3d919efb 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -4,6 +4,8 @@
@@ -220,7 +220,16 @@ index b7cdb8f557..b792d57d7f 100644
  #include <algorithm>
  #include <optional>
  
-@@ -147,10 +149,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -136,6 +138,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+       views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
+ 
+   top_button_separator_ = AddChildView(std::make_unique<views::Separator>());
++  // navegador: o Dia não tem linha entre o cabeçalho e as abas.
++  top_button_separator_->SetVisible(false);
+   // The TopContainer handles the padding distance to the separator so that we
+   // can control how far it is in the various states.
+   top_button_separator_->SetProperty(
+@@ -147,10 +151,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -234,7 +243,7 @@ index b7cdb8f557..b792d57d7f 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +164,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +166,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
