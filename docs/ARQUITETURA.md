@@ -24,12 +24,16 @@ As medidas vêm das telas do Dia decodificadas (`docs/dia-medidas.md`) e, quando
 - Abas sempre na lateral (190 de largura), sem opção de voltar pra cima.
 - Barra de cima na cor do site: `navegador/browser/ui/cor_da_pagina.*` amostra 64x2 pixels do topo da página (como o `ColorSampleControllerV2` do Dia) e a janela recalcula as cores com um fornecedor de cor na chave (`BrowserWidget::GetColorProviderKey`).
 - Lateral e moldura: cor escolhida no "Personalizar" tinge a moldura; vidro com a moldura translúcida pintada uma vez na janela inteira (`OpaqueBrowserFrameView::OnPaint`) e a lateral transparente por cima.
-- Barra de endereço parada mostra só o domínio (`ShouldTrimDisplayUrlAfterHostName` ligado); caixa só aparece com o mouse em cima.
+- Barra de endereço parada mostra "domínio / título" (`ShouldTrimDisplayUrlAfterHostName` ligado + `GetPageTitleForDisplay`; o título entra só no texto de exibição, nunca no URL de edição). Com o mouse em cima vira caixa com o URL sem o esquema (`LocationBarView::MostrarEnderecoInteiro`); o ícone do site (no fim da caixa, onde o Dia põe o "...") e as ações da página só acendem no hover ou no foco. Caixa focada e sugestões no tom da barra (`cores.cc`, `Barra::Pintar`).
+- Menu do navegador no logo da lateral (`navegador/browser/ui/menu_do_logo.*`), como o AppMenuButton do Dia; Alt+F também. A barra fica sem avatar e sem "⋮" (os dois continuam com 1 px numa camada transparente, porque bolhas se ancoram neles; escondidos, o Chromium dá CHECK). Recolher a lateral: clique direito no logo ou Ctrl+Shift+L.
+- Cartão (barra + página) com margem 6, cantos 8 (no fundo do top container e no da barra) e sombra suave pintada na moldura.
+- Grupo de abas num bloco de fundo próprio no escuro (`TabGroupView`, como o Dia), menos dentro de um espaço.
 - Nova aba: página simples (degradê e logo), sempre, com qualquer busca.
-- Sem IA: flags `AimEnabled`, `Aim3pEntrypoint`, `NtpComposebox`, `Compose`, `LensOverlay`, `Glic`, `GlicRollout`, `HistoryEmbeddings` desligadas na criação da FeatureList (`navegador/browser/sem_ia`).
+- Sem IA: flags desligadas na criação da FeatureList (`navegador/browser/sem_ia`: Modo IA, Compose, Lens, Gemini/Glic, histórico com IA, organizar guias, preenchimento e permissões com IA, tarefas contextuais...) e sem a página "IA no..." das Configurações.
 - Sem login na conta Google (`signin.allowed` falso) e sem convite no botão de perfil.
 - Sem barra de grupos salvos na nova aba; sem o botão "tudo" (grupos) no cabeçalho da lateral.
-- Texto da lateral em 13; logo vetorial do navegador (`kProductIcon`) no botão de recolher.
+- Texto da lateral em 13; logo vetorial do navegador (`kProductIcon`, apagado como o do Dia) no cabeçalho, e a seta de "abas recentes" (a busca de abas do Chromium) à direita.
+- Marca: `tools/marca.py` troca "Chromium" por "Navegador" nos textos de marca (o `chromium_strings.grd` com as partes `.grdp`, o dos componentes e mensagens escolhidas do `generated_resources`), recalculando os ids das traduções; `tools/icones.sh` gera os logos (inclusive os das páginas internas).
 
 ## Testar
 
@@ -37,7 +41,7 @@ As medidas vêm das telas do Dia decodificadas (`docs/dia-medidas.md`) e, quando
 
 ## Perfis
 
-Perfis do Chromium como estão (cada um com cookies, histórico, extensões e janela próprios). Muda só a aparência do seletor, no estilo do Dia, no menu lateral.
+Perfis do Chromium como estão (cada um com cookies, histórico, extensões e janela próprios). Como no Dia, ficam no menu do logo (submenu com o nome do perfil): outros perfis, adicionar (nome e cor; a cor do perfil tinge a lateral), visitante e gerenciar.
 
 ## Containers
 
