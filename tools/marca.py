@@ -28,7 +28,9 @@ ANTIGO = "Chromium"
 NOVO = "Navegador"
 # Nomes que não são o produto: ficam como estão.
 PRESERVAR = ("Chromium OS", "ChromiumOS", "Chromium Authors", "chromium.org",
-             "Chromium Embedded")
+             "Chromium Embedded",
+             # "feito graças ao projeto de código aberto Chromium" (Sobre).
+             'Chromium<ph name="END_LINK_CHROMIUM"')
 
 
 def trocar(texto):
@@ -72,16 +74,23 @@ def ids_em_ordem(src, grd):
 ESPECIFICAS = {
     "chrome/app/generated_resources.grd": (
         "chrome/app/resources/generated_resources_*.xtb",
-        {"IDS_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL"},
+        {"IDS_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL",
+         "IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_CHROME_PANELS"},
         "Chrome",
     ),
 }
 
 
+def partes(grd):
+    """O .grd e as partes (.grdp) que ele inclui."""
+    texto = open(grd, encoding="utf-8").read()
+    return [grd] + [os.path.join(os.path.dirname(grd), parte)
+                    for parte in re.findall(r'<part file="([^"]+)"', texto)]
+
+
 def trocar_arquivo(src, grd_rel, xtb_glob, trocar_mensagem, antigo):
     """Troca o texto das mensagens escolhidas e leva as traduções junto."""
     grd = os.path.join(src, grd_rel)
-    original = open(grd, encoding="utf-8").read()
 
     def nas_mensagens(m):
         nome = re.search(r'name="([^"]+)"', m.group(1))
@@ -89,13 +98,19 @@ def trocar_arquivo(src, grd_rel, xtb_glob, trocar_mensagem, antigo):
             return m.group(0)
         return m.group(1) + m.group(2).replace(antigo, NOVO) + m.group(3)
 
-    novo = re.sub(r"(<message\b[^>]*>)(.*?)(</message>)", nas_mensagens,
-                  original, flags=re.S)
-    if novo == original:
+    mudados = {}
+    for arquivo in partes(grd):
+        original = open(arquivo, encoding="utf-8").read()
+        novo = re.sub(r"(<message\b[^>]*>)(.*?)(</message>)", nas_mensagens,
+                      original, flags=re.S)
+        if novo != original:
+            mudados[arquivo] = novo
+    if not mudados:
         return 0, 0
 
     ids_antigos = ids_em_ordem(src, grd)
-    open(grd, "w", encoding="utf-8").write(novo)
+    for arquivo, novo in mudados.items():
+        open(arquivo, "w", encoding="utf-8").write(novo)
     ids_novos = ids_em_ordem(src, grd)
     assert len(ids_antigos) == len(ids_novos)
     mapa = {a: n for a, n in zip(ids_antigos, ids_novos) if a != n}
@@ -142,20 +157,29 @@ def main():
 
 def trocar_inteiro(src, grd_rel, xtb_glob):
     grd = os.path.join(src, grd_rel)
-    original = open(grd, encoding="utf-8").read()
+    # O .grd e as partes (.grdp) que ele inclui: as frases de Configurações
+    # ("Sobre o Chromium"...) moram no settings_chromium_strings.grdp, e as
+    # traduções delas no mesmo .xtb.
+    arquivos = partes(grd)
 
     # Só o conteúdo das <message> muda (não comentários nem atributos).
     def nas_mensagens(m):
         return m.group(1) + trocar(m.group(2)) + m.group(3)
 
-    novo = re.sub(r"(<message\b[^>]*>)(.*?)(</message>)", nas_mensagens,
-                  original, flags=re.S)
-    if novo == original:
+    mudados = {}
+    for arquivo in arquivos:
+        original = open(arquivo, encoding="utf-8").read()
+        novo = re.sub(r"(<message\b[^>]*>)(.*?)(</message>)", nas_mensagens,
+                      original, flags=re.S)
+        if novo != original:
+            mudados[arquivo] = novo
+    if not mudados:
         print(f"marca: {grd_rel}: nada a trocar (já aplicado)")
         return
 
     ids_antigos = ids_em_ordem(src, grd)
-    open(grd, "w", encoding="utf-8").write(novo)
+    for arquivo, novo in mudados.items():
+        open(arquivo, "w", encoding="utf-8").write(novo)
     ids_novos = ids_em_ordem(src, grd)
 
     assert len(ids_antigos) == len(ids_novos)

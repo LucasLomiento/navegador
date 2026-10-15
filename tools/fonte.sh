@@ -38,12 +38,17 @@ if [ "${1:-}" = "--gerar" ]; then
   git diff --binary -- . ':(exclude)navegador' \
     ':(exclude)chrome/app/chromium_strings.grd' \
     ':(exclude)chrome/app/resources/chromium_strings_*.xtb' \
+    ':(exclude)chrome/app/settings_chromium_strings.grdp' \
+    ':(exclude)chrome/app/settings_strings.grdp' \
     ':(exclude)components/components_chromium_strings.grd' \
     ':(exclude)components/strings/components_chromium_strings_*.xtb' \
     ':(exclude)chrome/app/generated_resources.grd' \
     ':(exclude)chrome/app/resources/generated_resources_*.xtb' \
     ':(exclude)chrome/app/theme/chromium/*product_logo*' \
     ':(exclude)chrome/app/theme/chromium/linux/*product_logo*' \
+    ':(exclude)chrome/app/theme/default_*_percent/chromium/*product_logo*' \
+    ':(exclude)chrome/app/theme/default_*_percent/chromium/linux/*product_logo*' \
+    ':(exclude)ui/webui/resources/images/chrome_logo_dark.svg' \
     "${excl[@]}" > "$RAIZ/patches/9999-resto.patch"
   [ -s "$RAIZ/patches/9999-resto.patch" ] || rm -f "$RAIZ/patches/9999-resto.patch"
   ls -1 "$RAIZ/patches"

@@ -22,6 +22,21 @@ for tam in 16 24 48 64 128 256; do
     fi
   done
 done
+# As de 100% e 200% (páginas internas: chrome://theme/current-channel-logo).
+for escala in 1 2; do
+  for dir in "$SRC/chrome/app/theme/default_${escala}00_percent/chromium" \
+             "$SRC/chrome/app/theme/default_${escala}00_percent/chromium/linux"; do
+    for tam in 16 32; do
+      if [ -f "$dir/product_logo_$tam.png" ]; then
+        rsvg-convert -w $((tam * escala)) -h $((tam * escala)) "$SVG" -o "$TMP"
+        por "$dir/product_logo_$tam.png"
+      fi
+    done
+  done
+done
+# Logo das páginas internas no escuro (Configurações, Histórico...).
+cp "$SVG" "$TMP"
+por "$SRC/ui/webui/resources/images/chrome_logo_dark.svg"
 rsvg-convert -w 32 -h 32 "$SVG" | magick png:- "xpm:$TMP"
 por "$TEMA/linux/product_logo_32.xpm"
 cp "$SVG" "$TMP"
