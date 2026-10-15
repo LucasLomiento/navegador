@@ -102,17 +102,17 @@ index 3c44e7f7a5..56c864ee98 100644
        "//chrome/browser/content_settings:content_settings_factory",
        "//chrome/browser/devtools",
 diff --git i/chrome/browser/sessions/session_service_base.cc w/chrome/browser/sessions/session_service_base.cc
-index 0fdde07d4d..9678049423 100644
+index 0fdde07d4d..bd944ddb7e 100644
 --- i/chrome/browser/sessions/session_service_base.cc
 +++ w/chrome/browser/sessions/session_service_base.cc
-@@ -68,6 +68,7 @@
- #include "chrome/browser/ui/web_applications/app_browser_controller.h"
- #include "chrome/browser/web_applications/web_app_provider.h"
- #include "chrome/browser/web_applications/web_app_registrar.h"
+@@ -58,6 +58,7 @@
+ #include "content/public/browser/navigation_details.h"
+ #include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/session_storage_namespace_handle.h"
 +#include "navegador/browser/containers/containers.h"
- #endif  // BUILDFLAG(IS_CHROMEOS)
+ #include "ui/base/mojom/window_show_state.mojom.h"
  
- #if BUILDFLAG(IS_OZONE)
+ #if BUILDFLAG(IS_MAC)
 @@ -285,6 +286,12 @@ void SessionServiceBase::TabInserted(WebContents* contents) {
      SetTabExtensionAppID(session_tab_helper->window_id(),
                           session_tab_helper->session_id(), app_id);
