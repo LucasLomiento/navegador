@@ -336,6 +336,49 @@ void Mover(Profile* profile, std::string_view id, int sentido) {
   lugar->lista->Insert(lugar->lista->begin() + destino, std::move(valor));
 }
 
+void Posicionar(Profile* profile,
+                std::string_view id,
+                std::string_view vizinho,
+                bool depois) {
+  if (id == vizinho) {
+    return;
+  }
+  ScopedDictPrefUpdate update(profile->GetPrefs(), kFixosPref);
+  std::string espaco;
+  std::optional<Lugar> origem = Achar(update.Get(), id, &espaco);
+  std::string pasta_do_vizinho;
+  std::optional<Lugar> alvo =
+      Achar(update.Get(), vizinho, nullptr, &pasta_do_vizinho);
+  if (!origem || !alvo) {
+    return;
+  }
+  const bool e_pasta =
+      (*origem->lista)[origem->indice].GetDict().FindList(kItens) != nullptr;
+  std::string ancora(vizinho);
+  if (e_pasta) {
+    if (!pasta_do_vizinho.empty()) {
+      if (pasta_do_vizinho == id) {
+        return;  // pra dentro dela mesma
+      }
+      ancora = pasta_do_vizinho;
+    }
+    if (alvo->lista == update->FindList(ChaveDosFavoritos(espaco))) {
+      return;
+    }
+  }
+  base::Value valor = std::move((*origem->lista)[origem->indice]);
+  origem->lista->erase(origem->lista->begin() + origem->indice);
+  // Os índices mudaram com a retirada: procura o vizinho de novo.
+  std::optional<Lugar> lugar = Achar(update.Get(), ancora);
+  if (!lugar) {
+    origem->lista->Insert(origem->lista->begin() + origem->indice,
+                          std::move(valor));
+    return;
+  }
+  lugar->lista->Insert(lugar->lista->begin() + lugar->indice + (depois ? 1 : 0),
+                       std::move(valor));
+}
+
 void MoverParaPasta(Profile* profile,
                     std::string_view id,
                     std::string_view pasta) {

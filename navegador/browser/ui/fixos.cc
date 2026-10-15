@@ -47,6 +47,9 @@
 #include "navegador/browser/containers/fixos.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/visual.h"
+#include "ui/compositor/paint_recorder.h"
+#include "ui/gfx/geometry/rect_conversions.h"
+#include "ui/views/paint_info.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
@@ -547,6 +550,7 @@ class AreaDeFixos : public views::View,
         views::BoxLayout::Orientation::kVertical, gfx::Insets(),
         visual::kEspacoEntreAbas));
     set_context_menu_controller(this);
+    AddPreTargetHandler(&arrasto_);
     model_->AddObserver(this);
     Areas()[browser_] = this;
     prefs_.Init(Perfil()->GetPrefs());
@@ -563,6 +567,7 @@ class AreaDeFixos : public views::View,
   }
 
   ~AreaDeFixos() override {
+    RemovePreTargetHandler(&arrasto_);
     model_->RemoveObserver(this);
     auto it = Areas().find(browser_);
     if (it != Areas().end() && it->second == this) {
@@ -636,6 +641,100 @@ class AreaDeFixos : public views::View,
   void OnThemeChanged() override {
     views::View::OnThemeChanged();
     AtualizarEstados();
+  }
+
+  // --- Arrastar pra reorganizar (sites, pastas e favoritos) -----------------
+
+  void Arrastar(ui::MouseEvent* event) {
+    gfx::Point ponto = event->location();
+    views::View::ConvertPointToTarget(
+        static_cast<views::View*>(event->target()), this, &ponto);
+    switch (event->type()) {
+      case ui::EventType::kMousePressed:
+        CancelarArrasto();
+        if (event->IsOnlyLeftMouseButton()) {
+          arrastado_ = ArrastavelEm(ponto);
+          inicio_ = ponto;
+        }
+        return;
+      case ui::EventType::kMouseDragged:
+        if (!arrastado_) {
+          return;
+        }
+        if (!arrastando_) {
+          if ((ponto - inicio_).Length() < 6) {
+            return;
+          }
+          arrastando_ = true;
+          // O clique não vale mais: soltar não abre o site.
+          if (auto* botao = views::Button::AsButton(arrastado_)) {
+            botao->SetState(views::Button::STATE_NORMAL);
+          }
+        }
+        CalcularDestino(ponto);
+        SchedulePaint();
+        event->SetHandled();
+        return;
+      case ui::EventType::kMouseReleased:
+        if (arrastando_) {
+          event->SetHandled();
+          Soltar();
+        }
+        CancelarArrasto();
+        return;
+      case ui::EventType::kMouseCaptureChanged:
+        CancelarArrasto();
+        return;
+      default:
+        return;
+    }
+  }
+
+  void PaintChildren(const views::PaintInfo& info) override {
+    views::View::PaintChildren(info);
+    if (!arrastando_ || !arrastado_) {
+      return;
+    }
+    ui::PaintRecorder recorder(info.context(), size());
+    gfx::Canvas* canvas = recorder.canvas();
+    const SkColor cor = GetColorProvider()->GetColor(ui::kColorAccent);
+    cc::PaintFlags flags;
+    flags.setAntiAlias(true);
+    // O que está sendo arrastado: contorno tracejado.
+    {
+      gfx::RectF origem(AreaDe(arrastado_));
+      origem.Inset(1);
+      cc::PaintFlags traco;
+      traco.setAntiAlias(true);
+      traco.setStyle(cc::PaintFlags::kStroke_Style);
+      traco.setStrokeWidth(1);
+      traco.setColor(SkColorSetA(cor, 0x99));
+      const SkScalar intervalos[] = {3, 3};
+      traco.setPathEffect(cc::PathEffect::MakeDash(intervalos, 2, 0));
+      canvas->DrawRoundRect(origem, kRaio, traco);
+    }
+    if (!vizinho_) {
+      return;
+    }
+    const gfx::Rect area = AreaDe(vizinho_);
+    flags.setColor(cor);
+    if (onde_ == Onde::kDentro) {
+      gfx::RectF caixa(area);
+      caixa.Inset(1);
+      flags.setStyle(cc::PaintFlags::kStroke_Style);
+      flags.setStrokeWidth(2);
+      canvas->DrawRoundRect(caixa, kRaio, flags);
+    } else if (views::IsViewClass<Ladrilho>(vizinho_)) {
+      const float x =
+          onde_ == Onde::kAntes ? area.x() - 4.0f : area.right() + 2.0f;
+      canvas->DrawRoundRect(
+          gfx::RectF(x, area.y() + 6, 2, area.height() - 12), 1, flags);
+    } else {
+      const float y = onde_ == Onde::kAntes ? area.y() - 3.0f
+                                            : area.bottom() + 1.0f;
+      canvas->DrawRoundRect(gfx::RectF(area.x() + 6, y, area.width() - 12, 2),
+                            1, flags);
+    }
   }
 
   // --- views::ContextMenuController ----------------------------------------
@@ -998,6 +1097,7 @@ class AreaDeFixos : public views::View,
 
   void Reconstruir() {
     reconstrucao_pendente_ = false;
+    CancelarArrasto();
     RemoveAllChildViews();
     linhas_.clear();
     ladrilhos_.clear();
@@ -1245,6 +1345,99 @@ class AreaDeFixos : public views::View,
   bool reconstrucao_pendente_ = false;
   bool atualizacao_pendente_ = false;
   bool tem_pasta_fechada_ = false;
+
+  // Arrastar: o que, de onde, e pra perto de quem.
+  enum class Onde { kAntes, kDepois, kDentro };
+  class Arrasto : public ui::EventHandler {
+   public:
+    explicit Arrasto(AreaDeFixos* area) : area_(area) {}
+    void OnMouseEvent(ui::MouseEvent* event) override {
+      area_->Arrastar(event);
+    }
+
+   private:
+    raw_ptr<AreaDeFixos> area_;
+  };
+  Arrasto arrasto_{this};
+  raw_ptr<views::View> arrastado_ = nullptr;
+  raw_ptr<views::View> vizinho_ = nullptr;
+  Onde onde_ = Onde::kAntes;
+  gfx::Point inicio_;
+  bool arrastando_ = false;
+
+  gfx::Rect AreaDe(views::View* view) {
+    return gfx::ToEnclosingRect(views::View::ConvertRectToTarget(
+        view->parent(), this, gfx::RectF(view->bounds())));
+  }
+
+  views::View* ArrastavelEm(const gfx::Point& ponto) {
+    for (const auto& [view, id] : ids_) {
+      if (AreaDe(view).Contains(ponto)) {
+        return view;
+      }
+    }
+    return nullptr;
+  }
+
+  void CalcularDestino(const gfx::Point& ponto) {
+    vizinho_ = nullptr;
+    const bool pasta_arrastada =
+        views::IsViewClass<CabecalhoDaPasta>(arrastado_);
+    for (const auto& [view, id] : ids_) {
+      if (view == arrastado_) {
+        continue;
+      }
+      const gfx::Rect area = AreaDe(view);
+      if (views::IsViewClass<Ladrilho>(view)) {
+        // Pasta não vira favorito.
+        if (pasta_arrastada || !area.Contains(ponto)) {
+          continue;
+        }
+        vizinho_ = view;
+        onde_ = ponto.x() < area.CenterPoint().x() ? Onde::kAntes
+                                                   : Onde::kDepois;
+        return;
+      }
+      // Linhas e pastas: pela altura (ocupam a largura da lateral).
+      if (ponto.y() < area.y() || ponto.y() >= area.bottom()) {
+        continue;
+      }
+      vizinho_ = view;
+      if (views::IsViewClass<CabecalhoDaPasta>(view) && !pasta_arrastada) {
+        // Metade de cima: antes da pasta; de baixo: pra dentro dela.
+        onde_ = ponto.y() < area.CenterPoint().y() ? Onde::kAntes
+                                                   : Onde::kDentro;
+      } else {
+        onde_ = ponto.y() < area.CenterPoint().y() ? Onde::kAntes
+                                                   : Onde::kDepois;
+      }
+      return;
+    }
+  }
+
+  void Soltar() {
+    if (!vizinho_ || !ids_.count(arrastado_) || !ids_.count(vizinho_)) {
+      return;
+    }
+    const std::string id = ids_[arrastado_];
+    const std::string outro = ids_[vizinho_];
+    if (onde_ == Onde::kDentro) {
+      MoverParaPasta(Perfil(), id, outro);
+      AbrirPasta(Perfil(), outro, true);
+    } else {
+      Posicionar(Perfil(), id, outro, onde_ == Onde::kDepois);
+    }
+  }
+
+  void CancelarArrasto() {
+    if (arrastando_) {
+      SchedulePaint();
+    }
+    arrastado_ = nullptr;
+    vizinho_ = nullptr;
+    arrastando_ = false;
+  }
+
   base::WeakPtrFactory<AreaDeFixos> weak_factory_{this};
 };
 

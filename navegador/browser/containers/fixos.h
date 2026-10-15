@@ -107,6 +107,14 @@ void TrocarEndereco(Profile* profile, std::string_view id, const GURL& url);
 void Remover(Profile* profile, std::string_view id);
 // Sobe (-1) ou desce (+1) dentro da lista em que está.
 void Mover(Profile* profile, std::string_view id, int sentido);
+// Arrastar: põe o site ou a pasta `id` antes (ou `depois`) de `vizinho`, na
+// lista dele (solto, dentro de uma pasta ou nos favoritos). Pasta não entra
+// em pasta: com o vizinho dentro de uma, vai pro lado da pasta dele; nem vai
+// pros favoritos.
+void Posicionar(Profile* profile,
+                std::string_view id,
+                std::string_view vizinho,
+                bool depois);
 // Leva o site pra uma pasta (ou pra fora, com `pasta` vazia), no fim.
 void MoverParaPasta(Profile* profile,
                     std::string_view id,

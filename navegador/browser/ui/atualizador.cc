@@ -324,7 +324,7 @@ class Aviso : public views::View {
       case Situacao::kNada:
         break;
       case Situacao::kDisponivel:
-        titulo_->SetText(u"Atualização disponível");
+        titulo_->SetText(u"Nova versão");
         detalhe_->SetText(u"Versão " + base::UTF8ToUTF16(estado.nova));
         botao_->SetText(u"Atualizar");
         botao_->SetEnabled(true);
