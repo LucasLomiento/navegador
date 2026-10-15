@@ -86,6 +86,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterIntegerPref(kEsconderForaPref, kEsconderForaPadrao);
   registry->RegisterBooleanPref(kMostrarNaBordaPref, true);
   registry->RegisterBooleanPref(kAbrirInteiraPref, true);
+  registry->RegisterBooleanPref(kProcurarAtualizacoesPref, true);
 }
 
 std::vector<Espaco> Todos(Profile* profile) {

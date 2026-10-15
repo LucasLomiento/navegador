@@ -64,6 +64,9 @@ inline constexpr char kMostrarNaBordaPref[] = "navegador.lateral.mostrar_na_bord
 // Passando o ponteiro rápido pela borda, a lateral abre inteira (e só depois
 // conta o tempo pra esconder); desligado, abre um pedaço e volta.
 inline constexpr char kAbrirInteiraPref[] = "navegador.lateral.abrir_inteira";
+// Procurar versão nova nas Releases do GitHub ao abrir o navegador.
+inline constexpr char kProcurarAtualizacoesPref[] =
+    "navegador.atualizacoes.procurar";
 
 struct Espaco {
   std::string id;

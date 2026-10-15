@@ -1,5 +1,5 @@
 diff --git i/chrome/browser/ui/BUILD.gn w/chrome/browser/ui/BUILD.gn
-index 82f397571f..6271b14cb2 100644
+index 82f397571f..38e947d333 100644
 --- i/chrome/browser/ui/BUILD.gn
 +++ w/chrome/browser/ui/BUILD.gn
 @@ -399,6 +399,7 @@ if (!is_android) {
@@ -10,7 +10,7 @@ index 82f397571f..6271b14cb2 100644
        ":tab_ui_helper",
        "//base",
        "//chrome/browser/apps/app_service",
-@@ -1522,6 +1523,26 @@ static_library("ui") {
+@@ -1522,6 +1523,28 @@ static_library("ui") {
        "browser_commands.cc",
        "browser_commands.h",
        "browser_live_tab_context.cc",
@@ -18,6 +18,8 @@ index 82f397571f..6271b14cb2 100644
 +      # navegador: espaços do Dia e a barra na cor do site.
 +      "//navegador/browser/ui/atalhos.cc",
 +      "//navegador/browser/ui/atalhos.h",
++      "//navegador/browser/ui/atualizador.cc",
++      "//navegador/browser/ui/atualizador.h",
 +      "//navegador/browser/ui/configuracoes.cc",
 +      "//navegador/browser/ui/configuracoes.h",
 +      "//navegador/browser/ui/cor_da_pagina.cc",
@@ -37,7 +39,7 @@ index 82f397571f..6271b14cb2 100644
        "browser_manager_service.cc",
        "browser_manager_service.h",
        "browser_manager_service_factory.cc",
-@@ -1558,6 +1579,11 @@ static_library("ui") {
+@@ -1558,6 +1581,11 @@ static_library("ui") {
  
      # Non-android deps for "ui" target.
      deps += [
@@ -49,7 +51,7 @@ index 82f397571f..6271b14cb2 100644
        ":accelerator_table",
        ":browser_actions",
        ":browser_select_file_dialog_controller",
-@@ -3877,6 +3903,10 @@ source_set("layout_constants") {
+@@ -3877,6 +3905,10 @@ source_set("layout_constants") {
    sources = [
      "layout_constants.cc",
      "layout_constants.h",

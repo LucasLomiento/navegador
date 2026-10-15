@@ -41,6 +41,7 @@
 #include "navegador/browser/ui/atalhos.h"
 #include "navegador/browser/ui/configuracoes.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
+#include "navegador/browser/ui/atualizador.h"
 #include "navegador/browser/ui/downloads/botao.h"
 #include "navegador/browser/ui/containers/espaco.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -1166,6 +1167,8 @@ void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
       views::kFlexBehaviorKey,
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
                                views::MaximumFlexSizeRule::kUnbounded));
+  // Aviso de versão nova, logo acima da faixa (escondido quando não há).
+  lateral->AddChildView(atualizador::CriarAviso(browser));
   lateral->AddChildView(std::make_unique<FaixaDeEspacos>(lateral, browser));
 }
 

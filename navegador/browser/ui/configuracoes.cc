@@ -36,6 +36,7 @@
 #include "navegador/browser/containers/containers.h"
 #include "navegador/browser/containers/espacos_dados.h"
 #include "navegador/browser/ui/atalhos.h"
+#include "navegador/browser/ui/atualizador.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "navegador/browser/ui/espacos.h"
@@ -503,6 +504,67 @@ class LinhaDeImportar : public views::View {
 BEGIN_METADATA(LinhaDeImportar)
 END_METADATA
 
+// Versão instalada e "Procurar agora" (a resposta fica no lugar da versão).
+class LinhaDeVersao : public views::View {
+  METADATA_HEADER(LinhaDeVersao, views::View)
+
+ public:
+  explicit LinhaDeVersao(Profile* perfil) : perfil_(perfil) {
+    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(10, 14),
+        16));
+    layout->set_cross_axis_alignment(
+        views::BoxLayout::CrossAxisAlignment::kCenter);
+    layout->set_minimum_cross_axis_size(44);
+    auto* textos = AddChildView(std::make_unique<views::View>());
+    textos->SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kVertical, gfx::Insets(), 2));
+    textos->AddChildView(
+        Titulo(u"Versão instalada", 14, gfx::Font::Weight::NORMAL));
+    situacao_ = textos->AddChildView(Descricao(u"…"));
+    layout->SetFlexForView(textos, 1);
+    botao_ = AddChildView(Botao(
+        u"Procurar agora", base::BindRepeating(&LinhaDeVersao::Procurar,
+                                               base::Unretained(this))));
+    atualizador::LerVersaoInstalada(base::BindOnce(
+        &LinhaDeVersao::Versao, weak_factory_.GetWeakPtr()));
+  }
+
+ private:
+  void Versao(const std::string& versao) {
+    Escrever(versao.empty() ? u"Cópia de desenvolvimento (sem atualização "
+                              u"automática)."
+                            : base::UTF8ToUTF16(versao));
+  }
+
+  void Procurar() {
+    botao_->SetEnabled(false);
+    Escrever(u"Procurando…");
+    atualizador::ProcurarAgora(
+        perfil_, base::BindOnce(&LinhaDeVersao::Resposta,
+                                weak_factory_.GetWeakPtr()));
+  }
+
+  void Resposta(const std::u16string& frase) {
+    botao_->SetEnabled(true);
+    Escrever(frase);
+  }
+
+  void Escrever(const std::u16string& texto) {
+    situacao_->SetText(texto);
+    situacao_->SizeToFit(kLarguraDescricao);
+    PreferredSizeChanged();
+  }
+
+  raw_ptr<Profile> perfil_;
+  raw_ptr<views::Label> situacao_ = nullptr;
+  raw_ptr<views::View> botao_ = nullptr;
+  base::WeakPtrFactory<LinhaDeVersao> weak_factory_{this};
+};
+
+BEGIN_METADATA(LinhaDeVersao)
+END_METADATA
+
 std::unique_ptr<views::View> PaginaGeral(BrowserWindowInterface* browser) {
   Profile* perfil = browser->GetProfile();
   auto pagina = std::make_unique<Pagina>(u"Geral");
@@ -523,6 +585,22 @@ std::unique_ptr<views::View> PaginaGeral(BrowserWindowInterface* browser) {
                                                : SessionStartupPref::DEFAULT));
                   },
                   perfil))));
+
+  Cartao* atualizacoes = pagina->Secao(u"Atualizações");
+  atualizacoes->Adicionar(Linha(
+      u"Procurar ao abrir",
+      u"Ao abrir o navegador, procura uma versão nova no GitHub e mostra um "
+      u"aviso no pé da lateral.",
+      Interruptor(perfil->GetPrefs()->GetBoolean(
+                      espacos::kProcurarAtualizacoesPref),
+                  u"Procurar ao abrir",
+                  base::BindRepeating(
+                      [](Profile* perfil, bool ligado) {
+                        perfil->GetPrefs()->SetBoolean(
+                            espacos::kProcurarAtualizacoesPref, ligado);
+                      },
+                      perfil))));
+  atualizacoes->Adicionar(std::make_unique<LinhaDeVersao>(perfil));
 
   Cartao* importar = pagina->Secao(u"Trazer de outro navegador");
   importar->Adicionar(std::make_unique<LinhaDeImportar>(perfil));
