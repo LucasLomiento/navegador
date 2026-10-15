@@ -1,0 +1,25 @@
+# Interface dos containers: cor na aba, submenu e abrir aba em container.
+source_set("containers_ui") {
+  sources = [
+    "containers_ui.cc",
+    "containers_ui.h",
+  ]
+  public_deps = [
+    "//skia",
+    "//ui/base",
+  ]
+  deps = [
+    "//base",
+    "//cc/paint",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/tabs:tab_enums",
+    "//chrome/browser/ui/tabs:tab_strip",
+    "//components/tabs:public",
+    "//content/public/browser",
+    "//navegador/browser/containers",
+    "//ui/gfx",
+    "//ui/menus",
+    "//ui/views",
+    "//url",
+  ]
+}

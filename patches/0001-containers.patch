@@ -167,3 +167,62 @@ index 5029e26405..ce10242bac 100644
  
    WebContents::CreateParams create_params(
        params.browser->GetProfile(), initial_site_instance_for_new_contents);
+diff --git i/chrome/browser/ui/tabs/BUILD.gn w/chrome/browser/ui/tabs/BUILD.gn
+index 3396b27000..d83f6ad5c9 100644
+--- i/chrome/browser/ui/tabs/BUILD.gn
++++ w/chrome/browser/ui/tabs/BUILD.gn
+@@ -157,6 +157,7 @@ if (!is_android) {
+     ]
+ 
+     deps = [
++      "//navegador/browser/ui/containers:containers_ui",  # navegador
+       ":tab_menu",
+       ":tab_model",
+       ":tab_strip",
+diff --git i/chrome/browser/ui/tabs/tab_menu_model.h w/chrome/browser/ui/tabs/tab_menu_model.h
+index f0b718e6ba..be58e1ca1b 100644
+--- i/chrome/browser/ui/tabs/tab_menu_model.h
++++ w/chrome/browser/ui/tabs/tab_menu_model.h
+@@ -101,6 +101,8 @@ class TabMenuModel : public ui::SimpleMenuModel {
+   std::unique_ptr<ui::SimpleMenuModel>
+       add_to_existing_comparison_table_submenu_;
+   std::unique_ptr<ui::SimpleMenuModel> swap_with_split_submenu_;
++  // navegador: "Abrir em container".
++  std::unique_ptr<ui::SimpleMenuModel> navegador_containers_submenu_;
+   std::unique_ptr<ui::SimpleMenuModel> split_layout_submenu_;
+   std::unique_ptr<ui::SimpleMenuModel> arrange_split_view_submenu_;
+   std::unique_ptr<ui::SimpleMenuModel> glic_tab_sub_menu_model_;
+diff --git i/chrome/browser/ui/views/tabs/common/BUILD.gn w/chrome/browser/ui/views/tabs/common/BUILD.gn
+index 2494eac3f3..89de606904 100644
+--- i/chrome/browser/ui/views/tabs/common/BUILD.gn
++++ w/chrome/browser/ui/views/tabs/common/BUILD.gn
+@@ -87,6 +87,7 @@ source_set("impl") {
+   ]
+ 
+   deps = [
++    "//navegador/browser/ui/containers:containers_ui",  # navegador
+     "//base:i18n",
+     "//cc/paint",
+     "//chrome/app/theme:theme_resources",
+diff --git i/chrome/browser/ui/views/tabs/common/tab_view.cc w/chrome/browser/ui/views/tabs/common/tab_view.cc
+index cc16ff231e..bbad988c2c 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_view.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_view.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_view.h"
+ 
++#include "navegador/browser/ui/containers/containers_ui.h"
++
+ #include <optional>
+ #include <string>
+ 
+@@ -786,6 +788,8 @@ void TabView::OnPaint(gfx::Canvas* canvas) {
+   }
+ 
+   tab_styling()->PaintTab(canvas);
++  // navegador: cor do container.
++  navegador::containers::PintarIndicador(canvas, *this, GetTabInterface());
+ 
+   views::View::OnPaint(canvas);
+ }

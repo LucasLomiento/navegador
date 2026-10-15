@@ -13,15 +13,31 @@ index b6cf0bffe2..b68ec7ae64 100644
          $i18n{tabStripPosition}
        </div>
 diff --git i/chrome/browser/ui/tabs/tab_menu_model.cc w/chrome/browser/ui/tabs/tab_menu_model.cc
-index 97c6ded1ac..d2d062fbb5 100644
+index 97c6ded1ac..33d48dcb4d 100644
 --- i/chrome/browser/ui/tabs/tab_menu_model.cc
 +++ w/chrome/browser/ui/tabs/tab_menu_model.cc
-@@ -585,33 +585,7 @@ void TabMenuModel::Build(int index) {
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/tabs/tab_menu_model.h"
+ 
++#include "navegador/browser/ui/containers/containers_ui.h"
++
+ #include <memory>
+ #include <optional>
+ 
+@@ -585,32 +587,16 @@ void TabMenuModel::Build(int index) {
      }
    }
  
 -  if (controller) {
--    AddSeparator(ui::NORMAL_SEPARATOR);
++  // navegador: sem "mover abas pra cima" (abas sempre na lateral), e no
++  // lugar o "Abrir em container". O id do item é o do comando de virar as
++  // abas, que ficou sem uso e o TabStripModel já aceita (id desconhecido
++  // derruba o navegador no IsContextMenuCommandEnabled).
++  navegador_containers_submenu_ =
++      navegador::containers::CriarSubmenuDaAba(tab_strip_, index);
++  if (navegador_containers_submenu_->GetItemCount() > 0) {
+     AddSeparator(ui::NORMAL_SEPARATOR);
 -    const int switch_to_horizontal_id =
 -#if BUILDFLAG(IS_MAC)
 -        IDS_SWITCH_TO_HORIZONTAL_TAB_MAC;
@@ -46,11 +62,11 @@ index 97c6ded1ac..d2d062fbb5 100644
 -                                                  tabs::kVerticalTabsNewBadge);
 -      SetIsNewFeatureAt(GetItemCount() - 1, show_badge);
 -    }
--  }
-+  // navegador: sem "mover abas pra cima" (abas sempre na lateral).
++    AddSubMenu(TabStripModel::CommandToggleVertical, u"Abrir em container",
++               navegador_containers_submenu_.get());
+   }
  
    // Append extension items for the 'tab' context if the feature is enabled.
- #if BUILDFLAG(ENABLE_EXTENSIONS)
 diff --git i/chrome/browser/ui/tabs/tab_strip_prefs.cc w/chrome/browser/ui/tabs/tab_strip_prefs.cc
 index ca0afc6fd0..aa5c8a660f 100644
 --- i/chrome/browser/ui/tabs/tab_strip_prefs.cc
