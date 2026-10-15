@@ -20,9 +20,16 @@
 #include "ui/base/mojom/dialog_button.mojom.h"
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
 #include "ui/gfx/canvas.h"
+#include "ui/base/models/image_model.h"
+#include "ui/color/color_id.h"
+#include "ui/events/event.h"
+#include "ui/views/animation/ink_drop.h"
+#include "ui/views/border.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
-#include "ui/views/controls/button/md_text_button.h"
+#include "ui/views/controls/button/label_button.h"
+#include "ui/views/controls/highlight_path_generator.h"
+#include "ui/views/controls/label.h"
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/controls/textfield/textfield_controller.h"
 #include "ui/views/layout/box_layout.h"
@@ -55,15 +62,33 @@ class BotaoCor : public views::Button {
  public:
   BotaoCor(std::string cor, PressedCallback ao_clicar)
       : views::Button(std::move(ao_clicar)), cor_(std::move(cor)) {
-    SetPreferredSize(gfx::Size(24, 24));
+    SetPreferredSize(gfx::Size(28, 28));
     SetTooltipText(u"Trocar a cor");
   }
 
   void PaintButtonContents(gfx::Canvas* canvas) override {
+    const gfx::PointF centro(width() / 2.0f, height() / 2.0f);
     cc::PaintFlags flags;
     flags.setAntiAlias(true);
+    // Com o mouse em cima, um anel fino em volta: dá pra clicar.
+    if (IsMouseHovered() || HasFocus()) {
+      flags.setStyle(cc::PaintFlags::kStroke_Style);
+      flags.setStrokeWidth(1.5f);
+      flags.setColor(SkColorSetA(Cor(cor_), 0x80));
+      canvas->DrawCircle(centro, 11, flags);
+      flags.setStyle(cc::PaintFlags::kFill_Style);
+    }
     flags.setColor(Cor(cor_));
-    canvas->DrawCircle(gfx::PointF(width() / 2.0f, height() / 2.0f), 7, flags);
+    canvas->DrawCircle(centro, 7, flags);
+  }
+
+  void OnMouseEntered(const ui::MouseEvent& event) override {
+    views::Button::OnMouseEntered(event);
+    SchedulePaint();
+  }
+  void OnMouseExited(const ui::MouseEvent& event) override {
+    views::Button::OnMouseExited(event);
+    SchedulePaint();
   }
 
  private:
@@ -80,19 +105,36 @@ class Gerenciador : public views::DialogDelegate,
     SetTitle(u"Containers");
     SetModalType(ui::mojom::ModalType::kWindow);
     SetShowCloseButton(true);
-    SetButtons(static_cast<int>(ui::mojom::DialogButton::kOk));
-    SetButtonLabel(ui::mojom::DialogButton::kOk, u"Fechar");
+    // Lista que se edita no lugar: sem "OK"/"Fechar", só o x do título.
+    SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
 
     auto conteudo = std::make_unique<views::View>();
     conteudo->SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kVertical, gfx::Insets::VH(12, 16),
-        12));
+        views::BoxLayout::Orientation::kVertical, gfx::Insets::TLBR(0, 16, 16, 16),
+        10));
+    auto* legenda = conteudo->AddChildView(std::make_unique<views::Label>(
+        u"Cada container tem cookies, logins e dados dos sites separados. "
+        u"Clique na bolinha pra trocar a cor e no nome pra renomear."));
+    legenda->SetMultiLine(true);
+    legenda->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+    legenda->SetEnabledColor(ui::kColorLabelForegroundSecondary);
+    legenda->SizeToFit(300);
     lista_ = conteudo->AddChildView(std::make_unique<views::View>());
     lista_->SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kVertical, gfx::Insets(), 6));
-    conteudo->AddChildView(std::make_unique<views::MdTextButton>(
+        views::BoxLayout::Orientation::kVertical, gfx::Insets(), 2));
+    // "+ Novo container" como linha de texto, no estilo do "+ Nova guia" da
+    // lateral.
+    auto* novo = conteudo->AddChildView(std::make_unique<views::LabelButton>(
         base::BindRepeating(&Gerenciador::Novo, base::Unretained(this)),
         u"Novo container"));
+    novo->SetImageModel(views::Button::STATE_NORMAL,
+                        ui::ImageModel::FromVectorIcon(
+                            kAddIcon, ui::kColorIconSecondary, 16));
+    novo->SetImageLabelSpacing(20);
+    novo->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(4, 6)));
+    novo->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+    views::InkDrop::Get(novo)->SetMode(views::InkDropHost::InkDropMode::ON);
+    views::InstallRoundRectHighlightPathGenerator(novo, gfx::Insets(), 6);
     SetContentsView(std::move(conteudo));
     Reconstruir();
   }
@@ -136,6 +178,11 @@ class Gerenciador : public views::DialogDelegate,
       nome->SetDefaultWidthInChars(18);
       nome->SetAccessibleName(u"Nome do container");
       nome->set_controller(this);
+      // Texto solto, editável no lugar: sem a caixa de formulário (o anel de
+      // foco aparece ao clicar).
+      nome->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(4, 6)));
+      nome->SetBackgroundEnabled(false);
+      nome->RemoveHoverEffect();
       layout->SetFlexForView(nome, 1);
       auto* excluir =
           linha->AddChildView(views::CreateVectorImageButtonWithNativeTheme(

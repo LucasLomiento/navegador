@@ -144,10 +144,19 @@ index 22ece00a8c..88a105da9d 100644
      collapse_action->SetEnabled(ShouldDisplayVerticalTabs());
    }
 diff --git i/chrome/browser/ui/toolbar/app_menu_model.cc w/chrome/browser/ui/toolbar/app_menu_model.cc
-index f8f6a64f35..b8b058e8c5 100644
+index f8f6a64f35..5a2db01b48 100644
 --- i/chrome/browser/ui/toolbar/app_menu_model.cc
 +++ w/chrome/browser/ui/toolbar/app_menu_model.cc
-@@ -1061,26 +1061,7 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/toolbar/app_menu_model.h"
+ 
++#include "navegador/browser/ui/containers/containers_ui.h"
++
+ #include <algorithm>
+ #include <cmath>
+ #include <memory>
+@@ -1061,26 +1063,7 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
        this, IDC_NAME_WINDOW, IDS_NAME_WINDOW,
        features::IsRoundedIconsEnabled() ? kWebAssetIcon : kNameWindowOldIcon);
  
@@ -175,6 +184,51 @@ index f8f6a64f35..b8b058e8c5 100644
  
    if (CustomizeChromePageHandler::IsSupported(
            NtpCustomBackgroundServiceFactory::GetForProfile(
+@@ -1994,6 +1977,8 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
+   switch (command_id) {
+     case IDC_NEW_INCOGNITO_WINDOW:
+       return IncognitoModePrefs::IsIncognitoAllowed(browser_->GetProfile());
++    case kNavegadorContainersMenu:
++      return true;
+     default:
+       return chrome::IsCommandEnabled(browser_, command_id);
+   }
+@@ -2114,6 +2099,21 @@ void AppMenuModel::Build() {
+     }
+   }
+ 
++  // navegador: containers também no menu do logo (além do clique direito no
++  // "+ Nova aba"): nova aba em cada um e "Gerenciar containers…".
++  if (browser_->GetProfile()->IsRegularProfile()) {
++    auto containers = navegador::containers::CriarSubmenuNovaAba(
++        browser_->GetTabStripModel());
++    if (containers->GetItemCount() > 0) {
++      sub_menus_.push_back(std::move(containers));
++      AddSubMenuWithIcon(kNavegadorContainersMenu, u"Containers",
++                         sub_menus_.back().get(),
++                         ui::ImageModel::FromVectorIcon(
++                             vector_icons::kCookieIcon, ui::kColorMenuIcon,
++                             ui::SimpleMenuModel::kDefaultIconSize));
++    }
++  }
++
+   AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+ #if !BUILDFLAG(IS_CHROMEOS)
+diff --git i/chrome/browser/ui/toolbar/app_menu_model.h w/chrome/browser/ui/toolbar/app_menu_model.h
+index ed3f1fa50b..d22cc9000f 100644
+--- i/chrome/browser/ui/toolbar/app_menu_model.h
++++ w/chrome/browser/ui/toolbar/app_menu_model.h
+@@ -234,6 +234,9 @@ class AppMenuModel : public ui::SimpleMenuModel,
+       IDC_SAVED_TAB_GROUPS_MENU;
+   static constexpr int kMoreToolsMenuPlaceholder = IDC_MORE_TOOLS_MENU;
+   static constexpr int kHelpMenuPlaceholder = IDC_HELP_MENU;
++  // navegador: submenu "Containers" (o id só não pode colidir; os itens
++  // têm delegate próprio).
++  static constexpr int kNavegadorContainersMenu = 0x6E62;
+ 
+   // Number of menus within the app menu with an arbitrarily high (variable)
+   // number of menu items. For example, the number of bookmarks menu items
 diff --git i/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc w/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
 index eb00016d40..5ea4c92508 100644
 --- i/chrome/browser/ui/views/app_menu/action_app_menu_manager.cc
