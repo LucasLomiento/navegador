@@ -530,6 +530,19 @@ index 62f69255e0..a40ca8a6ea 100644
    if (IsFrameCondensed()) {
      PaintMaximizedFrameBorder(canvas);
    } else {
+diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.h w/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
+index cd6fa39dad..6b9401874b 100644
+--- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
++++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
+@@ -122,6 +122,8 @@ class OpaqueBrowserFrameView : public BrowserFrameView,
+ 
+   // views::View:
+   void OnPaint(gfx::Canvas* canvas) override;
++  // navegador: sombra do cartão (ver o .cc).
++  void PintarSombraDoCartao(gfx::Canvas* canvas);
+ 
+   // BrowserFrameView:
+   BoundsAndMargins GetCaptionButtonBounds() const override;
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 index b7cdb8f557..3354c2fab8 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
