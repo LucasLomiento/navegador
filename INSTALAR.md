@@ -31,10 +31,12 @@ padrão.
 - O menu do navegador fica no logo, no canto de cima da lateral (como no
   Dia); `Alt+F` também abre. Clique direito no logo: recolher/abrir a lateral
   (ou `Ctrl+Shift+L`).
-- Perfis: menu do logo → o primeiro submenu (com o nome do perfil) → outros
-  perfis, "Adicionar novo perfil" (escolhe nome e cor; a cor tinge a
-  lateral), visitante e "Gerenciar perfis". Cada perfil abre na própria
-  janela.
+- Perfis: menu do logo → o submenu com o nome do perfil → outros perfis,
+  "Adicionar novo perfil" (escolhe nome e cor; a cor tinge a lateral),
+  visitante e "Gerenciar perfis". Cada perfil abre na própria janela; ao
+  abrir o navegador, volta o último perfil usado.
+- Containers: menu do logo → Containers → nova aba num container ou
+  "Gerenciar containers…" (criar, renomear, trocar a cor, excluir).
 
 ## Atalhos próprios
 
