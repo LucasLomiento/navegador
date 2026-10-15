@@ -132,9 +132,10 @@ class FaixaDeEspacos : public views::View,
  public:
   explicit FaixaDeEspacos(BrowserWindowInterface* browser)
       : browser_(browser), model_(browser->GetTabStripModel()) {
-    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+    layout_ = SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(0, 10),
         8));
+    auto* layout = layout_.get();
     layout->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);
 
@@ -378,6 +379,14 @@ class FaixaDeEspacos : public views::View,
                               std::optional<tab_groups::TabGroupId>(id))));
     }
     titulo_->SetText(titulo);
+    // Como no Dia: com um espaço só (o Início), o rodapé fica limpo, só com o
+    // "+" discreto à direita; nome e bolinhas aparecem a partir do segundo.
+    const bool varios = !Espacos().empty();
+    titulo_->SetVisible(varios);
+    bolinhas_->SetVisible(varios);
+    layout_->set_main_axis_alignment(
+        varios ? views::BoxLayout::MainAxisAlignment::kStart
+               : views::BoxLayout::MainAxisAlignment::kEnd);
     InvalidateLayout();
     SchedulePaint();
   }
@@ -437,6 +446,7 @@ class FaixaDeEspacos : public views::View,
   std::unique_ptr<views::MenuRunner> menu_runner_;
   std::unique_ptr<views::Widget> editor_;
   std::vector<containers::Container> containers_;
+  raw_ptr<views::BoxLayout> layout_ = nullptr;
   raw_ptr<views::Label> titulo_ = nullptr;
   raw_ptr<views::View> bolinhas_ = nullptr;
   raw_ptr<views::ImageButton> novo_ = nullptr;
