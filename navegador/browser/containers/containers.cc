@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "base/command_line.h"
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
@@ -190,6 +191,16 @@ scoped_refptr<content::SiteInstance> SiteInstanceForNewTab(
     id = IdForWebContents(source_contents);
   } else if (espaco) {
     id = ContainerDoEspaco(profile, *espaco);
+  }
+  // Pra testes: --navegador-container-padrao=<id> põe as abas novas sem
+  // origem nesse container.
+  if (!source_contents && !id) {
+    const std::string padrao =
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            "navegador-container-padrao");
+    if (!padrao.empty()) {
+      id = padrao;
+    }
   }
   if (!id || !Get(profile, *id)) {
     return nullptr;

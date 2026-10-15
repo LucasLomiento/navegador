@@ -200,7 +200,7 @@ index 812ea8e40e..4fe077a98d 100644
        "//chrome/browser/apps/link_capturing",
        "//chrome/browser/ui:browser_init_state",
 diff --git i/chrome/browser/ui/navigator/browser_navigator.cc w/chrome/browser/ui/navigator/browser_navigator.cc
-index 5029e26405..60fd0eb9ce 100644
+index 5029e26405..95cf66678a 100644
 --- i/chrome/browser/ui/navigator/browser_navigator.cc
 +++ w/chrome/browser/ui/navigator/browser_navigator.cc
 @@ -74,6 +74,8 @@
@@ -212,7 +212,7 @@ index 5029e26405..60fd0eb9ce 100644
  #include "extensions/buildflags/buildflags.h"
  #include "ui/base/page_transition_types.h"
  #include "ui/base/window_open_disposition.h"
-@@ -504,8 +506,15 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
+@@ -504,8 +506,20 @@ std::unique_ptr<content::WebContents> CreateTargetContents(
    // preserving the requested opener relationship along the way.
    scoped_refptr<content::SiteInstance> initial_site_instance_for_new_contents =
        params.opener ? params.opener->GetSiteInstance()
@@ -220,7 +220,12 @@ index 5029e26405..60fd0eb9ce 100644
 -                          params.browser->GetProfile(), url);
 +                    : navegador::containers::SiteInstanceForNewTab(
 +                          params.browser->GetProfile(),
-+                          params.source_contents.get(),
++                          // Só link herda o container de quem abriu; aba em
++                          // branco (Ctrl+T) segue o espaço.
++                          ui::PageTransitionCoreTypeIs(
++                              params.transition, ui::PAGE_TRANSITION_LINK)
++                              ? params.source_contents.get()
++                              : nullptr,
 +                          navegador::containers::EspacoFocado(params.browser),
 +                          url);
 +  if (!initial_site_instance_for_new_contents) {

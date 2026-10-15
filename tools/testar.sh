@@ -8,6 +8,9 @@
 #   tools/testar.sh limpar           -> fecha e apaga o perfil de teste
 #   tools/testar.sh url <endereço>   -> abre o endereço numa aba nova (DevTools na 9333)
 #   tools/testar.sh abas             -> lista as abas
+#   tools/testar.sh teclas <wtype args...>  -> foca a janela de teste e manda
+#        teclas com o wtype; não manda nada se a janela ativa não for a de teste
+#        (ex.: tools/testar.sh teclas -M ctrl -k t -m ctrl)
 #
 # A janela tem app_id "navegador-teste" (CHROME_DESKTOP), pra não pegar as
 # regras do navegador de verdade. Variáveis: OUT (padrão out/dev),
@@ -65,6 +68,23 @@ case "${1:-abrir}" in
       kill "$(cat "$PIDFILE")" 2>/dev/null || true
       rm -f "$PIDFILE"
     fi
+    ;;
+  teclas)
+    shift
+    endereco="$(hyprctl clients -j | python3 -c '
+import json, sys
+for c in json.load(sys.stdin):
+    if c.get("class") == sys.argv[1]:
+        print(c["address"]); break' "$CLASSE")"
+    [ -n "$endereco" ] || { echo "sem janela de teste" >&2; exit 1; }
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$endereco\" })" >/dev/null
+    sleep 0.3
+    ativa="$(hyprctl activewindow -j | python3 -c 'import json,sys; print(json.load(sys.stdin).get("class",""))')"
+    if [ "$ativa" != "$CLASSE" ]; then
+      echo "janela ativa é \"$ativa\", não a de teste: não mandei nada" >&2
+      exit 1
+    fi
+    wtype "$@"
     ;;
   url)
     curl -fsS -X PUT "http://127.0.0.1:9333/json/new?$2" >/dev/null && echo "aberto: $2"
