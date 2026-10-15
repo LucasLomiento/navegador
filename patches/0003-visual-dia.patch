@@ -597,10 +597,20 @@ index b7cdb8f557..3354c2fab8 100644
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
 diff --git i/chrome/browser/ui/views/location_bar/location_bar_view.cc w/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b..ccf638ed3c 100644
+index 9251f8590b..c12aa1523a 100644
 --- i/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ w/chrome/browser/ui/views/location_bar/location_bar_view.cc
-@@ -853,6 +853,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -4,6 +4,9 @@
+ 
+ #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+ 
++#include "base/strings/escape.h"
++#include "components/url_formatter/url_formatter.h"
++
+ #include <algorithm>
+ #include <memory>
+ #include <ranges>
+@@ -853,6 +856,7 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -608,7 +618,7 @@ index 9251f8590b..ccf638ed3c 100644
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -862,14 +863,25 @@ void LocationBarView::Layout(PassKey) {
+@@ -862,14 +866,25 @@ void LocationBarView::Layout(PassKey) {
    } else if (location_icon_view_->GetShowText() &&
               !ShouldChipOverrideLocationIcon()) {
      location_icon_view_->SetVisible(true);
@@ -637,7 +647,7 @@ index 9251f8590b..ccf638ed3c 100644
    } else {
      location_icon_view_->SetVisible(false);
    }
-@@ -882,6 +894,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -882,6 +897,10 @@ void LocationBarView::Layout(PassKey) {
            /*max_fraction=*/0, intra_item_padding, edge_padding, view);
      }
    };
@@ -648,7 +658,20 @@ index 9251f8590b..ccf638ed3c 100644
  
    if (features::IsPageActionsElevatedToolbarEnabled()) {
      if (page_action_container_ && page_action_container_->GetVisible()) {
-@@ -1437,6 +1453,29 @@ void LocationBarView::RefreshBackground() {
+@@ -1066,6 +1085,12 @@ void LocationBarView::Update(WebContents* contents) {
+   } else {
+     omnibox_view_->Update();
+   }
++  // navegador: o Update repôs o texto parado; com o mouse ainda em cima,
++  // volta o URL inteiro (já com o endereço novo).
++  endereco_inteiro_ = false;
++  if (IsMouseHovered()) {
++    MostrarEnderecoInteiro(true);
++  }
+ 
+   // Ensures that the page action updates is performed after the omnibox update.
+   // So we can determine whether page actions should be hidden or not.
+@@ -1437,6 +1462,29 @@ void LocationBarView::RefreshBackground() {
      permission_dashboard_view_->SetDividerBackgroundColor(background_color_);
    }
  
@@ -678,16 +701,18 @@ index 9251f8590b..ccf638ed3c 100644
    SchedulePaint();
  }
  
-@@ -2041,6 +2080,8 @@ void LocationBarView::OnOmniboxFocused() {
+@@ -2041,6 +2089,10 @@ void LocationBarView::OnOmniboxFocused() {
    // the omnibox is intentional, snapping is better than transitioning here.
    hover_animation_.Reset();
    RefreshBackground();
-+  // navegador: o ícone do site troca de lado com o foco.
++  // navegador: o ícone do site troca de lado com o foco; o texto agora é o
++  // de edição, não o do hover.
 +  InvalidateLayout();
++  endereco_inteiro_ = false;
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2067,6 +2108,8 @@ void LocationBarView::OnOmniboxBlurred() {
+@@ -2067,6 +2119,8 @@ void LocationBarView::OnOmniboxBlurred() {
    RefreshAiModePageAction();
  
    location_icon_view_->Update(false, false);
@@ -696,6 +721,66 @@ index 9251f8590b..ccf638ed3c 100644
  }
  
  bool LocationBarView::IsFullWebUiOmniboxReady() const {
+@@ -2083,6 +2137,33 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
+   } else {
+     hover_animation_.Hide();
+   }
++  MostrarEnderecoInteiro(is_hovering);
++}
++
++void LocationBarView::MostrarEnderecoInteiro(bool mostrar) {
++  OmniboxEditModel* model = GetOmniboxController()->edit_model();
++  const GURL url = GetLocationBarModel()->GetURL();
++  mostrar = mostrar && !omnibox_view_->HasFocus() &&
++            !model->user_input_in_progress() && url.SchemeIsHTTPOrHTTPS() &&
++            !is_popup_mode_;
++  if (mostrar == endereco_inteiro_) {
++    return;
++  }
++  endereco_inteiro_ = mostrar;
++  if (mostrar) {
++    // Domínio claro e o resto apagado (o EmphasizeURLComponents faz isso).
++    omnibox_view_->SetWindowTextAndCaretPos(
++        url_formatter::FormatUrl(
++            url,
++            url_formatter::kFormatUrlOmitDefaults |
++                url_formatter::kFormatUrlOmitHTTPS |
++                url_formatter::kFormatUrlOmitTrivialSubdomains,
++            base::UnescapeRule::NORMAL, nullptr, nullptr, nullptr),
++        0, /*update_popup=*/false, /*notify_text_changed=*/false);
++    omnibox_view_->EmphasizeURLComponents();
++  } else {
++    omnibox_view_->RevertAll();
++  }
+ }
+ 
+ void LocationBarView::OnTouchUiChanged() {
+diff --git i/chrome/browser/ui/views/location_bar/location_bar_view.h w/chrome/browser/ui/views/location_bar/location_bar_view.h
+index dc2ea8c236..697f25495d 100644
+--- i/chrome/browser/ui/views/location_bar/location_bar_view.h
++++ w/chrome/browser/ui/views/location_bar/location_bar_view.h
+@@ -288,6 +288,10 @@ class LocationBarView
+   // |is_hovering| should be true when mouse is in omnibox; false when exited.
+   void OnOmniboxHovered(bool is_hovering);
+ 
++  // navegador: com o mouse em cima (sem foco), o endereço mostra o URL
++  // inteiro, sem o esquema, como o Dia; ao sair volta pro "domínio / título".
++  void MostrarEnderecoInteiro(bool mostrar);
++
+   // LocationBar:
+   void SetPermissionPromptShowing(bool showing) override;
+   void UpdateFocusBehavior(bool toolbar_visible) override;
+@@ -607,6 +611,10 @@ class LocationBarView
+ 
+   bool is_initialized_ = false;
+ 
++  // navegador: o texto da barra é o URL inteiro do hover (ver
++  // MostrarEnderecoInteiro).
++  bool endereco_inteiro_ = false;
++
+   SkColor background_color_ = gfx::kPlaceholderColor;
+ 
+   // The focus manager associated with this view. The focus manager is expected
 diff --git i/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc w/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
 index c7c218422c..cd2172eca5 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_group_header_view.cc
