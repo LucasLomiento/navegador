@@ -679,6 +679,21 @@ std::unique_ptr<views::View> PaginaAparencia(BrowserWindowInterface* browser) {
               },
               perfil))));
   janela->Adicionar(Linha(
+      u"Barra e abas na tela cheia",
+      u"Na tela cheia (F11 ou o Super+F do sistema), a barra de endereço e "
+      u"a lateral continuam. Desligado, somem como no Chrome. Vídeo em tela "
+      u"cheia sempre esconde tudo.",
+      Interruptor(
+          perfil->GetPrefs()->GetBoolean(espacos::kBarraNaTelaCheiaPref),
+          u"Barra e abas na tela cheia",
+          base::BindRepeating(
+              [](Profile* perfil, bool ligado) {
+                perfil->GetPrefs()->SetBoolean(espacos::kBarraNaTelaCheiaPref,
+                                               ligado);
+                RefazerJanelas(perfil);
+              },
+              perfil))));
+  janela->Adicionar(Linha(
       u"Barra na cor do site",
       u"A barra de endereço pega a cor do topo da página, como no Dia.",
       Interruptor(

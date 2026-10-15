@@ -553,6 +553,34 @@ index 8432f49468..ee66f1720c 100644
 +  // navegador: cores do Dia por cima de tudo (inclusive do tema do GTK).
 +  navegador::cores::AddColorMixer(provider, key);
  }
+diff --git i/chrome/browser/ui/exclusive_access/exclusive_access_manager.cc w/chrome/browser/ui/exclusive_access/exclusive_access_manager.cc
+index b925b516a9..dae3c13ccf 100644
+--- i/chrome/browser/ui/exclusive_access/exclusive_access_manager.cc
++++ w/chrome/browser/ui/exclusive_access/exclusive_access_manager.cc
+@@ -16,6 +16,9 @@
+ #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+ #include "chrome/browser/ui/exclusive_access/pointer_lock_controller.h"
+ #include "chrome/browser/ui/ui_features.h"
++#include "chrome/browser/profiles/profile.h"
++#include "components/prefs/pref_service.h"
++#include "navegador/browser/containers/espacos_dados.h"
+ #include "components/input/native_web_keyboard_event.h"
+ #include "content/public/browser/web_contents.h"
+ #include "services/metrics/public/cpp/ukm_builders.h"
+@@ -136,6 +139,13 @@ ExclusiveAccessManager::GetExclusiveAccessExitBubbleType() const {
+   }
+ 
+   if (fullscreen_controller_.IsControllerInitiatedFullscreen() && !app_mode) {
++    // navegador: com a barra e as abas à vista na tela cheia da janela
++    // (BrowserFrameView::ShouldHideTopUIInFullscreen), o aviso de como sair
++    // sobra.
++    if (exclusive_access_context_->GetProfile()->GetPrefs()->GetBoolean(
++            navegador::espacos::kBarraNaTelaCheiaPref)) {
++      return EXCLUSIVE_ACCESS_BUBBLE_TYPE_NONE;
++    }
+     return EXCLUSIVE_ACCESS_BUBBLE_TYPE_BROWSER_FULLSCREEN_EXIT_INSTRUCTION;
+   }
+ 
 diff --git i/chrome/browser/ui/layout_constants.cc w/chrome/browser/ui/layout_constants.cc
 index 7d1a2d797f..ee4b695e93 100644
 --- i/chrome/browser/ui/layout_constants.cc
@@ -708,6 +736,41 @@ index 32e5c1a27f..9982ad53fa 100644
      // Set the opaque region.
      std::vector<gfx::Rect> opaque_region;
      if (IsShowingFrame(native_widget_->UseCustomFrame(), window_state)) {
+diff --git i/chrome/browser/ui/views/frame/browser_frame_view.cc w/chrome/browser/ui/views/frame/browser_frame_view.cc
+index fcac4fe225..f4f7d71b2f 100644
+--- i/chrome/browser/ui/views/frame/browser_frame_view.cc
++++ w/chrome/browser/ui/views/frame/browser_frame_view.cc
+@@ -16,6 +16,11 @@
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/tabs/tab_style.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
++#include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
++#include "components/prefs/pref_service.h"
++#include "navegador/browser/containers/espacos_dados.h"
+ #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+ #include "chrome/grit/theme_resources.h"
+@@ -183,6 +188,18 @@ gfx::RoundedCornersF BrowserFrameView::GetWindowRoundedCorners() const {
+ void BrowserFrameView::UpdateFullscreenTopUI() {}
+ 
+ bool BrowserFrameView::ShouldHideTopUIInFullscreen() const {
++  // navegador: na tela cheia da janela (F11, ou o Super+F do Hyprland, que
++  // avisa a janela) a barra e as abas ficam, como o "sempre mostrar a barra"
++  // do Mac; só a tela cheia pedida por um site (vídeo) esconde tudo. Dá pra
++  // voltar ao do Chromium nas Configurações do Navegador (Aparência).
++  BrowserView* browser_view = GetBrowserView();
++  if (browser_view && browser_view->GetProfile()->GetPrefs()->GetBoolean(
++                          navegador::espacos::kBarraNaTelaCheiaPref)) {
++    ExclusiveAccessManager* acesso =
++        ExclusiveAccessManager::From(browser_view->browser());
++    return acesso &&
++           acesso->fullscreen_controller()->IsWindowFullscreenForTabOrPending();
++  }
+   return true;
+ }
+ 
 diff --git i/chrome/browser/ui/views/frame/browser_frame_view_linux.cc w/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
 index 474b8356af..8aba37f23a 100644
 --- i/chrome/browser/ui/views/frame/browser_frame_view_linux.cc

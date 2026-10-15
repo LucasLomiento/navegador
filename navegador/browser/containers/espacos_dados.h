@@ -43,6 +43,11 @@ inline constexpr char kQuadroDeFavoritosPref[] =
 inline constexpr char kBotoesDaJanelaPref[] = "navegador.janela.botoes";
 // Espessura da moldura em volta do cartão (barra + página), em px.
 inline constexpr char kMolduraPref[] = "navegador.janela.moldura";
+// Tela cheia da janela (F11, Super+F do Hyprland) com a barra e as abas à
+// vista; desligado, some tudo como no Chromium. A tela cheia de um site
+// (vídeo) esconde tudo sempre.
+inline constexpr char kBarraNaTelaCheiaPref[] =
+    "navegador.janela.barra_na_tela_cheia";
 // Barra de navegação na cor do topo da página (como o Dia).
 inline constexpr char kBarraNaCorDoSitePref[] = "navegador.barra.cor_do_site";
 // Lateral escondida que aparece por cima da página (como o modo compacto do

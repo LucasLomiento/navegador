@@ -78,6 +78,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(kBotoesDaJanelaPref, false);
   registry->RegisterIntegerPref(kMolduraPref, kMolduraPadrao);
   registry->RegisterBooleanPref(kBarraNaCorDoSitePref, true);
+  registry->RegisterBooleanPref(kBarraNaTelaCheiaPref, true);
   registry->RegisterIntegerPref(kFlutuanteOpacidadePref,
                                 kFlutuanteOpacidadePadrao);
   registry->RegisterIntegerPref(kFlutuanteDesfoquePref,
