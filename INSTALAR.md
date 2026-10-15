@@ -17,7 +17,12 @@ padrão.
 
 - Programa: `/usr/lib/navegador`; comando: `/usr/bin/navegador`.
 - Perfil: `~/.config/navegador` (separado do Chromium e do Zen).
-- Flags extras (uma por linha): `~/.config/navegador-flags.conf`.
+- Flags extras (uma por linha): `~/.config/navegador-flags.conf`. O launcher
+  já liga o teclado japonês no Wayland (`--enable-wayland-ime`), as senhas
+  no chaveiro do GNOME, o gesto de voltar no touchpad e as extensões do
+  Omarchy (Alt+Shift+L copia o endereço, Alt+Shift+D baixa o vídeo). Um
+  `--enable-features` no arquivo substitui o do launcher: repetir
+  `TouchpadOverscrollHistoryNavigation` nele.
 - Políticas (se um dia precisar): `/etc/navegador/policies/managed/*.json`.
 - Idioma: português por padrão; `NAVEGADOR_IDIOMA=en-US navegador` troca.
 

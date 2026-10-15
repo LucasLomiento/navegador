@@ -13,5 +13,27 @@ fi
 # Pra trocar: NAVEGADOR_IDIOMA=en-US no ambiente.
 IDIOMA="${NAVEGADOR_IDIOMA:-pt-BR}"
 export LANGUAGE="${IDIOMA/-/_}"
-exec /usr/lib/navegador/navegador --ozone-platform-hint=auto --lang="$IDIOMA" \
+
+# Integração com o sistema (as mesmas do chromium-flags.conf do Omarchy):
+# - método de entrada no Wayland (fcitx5: japonês com Mozc);
+# - senhas no chaveiro do GNOME (sem isto, no Hyprland, iriam em texto puro);
+# - voltar/avançar com dois dedos no touchpad.
+SISTEMA=(
+  --ozone-platform-hint=auto
+  --enable-wayland-ime --wayland-text-input-version=3
+  --password-store=gnome-libsecret
+  --enable-features=TouchpadOverscrollHistoryNavigation
+)
+# Extensões que o Omarchy põe no Chromium (Alt+Shift+L copia o endereço,
+# Alt+Shift+D baixa o vídeo, WhatsApp no tema do sistema), se existirem.
+OMARCHY=/usr/share/omarchy/default/chromium/extensions
+EXTENSOES=()
+for e in copy-url yt-dlp whatsapp-slim; do
+  [[ -f "$OMARCHY/$e/manifest.json" ]] && EXTENSOES+=("$OMARCHY/$e")
+done
+if ((${#EXTENSOES[@]})); then
+  SISTEMA+=("--load-extension=$(IFS=,; echo "${EXTENSOES[*]}")")
+fi
+
+exec /usr/lib/navegador/navegador "${SISTEMA[@]}" --lang="$IDIOMA" \
   "${FLAGS[@]}" "$@"
