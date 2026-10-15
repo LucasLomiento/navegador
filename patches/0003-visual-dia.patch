@@ -153,3 +153,23 @@ index 29dfbde914..f76664dca1 100644
        layout_data_->window_state == WindowState::kNormal) {
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
+diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+index b7cdb8f557..692857bfb9 100644
+--- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -147,10 +147,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+           base::BindRepeating(
+               &VerticalTabStripRegionView::RecordNewTabButtonPressed,
+               base::Unretained(this))));
++  // navegador: "Nova aba" no topo da lista (como no Dia), entre o cabeçalho
++  // e o separador, sem esticar: o que sobra fica embaixo das abas.
++  ReorderChildView(bottom_button_container_,
++                   GetIndexOf(top_button_separator_).value());
+   bottom_button_container_->SetProperty(
+       views::kFlexBehaviorKey,
+       views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
+-                               views::MaximumFlexSizeRule::kUnbounded));
++                               views::MaximumFlexSizeRule::kPreferred));
+   bottom_button_container_->SetProperty(
+       views::kMarginsKey,
+       gfx::Insets::TLBR(

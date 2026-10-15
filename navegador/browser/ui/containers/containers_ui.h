@@ -69,6 +69,10 @@ std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDoLink(
     content::WebContents* origem,
     const GURL& link);
 
+// Menu do botão "Nova aba": "Nova aba em container".
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuNovaAba(
+    TabStripModel* tab_strip);
+
 }  // namespace navegador::containers
 
 #endif  // NAVEGADOR_BROWSER_UI_CONTAINERS_CONTAINERS_UI_H_

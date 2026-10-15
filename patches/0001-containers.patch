@@ -285,3 +285,67 @@ index cc16ff231e..bbad988c2c 100644
  
    views::View::OnPaint(canvas);
  }
+diff --git i/chrome/browser/ui/views/tabs/shared/BUILD.gn w/chrome/browser/ui/views/tabs/shared/BUILD.gn
+index ad078e9afb..f302a1ca41 100644
+--- i/chrome/browser/ui/views/tabs/shared/BUILD.gn
++++ w/chrome/browser/ui/views/tabs/shared/BUILD.gn
+@@ -37,6 +37,7 @@ source_set("impl") {
+   deps = [
+     ":shared",
+     "//base:i18n",
++    "//navegador/browser/ui/containers:containers_ui",  # navegador
+     "//chrome/app:command_ids",
+     "//chrome/app:generated_resources_grit",
+     "//chrome/app/vector_icons",
+diff --git i/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc w/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc
+index 1802a7dcca..ba00607e3c 100644
+--- i/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc
++++ w/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h"
+ 
++#include "navegador/browser/ui/containers/containers_ui.h"
++
+ #include <optional>
+ #include <string>
+ 
+@@ -38,6 +40,16 @@ NewTabButtonMenuModel::NewTabButtonMenuModel(BrowserWindowInterface* browser)
+   SetElementIdentifierAt(GetIndexOfCommandId(IDC_NEW_TAB).value(), kNewTab);
+   AddNewTabInGroupItem();
+ 
++  // navegador: "Nova aba em container". O item do submenu nunca é
++  // executado (os itens têm delegate próprio); o id só não pode colidir.
++  navegador_containers_submenu_ = navegador::containers::CriarSubmenuNovaAba(
++      browser_->GetTabStripModel());
++  if (navegador_containers_submenu_->GetItemCount() > 0) {
++    constexpr int kNavegadorContainers = 0x6E61;
++    AddSubMenu(kNavegadorContainers, u"Nova aba em container",
++               navegador_containers_submenu_.get());
++  }
++
+   AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+   AddItemWithStringId(IDC_CREATE_NEW_TAB_GROUP, IDS_NEW_TAB_GROUP);
+diff --git i/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h w/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h
+index 60489fb251..cc45dbdcca 100644
+--- i/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h
++++ w/chrome/browser/ui/views/tabs/shared/new_tab_button_menu_model.h
+@@ -5,6 +5,8 @@
+ #ifndef CHROME_BROWSER_UI_VIEWS_TABS_SHARED_NEW_TAB_BUTTON_MENU_MODEL_H_
+ #define CHROME_BROWSER_UI_VIEWS_TABS_SHARED_NEW_TAB_BUTTON_MENU_MODEL_H_
+ 
++#include <memory>
++
+ #include "base/memory/raw_ptr.h"
+ #include "ui/base/interaction/element_identifier.h"
+ #include "ui/menus/simple_menu_model.h"
+@@ -33,6 +35,8 @@ class NewTabButtonMenuModel : public ui::SimpleMenuModel,
+   void AddNewSplitTabItem();
+ 
+   raw_ptr<BrowserWindowInterface> browser_;
++  // navegador: "Nova aba em container".
++  std::unique_ptr<ui::SimpleMenuModel> navegador_containers_submenu_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TABS_SHARED_NEW_TAB_BUTTON_MENU_MODEL_H_

@@ -166,6 +166,37 @@ class SubmenuDoLink : public ui::SimpleMenuModel,
   std::vector<Container> containers_;
 };
 
+// "Nova aba em container" no menu do botão "Nova aba".
+class SubmenuNovaAba : public ui::SimpleMenuModel,
+                       public ui::SimpleMenuModel::Delegate {
+ public:
+  explicit SubmenuNovaAba(TabStripModel* tab_strip)
+      : ui::SimpleMenuModel(this),
+        tab_strip_(tab_strip),
+        containers_(GetAll(tab_strip->profile())) {
+    for (size_t i = 0; i < containers_.size(); ++i) {
+      AddItemWithIcon(kPrimeiro + i, base::UTF8ToUTF16(containers_[i].name),
+                      Bolinha(containers_[i].color));
+    }
+  }
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override {
+    const size_t i = command_id - kPrimeiro;
+    if (i >= containers_.size()) {
+      return;
+    }
+    AbrirEmContainer(tab_strip_, GURL("chrome://newtab/"), containers_[i].id,
+                     tab_strip_->count() - 1, /*ativar=*/true);
+  }
+
+ private:
+  static constexpr int kPrimeiro = 1000;
+
+  raw_ptr<TabStripModel> tab_strip_;
+  std::vector<Container> containers_;
+};
+
 }  // namespace
 
 SkColor Cor(std::string_view nome) {
@@ -232,6 +263,11 @@ std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuDoLink(
     content::WebContents* origem,
     const GURL& link) {
   return std::make_unique<SubmenuDoLink>(tab_strip, origem, link);
+}
+
+std::unique_ptr<ui::SimpleMenuModel> CriarSubmenuNovaAba(
+    TabStripModel* tab_strip) {
+  return std::make_unique<SubmenuNovaAba>(tab_strip);
 }
 
 }  // namespace navegador::containers
