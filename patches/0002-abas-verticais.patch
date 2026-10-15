@@ -13,7 +13,7 @@ index b6cf0bffe2..b68ec7ae64 100644
          $i18n{tabStripPosition}
        </div>
 diff --git i/chrome/browser/ui/tabs/tab_menu_model.cc w/chrome/browser/ui/tabs/tab_menu_model.cc
-index 97c6ded1ac..33d48dcb4d 100644
+index 97c6ded1ac..3b303e4e94 100644
 --- i/chrome/browser/ui/tabs/tab_menu_model.cc
 +++ w/chrome/browser/ui/tabs/tab_menu_model.cc
 @@ -4,6 +4,8 @@
@@ -25,7 +25,21 @@ index 97c6ded1ac..33d48dcb4d 100644
  #include <memory>
  #include <optional>
  
-@@ -585,32 +587,16 @@ void TabMenuModel::Build(int index) {
+@@ -414,9 +416,10 @@ void TabMenuModel::Build(int index) {
+         tab_strip_->GetTabGroupForTab(index);
+     if (group_id.has_value()) {
+       const bool is_focused = tab_strip_->GetFocusedGroup() == group_id;
+-      AddItemWithStringId(TabStripModel::CommandToggleFocusGroup,
+-                          is_focused ? IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP
+-                                     : IDS_TAB_CXMENU_FOCUS_TAB_GROUP);
++      // navegador: grupo focado é um espaço do Dia (navegador/browser/ui/
++      // espacos.h); o texto fala de espaço, como a faixa do pé da lateral.
++      AddItem(TabStripModel::CommandToggleFocusGroup,
++              is_focused ? u"Voltar ao Início" : u"Ir para o espaço");
+       SetElementIdentifierAt(GetItemCount() - 1, kFocusTabGroupMenuItem);
+     }
+   }
+@@ -585,32 +588,16 @@ void TabMenuModel::Build(int index) {
      }
    }
  

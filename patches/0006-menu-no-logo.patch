@@ -47,10 +47,22 @@ index 63c3090b4c..ab42fd2ab6 100644
    if (!control) {
      return;
 diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
-index d69e4dd30f..f4243e4bb4 100644
+index d69e4dd30f..95294d27ed 100644
 --- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 +++ w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
-@@ -333,6 +333,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
+@@ -95,8 +95,9 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
+               ->GetPreferredSizeForOrientation(
+                   views::LayoutOrientation::kHorizontal)
+               .width() >= available_width ||
+-      available_width < VerticalTabStripRegionView::kCollapseSnapWidth ||
+-      is_collapsed) {
++      // navegador: recolhida, a lateral só tem largura quando aparece por
++      // cima da página (mouse na borda); aí o cabeçalho é o de sempre.
++      available_width < VerticalTabStripRegionView::kCollapseSnapWidth) {
+     combo_button_orientation_ = views::LayoutOrientation::kVertical;
+     int current_y = 0;
+ 
+@@ -333,6 +334,12 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
      context_menu_runner_.reset();
  
      context_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
@@ -63,7 +75,7 @@ index d69e4dd30f..f4243e4bb4 100644
      context_menu_model_->AddCheckItem(
          IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER,
          l10n_util::GetStringUTF16(
-@@ -375,7 +381,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
+@@ -375,7 +382,8 @@ bool VerticalTabStripTopContainer::IsCommandIdChecked(int command_id) const {
  }
  
  bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
@@ -73,7 +85,7 @@ index d69e4dd30f..f4243e4bb4 100644
      return true;
    }
    return false;
-@@ -383,7 +390,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
+@@ -383,7 +391,8 @@ bool VerticalTabStripTopContainer::IsCommandIdEnabled(int command_id) const {
  
  void VerticalTabStripTopContainer::ExecuteCommand(int command_id,
                                                    int event_flags) {

@@ -474,7 +474,7 @@ index 29dfbde914..2b2c8b0c7e 100644
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-index 62f69255e0..a40ca8a6ea 100644
+index 62f69255e0..36ace8e5f7 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 +++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 @@ -4,6 +4,14 @@
@@ -528,7 +528,7 @@ index 62f69255e0..a40ca8a6ea 100644
  void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    TRACE_EVENT0("views.frame", "OpaqueBrowserFrameView::OnPaint");
    if (browser_widget()->IsFullscreen()) {
-@@ -670,6 +707,17 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -670,6 +707,19 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
      }
    }
  
@@ -538,7 +538,9 @@ index 62f69255e0..a40ca8a6ea 100644
 +  if (navegador::cores::kVidro &&
 +      GetBrowserView()->browser()->GetType() ==
 +          BrowserWindowInterface::Type::TYPE_NORMAL) {
-+    canvas->FillRect(GetLocalBounds(), frame_color);
++    // Src (substitui) e não SrcOver: repintar um pedaço da moldura (a lateral
++    // abrindo e fechando) somava a cor translúcida por cima e deixava listras.
++    canvas->FillRect(GetLocalBounds(), frame_color, SkBlendMode::kSrc);
 +    PintarSombraDoCartao(canvas);
 +    return;
 +  }
@@ -560,21 +562,32 @@ index cd6fa39dad..6b9401874b 100644
    // BrowserFrameView:
    BoundsAndMargins GetCaptionButtonBounds() const override;
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..3354c2fab8 100644
+index b7cdb8f557..cb4a4d479f 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,10 @@
+@@ -4,6 +4,11 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
 +#include "navegador/browser/ui/cor_da_pagina.h"
 +#include "navegador/browser/ui/espacos.h"
 +#include "navegador/browser/ui/menu_do_logo.h"
++#include "ui/views/window/non_client_view.h"
 +
  #include <algorithm>
  #include <optional>
  
-@@ -136,6 +140,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -110,6 +115,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+   SetPaintToLayer();
+   // Because corners may be transparent, this must be set to false.
+   layer()->SetFillsBoundsOpaquely(false);
++  // navegador: recolhida, a lateral é só uma borda fina (kCollapsedWidth);
++  // os botões do layout recolhido não podem vazar pra cima da página.
++  layer()->SetMasksToBounds(true);
+ 
+   const int region_horizontal_padding =
+       GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
+@@ -136,6 +144,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
    top_button_separator_ = AddChildView(std::make_unique<views::Separator>());
@@ -583,7 +596,7 @@ index b7cdb8f557..3354c2fab8 100644
    // The TopContainer handles the padding distance to the separator so that we
    // can control how far it is in the various states.
    top_button_separator_->SetProperty(
-@@ -147,10 +153,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -147,10 +157,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -597,7 +610,7 @@ index b7cdb8f557..3354c2fab8 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +168,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +172,14 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
@@ -612,6 +625,47 @@ index b7cdb8f557..3354c2fab8 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
+@@ -375,6 +395,15 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+ void VerticalTabStripRegionView::Layout(PassKey) {
+   LayoutSuperclass<views::AccessiblePaneView>(this);
+ 
++  // navegador: a sombra do cartão é pintada na moldura. Com a lateral mudando
++  // de largura (abrir/recolher), a moldura é repintada inteira; repintada só
++  // em faixas, ficavam sombras velhas (listras) atrás da lateral de vidro.
++  if (views::Widget* widget = GetWidget();
++      widget && widget->non_client_view() &&
++      widget->non_client_view()->frame_view()) {
++    widget->non_client_view()->frame_view()->SchedulePaint();
++  }
++
+   // Manually position the resize area as it overlaps views handled by the flex
+   // layout.
+   resize_area_->SetBoundsRect(gfx::Rect(bounds().right() - resize_area_width_,
+diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+index 76f8e997d6..6aa66a5753 100644
+--- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -7,6 +7,8 @@
+ 
+ #include <optional>
+ 
++#include "navegador/browser/ui/visual.h"
++
+ #include "base/callback_list.h"
+ #include "base/containers/flat_set.h"
+ #include "base/memory/raw_ptr.h"
+@@ -66,7 +68,10 @@ class VerticalTabStripRegionView final
+   // TODO(crbug.com/465832180): Replace constant based width final max width for
+   // view.
+   static constexpr int kUncollapsedMaxWidth = 400;
+-  static constexpr int kCollapsedWidth = 56;
++  // navegador: recolhida, a lateral some (fica só uma borda pra encostar o
++  // mouse) e aparece por cima da página ao passar o mouse, como a lateral
++  // flutuante do Dia. O Chromium deixava uma faixa de ícones de 56.
++  static constexpr int kCollapsedWidth = navegador::visual::kLateralRecolhida;
+   // TODO(crbug.com/465833741): Determine snapping behavior.
+   static constexpr int kCollapseSnapWidth =
+       (kUncollapsedMinWidth + kCollapsedWidth) / 2;
 diff --git i/chrome/browser/ui/views/location_bar/location_bar_view.cc w/chrome/browser/ui/views/location_bar/location_bar_view.cc
 index 9251f8590b..c12aa1523a 100644
 --- i/chrome/browser/ui/views/location_bar/location_bar_view.cc

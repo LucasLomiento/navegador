@@ -27,6 +27,10 @@ inline constexpr int kCartaoRaio = 8;
 // Folga entre as abas da lateral: no Dia, uma aba (destaque de 30) a cada 35.
 inline constexpr int kEspacoEntreAbas = 5;
 
+// Lateral recolhida: só a borda onde se encosta o mouse pra ela aparecer
+// por cima (a lateral flutuante do Dia).
+inline constexpr int kLateralRecolhida = 8;
+
 std::optional<int> LayoutConstantOverride(LayoutConstant constant);
 std::optional<gfx::Insets> LayoutInsetsOverride(LayoutInset inset);
 

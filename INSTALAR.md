@@ -31,6 +31,9 @@ padrão.
 - O menu do navegador fica no logo, no canto de cima da lateral (como no
   Dia); `Alt+F` também abre. Clique direito no logo: recolher/abrir a lateral
   (ou `Ctrl+Shift+L`).
+- Lateral recolhida some inteira; encostar o mouse na borda esquerda faz ela
+  aparecer por cima da página (como a lateral flutuante do Dia). Clicar no
+  logo nela fixa a lateral aberta de novo.
 - Perfis: menu do logo → o submenu com o nome do perfil → outros perfis,
   "Adicionar novo perfil" (escolhe nome e cor; a cor tinge a lateral),
   visitante e "Gerenciar perfis". Cada perfil abre na própria janela; ao
