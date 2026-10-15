@@ -11,3 +11,4 @@
 0008-espacos.patch chrome/browser/ui/tabs/tab_strip_model.cc chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc chrome/browser/ui/views/animations/tab_strip_animations.cc
 0009-downloads.patch chrome/browser/ui/views/download/bubble/download_toolbar_ui_controller.cc chrome/browser/ui/views/download/BUILD.gn
 0010-inicio.patch chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.cc chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h chrome/browser/ui/webui/new_tab_page_third_party/BUILD.gn chrome/browser/resources/new_tab_page_third_party/BUILD.gn
+0011-bloqueador.patch chrome/browser/component_updater/registration.cc components/subresource_filter/content/browser/profile_interaction_manager.cc components/page_info/page_info.cc chrome/common/chrome_render_frame.mojom chrome/renderer/chrome_render_frame_observer.h chrome/renderer/chrome_render_frame_observer.cc chrome/browser/ui/tab_helpers.cc

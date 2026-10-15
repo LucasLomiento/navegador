@@ -9,7 +9,7 @@ pkgrel=12
 pkgdesc="Navegador próprio em cima do Chromium, com o visual do Dia"
 arch=(x86_64)
 url="https://github.com/LucasLomiento/navegador"
-license=(BSD-3-Clause)
+license=(BSD-3-Clause 'GPL-3.0-or-later OR CC-BY-SA-3.0')  # o segundo: listas do bloqueador
 depends=(alsa-lib at-spi2-core cups dbus desktop-file-utils gtk3 hicolor-icon-theme
          libcups libdrm libpulse libxkbcommon mesa nss pango systemd ttf-liberation
          xdg-utils)
@@ -64,6 +64,18 @@ package() {
   for d in MEIPreload PrivacySandboxAttestationsPreloaded; do
     [[ -d "$_out/$d" ]] && cp -r "$_out/$d" "$destino/"
   done
+
+  # Regras do bloqueador de anúncios e rastreadores (tools/listas.sh, rodado
+  # antes do makepkg: a cada pacote as listas vêm atualizadas).
+  local bloqueador="$_repo/pacote/bloqueador"
+  if [[ ! -s "$bloqueador/Filtering Rules" ]]; then
+    echo "Faltam as regras do bloqueador: rode tools/listas.sh" >&2
+    return 1
+  fi
+  install -Dm644 -t "$destino/bloqueador" "$bloqueador/Filtering Rules" \
+    "$bloqueador/cosmetico.txt" "$bloqueador/VERSAO" "$bloqueador/LICENSE"
+  install -Dm644 "$bloqueador/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE-listas-do-bloqueador"
 
   install -Dm755 "$_repo/pacote/navegador.sh" "$pkgdir/usr/bin/navegador"
   install -Dm644 "$_repo/pacote/navegador.desktop" \

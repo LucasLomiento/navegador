@@ -1,0 +1,236 @@
+diff --git i/chrome/browser/component_updater/registration.cc w/chrome/browser/component_updater/registration.cc
+index b11907b0f4..7907959fa5 100644
+--- i/chrome/browser/component_updater/registration.cc
++++ w/chrome/browser/component_updater/registration.cc
+@@ -90,6 +90,7 @@
+ 
+ #if BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
+ #include "chrome/browser/component_updater/widevine_cdm_component_installer.h"
++#include "navegador/browser/ui/bloqueador.h"
+ #endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
+ 
+ #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+@@ -152,7 +153,9 @@ void RegisterComponentsForUpdate() {
+   RegisterWidevineCdmComponent(cus);
+ #endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
+ 
+-  RegisterSubresourceFilterComponent(cus);
++  // navegador: o bloqueador usa as listas que vêm no pacote (EasyList etc.),
++  // não as do Google (que só servem pra sites abusivos).
++  navegador::bloqueador::CarregarListas();
+   RegisterOnDeviceHeadSuggestComponent(
+       cus, g_browser_process->GetApplicationLocale());
+   RegisterOptimizationHintsComponent(cus);
+diff --git i/chrome/browser/ui/tab_helpers.cc w/chrome/browser/ui/tab_helpers.cc
+index 3b1e2e30ef..4aea50799f 100644
+--- i/chrome/browser/ui/tab_helpers.cc
++++ w/chrome/browser/ui/tab_helpers.cc
+@@ -75,6 +75,7 @@
+ #include "chrome/browser/storage_access_api/storage_access_api_service_impl.h"
+ #include "chrome/browser/storage_access_api/storage_access_api_tab_helper.h"
+ #include "chrome/browser/subresource_filter/chrome_content_subresource_filter_web_contents_helper_factory.h"
++#include "navegador/browser/ui/bloqueador.h"
+ #include "chrome/browser/supervised_user/supervised_user_navigation_observer.h"
+ #include "chrome/browser/sync/sessions/sync_sessions_router_tab_helper.h"
+ #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router_factory.h"
+@@ -400,6 +401,7 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
+ #endif
+   }
+   CreateSubresourceFilterWebContentsHelper(web_contents);
++  navegador::bloqueador::AcompanharAba(web_contents);  // navegador
+ #if BUILDFLAG(ENABLE_RLZ)
+   ChromeRLZTrackerWebContentsObserver::CreateForWebContentsIfNeeded(
+       web_contents);
+diff --git i/chrome/common/chrome_render_frame.mojom w/chrome/common/chrome_render_frame.mojom
+index c5b742e2fe..124929d83e 100644
+--- i/chrome/common/chrome_render_frame.mojom
++++ w/chrome/common/chrome_render_frame.mojom
+@@ -31,6 +31,11 @@ interface ChromeRenderFrame {
+   // Updates the window features of the main frame's render view.
+   SetWindowFeatures(blink.mojom.WindowFeatures window_features);
+ 
++  // navegador: regras do bloqueador pro documento que vai começar em `url`:
++  // CSS (esconder os elementos de anúncio) e JS (constantes do "set" do
++  // uBlock). O quadro aplica no começo desse documento.
++  NavegadorEsconderAnuncios(string css, string js, url.mojom.Url url);
++
+   // Reloads the image selected by the most recently opened context menu
+   // (if there indeed is an image at that location).
+   RequestReloadImageForContextNode();
+diff --git i/chrome/renderer/chrome_render_frame_observer.cc w/chrome/renderer/chrome_render_frame_observer.cc
+index 6f3034c426..7979218088 100644
+--- i/chrome/renderer/chrome_render_frame_observer.cc
++++ w/chrome/renderer/chrome_render_frame_observer.cc
+@@ -77,6 +77,8 @@
+ #include "third_party/blink/public/web/web_node.h"
+ #include "third_party/blink/public/web/web_security_policy.h"
+ #include "third_party/blink/public/web/web_view.h"
++#include "third_party/blink/public/web/web_script_source.h"  // navegador
++#include "url/origin.h"  // navegador
+ #include "third_party/libwebp/src/src/webp/decode.h"
+ #include "third_party/skia/include/core/SkBitmap.h"
+ #include "ui/base/page_transition_types.h"
+@@ -357,6 +359,7 @@ void ChromeRenderFrameObserver::DidCreateNewDocument() {
+ 
+ void ChromeRenderFrameObserver::DidCommitProvisionalLoad(
+     ui::PageTransition transition) {
++  navegador_aplicado_ = false;  // navegador: documento novo.
+   // Update crash keys on any frame transition, not just the main frame.
+   UpdateLoadedOriginCrashKeys();
+ 
+@@ -674,6 +677,57 @@ void ChromeRenderFrameObserver::LoadBlockedPlugins(
+ #endif  // BUILDFLAG(ENABLE_PLUGINS)
+ }
+ 
++// navegador: as regras do bloqueador chegam antes do documento delas (o
++// navegador manda quando a navegação está pronta pra começar) e ficam
++// guardadas até o começo dele (DidCreateDocumentElement). Se chegarem depois
++// que ele começou (a ordem entre os canais não é garantida), aplicam na hora.
++void ChromeRenderFrameObserver::NavegadorEsconderAnuncios(const std::string& css,
++                                                          const std::string& js,
++                                                          const GURL& url) {
++  NavegadorRegras regras{url, css, js};
++  blink::WebLocalFrame* quadro = render_frame()->GetWebFrame();
++  if (!navegador_aplicado_ && !quadro->IsProvisional() &&
++      !quadro->GetDocument().IsNull() &&
++      !quadro->GetDocument().DocumentElement().IsNull() &&
++      url::Origin::Create(GURL(quadro->GetDocument().Url())) ==
++          url::Origin::Create(url)) {
++    NavegadorAplicar(regras);
++    return;
++  }
++  navegador_pendente_ = std::move(regras);
++}
++
++void ChromeRenderFrameObserver::DidCreateDocumentElement() {
++  if (!navegador_pendente_ || navegador_aplicado_) {
++    return;
++  }
++  blink::WebDocument documento = render_frame()->GetWebFrame()->GetDocument();
++  // O documento vazio inicial (about:blank) de uma aba nova não é o delas.
++  if (url::Origin::Create(GURL(documento.Url())) !=
++      url::Origin::Create(navegador_pendente_->url)) {
++    return;
++  }
++  NavegadorRegras regras = std::move(*navegador_pendente_);
++  navegador_pendente_.reset();
++  NavegadorAplicar(regras);
++}
++
++// CSS como folha de origem do usuário (fora do DOM: a página não vê nem
++// sobrescreve, nem com !important); JS no mundo da página, antes dos
++// scripts dela.
++void ChromeRenderFrameObserver::NavegadorAplicar(
++    const NavegadorRegras& regras) {
++  navegador_aplicado_ = true;
++  blink::WebLocalFrame* quadro = render_frame()->GetWebFrame();
++  if (!regras.js.empty()) {
++    quadro->ExecuteScript(
++        blink::WebScriptSource(blink::WebString::FromUtf8(regras.js)));
++  }
++  quadro->GetDocument().InsertStyleSheet(
++      blink::WebString::FromUtf8(regras.css), nullptr,
++      blink::WebCssOrigin::kUser);
++}
++
+ void ChromeRenderFrameObserver::SetShouldDeferMediaLoad(bool should_defer) {
+   prerender::SetShouldDeferMediaLoad(render_frame(), should_defer);
+ }
+diff --git i/chrome/renderer/chrome_render_frame_observer.h w/chrome/renderer/chrome_render_frame_observer.h
+index 80e224f9bc..180475772c 100644
+--- i/chrome/renderer/chrome_render_frame_observer.h
++++ w/chrome/renderer/chrome_render_frame_observer.h
+@@ -6,6 +6,7 @@
+ #define CHROME_RENDERER_CHROME_RENDER_FRAME_OBSERVER_H_
+ 
+ #include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ 
+@@ -102,6 +103,7 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+   void DidCreateNewDocument() override;
+   void DidCommitProvisionalLoad(ui::PageTransition transition) override;
+   void DidClearWindowObject() override;
++  void DidCreateDocumentElement() override;  // navegador
+   void DidCreateScriptContext(v8::Local<v8::Context> context,
+                               int32_t world_id) override;
+   void DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) override;
+@@ -109,6 +111,9 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+   void WillDetach(blink::DetachReason detach_reason) override;
+ 
+   // chrome::mojom::ChromeRenderFrame:
++  void NavegadorEsconderAnuncios(const std::string& css,
++                                 const std::string& js,
++                                 const GURL& url) override;
+   void SetWindowFeatures(
+       blink::mojom::WindowFeaturesPtr window_features) override;
+   void ExecuteWebUIJavaScript(const std::u16string& javascript) override;
+@@ -230,6 +235,17 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
+ 
+   mojo::AssociatedReceiverSet<chrome::mojom::ChromeRenderFrame> receivers_;
+ 
++  // navegador: regras do bloqueador esperando o documento delas começar, e
++  // se o documento atual já recebeu as dele.
++  struct NavegadorRegras {
++    GURL url;
++    std::string css;
++    std::string js;
++  };
++  void NavegadorAplicar(const NavegadorRegras& regras);
++  std::optional<NavegadorRegras> navegador_pendente_;
++  bool navegador_aplicado_ = false;
++
+   service_manager::BinderRegistry registry_;
+   blink::AssociatedInterfaceRegistry associated_interfaces_;
+ };
+diff --git i/components/page_info/page_info.cc w/components/page_info/page_info.cc
+index f2ab5e7522..1cbad0be3c 100644
+--- i/components/page_info/page_info.cc
++++ w/components/page_info/page_info.cc
+@@ -1415,7 +1415,10 @@ bool PageInfo::ShouldShowPermission(
+       return false;
+     }
+ 
+-    return delegate_->IsSubresourceFilterActivated(site_url_);
++    // navegador: o bloqueador vale em todo site http(s); a linha deixa
++    // desligar só neste.
++    return site_url_.SchemeIsHTTPOrHTTPS() ||
++           delegate_->IsSubresourceFilterActivated(site_url_);
+   }
+ 
+   if (info.type == ContentSettingsType::GEOLOCATION) {
+diff --git i/components/subresource_filter/content/browser/profile_interaction_manager.cc w/components/subresource_filter/content/browser/profile_interaction_manager.cc
+index 63e1b6c386..72a0c22fa0 100644
+--- i/components/subresource_filter/content/browser/profile_interaction_manager.cc
++++ w/components/subresource_filter/content/browser/profile_interaction_manager.cc
+@@ -117,6 +117,15 @@ mojom::ActivationLevel ProfileInteractionManager::OnPageActivationComputed(
+             kSafeBrowsing);
+   }
+ 
++  // navegador: bloqueador em todo site http(s) (as listas são de anúncios e
++  // rastreadores, não só de sites abusivos). Depois dos metadados acima, pra
++  // não gravar um registro por site visitado. Desligado (no padrão do perfil
++  // ou no site), a permissão logo abaixo desliga.
++  if (url.SchemeIsHTTPOrHTTPS()) {
++    effective_activation_level = mojom::ActivationLevel::kEnabled;
++    *decision = ActivationDecision::ACTIVATED;
++  }
++
+   if (profile_context_->settings_manager()->GetSitePermission(url) ==
+       CONTENT_SETTING_ALLOW) {
+     if (effective_activation_level == mojom::ActivationLevel::kEnabled) {
+@@ -135,8 +144,11 @@ void ProfileInteractionManager::MaybeShowNotification() {
+   CHECK(page_->IsPrimary());
+ 
+   const GURL& top_level_url = page_->GetMainDocument().GetLastCommittedURL();
+-  if (profile_context_->settings_manager()->ShouldShowUIForSite(
+-          top_level_url)) {
++  // navegador: com o bloqueador em todo site, o ícone de "anúncios
++  // bloqueados" apareceria em quase toda página; desligar por site fica no
++  // ícone do site (informações da página).
++  if (false && profile_context_->settings_manager()->ShouldShowUIForSite(
++                   top_level_url)) {
+ #if BUILDFLAG(IS_ANDROID)
+     if (messages::MessageDispatcherBridge::Get()
+             ->IsMessagesEnabledForEmbedder()) {

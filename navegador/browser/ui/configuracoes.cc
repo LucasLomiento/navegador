@@ -37,6 +37,7 @@
 #include "navegador/browser/containers/espacos_dados.h"
 #include "navegador/browser/ui/atalhos.h"
 #include "navegador/browser/ui/atualizador.h"
+#include "navegador/browser/ui/bloqueador.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "navegador/browser/ui/espacos.h"
@@ -602,6 +603,20 @@ std::unique_ptr<views::View> PaginaGeral(BrowserWindowInterface* browser) {
                       },
                       perfil))));
   atualizacoes->Adicionar(std::make_unique<LinhaDeVersao>(perfil));
+
+  Cartao* privacidade = pagina->Secao(u"Privacidade");
+  privacidade->Adicionar(Linha(
+      u"Bloquear anúncios e rastreadores",
+      u"Com as listas EasyList e EasyPrivacy: as páginas carregam menos "
+      u"coisa e gastam menos. Pra liberar só um site, clique no ícone dele "
+      u"no fim da barra de endereço (Anúncios invasivos → Permitir).",
+      Interruptor(bloqueador::Ligado(perfil),
+                  u"Bloquear anúncios e rastreadores",
+                  base::BindRepeating(
+                      [](Profile* perfil, bool ligado) {
+                        bloqueador::Ligar(perfil, ligado);
+                      },
+                      perfil))));
 
   Cartao* importar = pagina->Secao(u"Trazer de outro navegador");
   importar->Adicionar(std::make_unique<LinhaDeImportar>(perfil));

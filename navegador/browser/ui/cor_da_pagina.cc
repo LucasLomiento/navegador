@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <map>
 #include <memory>
+#include <set>
 
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
@@ -27,6 +28,7 @@
 #include "navegador/browser/containers/espacos_dados.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/color/color_provider_manager.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -98,6 +100,36 @@ bool Diferentes(std::optional<SkColor> a, std::optional<SkColor> b) {
     d += std::abs(canal(*a, deslocamento) - canal(*b, deslocamento));
   }
   return d > 6;
+}
+
+// 5 bits por canal: tons quase iguais viram a mesma cor (e reaproveitam o
+// mesmo fornecedor de cores, ver LembrarCor).
+SkColor Arredondar(SkColor cor) {
+  const auto canal = [](U8CPU v) { return std::min<U8CPU>(255, (v + 4) & ~7u); };
+  return SkColorSetRGB(canal(SkColorGetR(cor)), canal(SkColorGetG(cor)),
+                       canal(SkColorGetB(cor)));
+}
+
+// Cada cor da barra vira uma chave de cores da janela, e o Chromium guarda
+// um ColorProvider inteiro (milhares de cores) por chave, sem limite, até o
+// tema mudar. Visitando muitos sites, isso só crescia. Passando de
+// kMaximoDeCores cores desde a última limpeza, limpa o cache: as janelas
+// pedem o fornecedor de novo na próxima pintura (Widget::GetColorProvider não
+// guarda ponteiro), e as cores continuam as mesmas.
+constexpr size_t kMaximoDeCores = 32;
+
+void LembrarCor(SkColor cor) {
+  static base::NoDestructor<std::set<SkColor>> vistas;
+  if (!vistas->insert(cor).second || vistas->size() <= kMaximoDeCores) {
+    return;
+  }
+  ui::ColorProviderManager::Get().ResetColorProviderCache();
+  vistas->clear();
+  for (const auto& [janela, atual] : Cores()) {
+    if (atual) {
+      vistas->insert(*atual);
+    }
+  }
 }
 
 // Invisível, fora do layout: só existe pra viver junto com a janela.
@@ -195,7 +227,7 @@ class Observador : public views::View,
     // Janela de fundo: a barra dela quase não aparece; espera.
     if (Ligada() && GetWidget() && GetWidget()->IsActive() && !TelaCheia() &&
         !TocandoVideo()) {
-      Amostrar();
+      Amostrar(/*periodica=*/true);
     }
     intervalo_ = std::min(intervalo_ * 2, kIntervaloMaximo);
     Agendar();
@@ -212,7 +244,8 @@ class Observador : public views::View,
   }
 
   // Copia uma faixa de 6 de altura no topo da página, reduzida pra 64x2.
-  void Amostrar() {
+  // `periodica`: veio do relógio, não de uma mudança na aba (ver AoAmostrar).
+  void Amostrar(bool periodica = false) {
     if (!Ligada()) {
       Definir(std::nullopt);
       return;
@@ -221,7 +254,9 @@ class Observador : public views::View,
     content::RenderWidgetHostView* view =
         contents ? contents->GetRenderWidgetHostView() : nullptr;
     if (!view || !view->IsSurfaceAvailableForCopy()) {
-      Definir(Reserva());
+      std::optional<SkColor> reserva = Reserva();
+      Definir(reserva ? std::optional<SkColor>(Arredondar(*reserva))
+                      : std::nullopt);
       return;
     }
     const gfx::Size tamanho = view->GetVisibleViewportSize();
@@ -233,10 +268,12 @@ class Observador : public views::View,
         gfx::Size(64, 2), base::Seconds(1),
         base::BindPostTaskToCurrentDefault(
             base::BindOnce(&Observador::AoAmostrar,
-                           weak_factory_.GetWeakPtr(), geracao_)));
+                           weak_factory_.GetWeakPtr(), geracao_, periodica)));
   }
 
-  void AoAmostrar(int geracao, const content::CopyFromSurfaceResult& resultado) {
+  void AoAmostrar(int geracao,
+                  bool periodica,
+                  const content::CopyFromSurfaceResult& resultado) {
     if (geracao != geracao_) {
       return;  // Trocou de aba no meio.
     }
@@ -247,6 +284,23 @@ class Observador : public views::View,
     if (!cor) {
       cor = Reserva();
     }
+    if (cor) {
+      cor = Arredondar(*cor);
+    }
+    // Cada cor nova recolore a janela inteira. Numa amostra do relógio (a
+    // página mudou sozinha: carrossel, cabeçalho animado), só troca quando
+    // duas seguidas concordam; em troca de aba ou carregamento, na hora.
+    if (periodica) {
+      auto atual = Cores().find(browser_view_);
+      if (atual != Cores().end() && Diferentes(atual->second, cor) &&
+          (!candidata_ || Diferentes(*candidata_, cor))) {
+        candidata_ = cor;
+        intervalo_ = kIntervaloMinimo;
+        Agendar();
+        return;
+      }
+    }
+    candidata_.reset();
     // Mudou: a página está se mexendo, amostra mais vezes.
     auto it = Cores().find(browser_view_);
     if (it == Cores().end() || Diferentes(it->second, cor)) {
@@ -279,6 +333,9 @@ class Observador : public views::View,
       return;
     }
     cores[browser_view_] = cor;
+    if (cor) {
+      LembrarCor(*cor);
+    }
     if (views::Widget* widget = GetWidget()) {
       widget->ThemeChanged();
     }
@@ -287,6 +344,8 @@ class Observador : public views::View,
   raw_ptr<BrowserView> browser_view_;
   raw_ptr<TabStripModel> model_;
   int geracao_ = 0;
+  // Cor vista numa amostra do relógio, esperando a próxima confirmar.
+  std::optional<std::optional<SkColor>> candidata_;
   static constexpr base::TimeDelta kIntervaloMinimo = base::Milliseconds(1500);
   static constexpr base::TimeDelta kIntervaloMaximo = base::Seconds(6);
   base::TimeDelta intervalo_ = kIntervaloMinimo;
