@@ -16,8 +16,15 @@ class BrowserWindowInterface;
 
 namespace navegador::configuracoes {
 
-// Na ordem das abas da janela.
-enum class Aba { kGeral = 0, kEspacos = 1, kContainers = 2, kAtalhos = 3 };
+// Na ordem do menu da janela.
+enum class Aba {
+  kGeral = 0,
+  kAparencia = 1,
+  kLateral = 2,
+  kEspacos = 3,
+  kContainers = 4,
+  kAtalhos = 5,
+};
 
 // Abre (ou traz pra frente) a janela de configurações na aba pedida.
 void Mostrar(BrowserWindowInterface* browser, Aba aba = Aba::kGeral);

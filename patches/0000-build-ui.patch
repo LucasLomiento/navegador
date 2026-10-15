@@ -1,5 +1,5 @@
 diff --git i/chrome/browser/ui/BUILD.gn w/chrome/browser/ui/BUILD.gn
-index 82f397571f..8587929e99 100644
+index 82f397571f..615cc269f9 100644
 --- i/chrome/browser/ui/BUILD.gn
 +++ w/chrome/browser/ui/BUILD.gn
 @@ -399,6 +399,7 @@ if (!is_android) {
@@ -10,7 +10,7 @@ index 82f397571f..8587929e99 100644
        ":tab_ui_helper",
        "//base",
        "//chrome/browser/apps/app_service",
-@@ -1522,6 +1523,20 @@ static_library("ui") {
+@@ -1522,6 +1523,22 @@ static_library("ui") {
        "browser_commands.cc",
        "browser_commands.h",
        "browser_live_tab_context.cc",
@@ -28,10 +28,12 @@ index 82f397571f..8587929e99 100644
 +      "//navegador/browser/ui/fixos.h",
 +      "//navegador/browser/ui/menu_do_logo.cc",
 +      "//navegador/browser/ui/menu_do_logo.h",
++      "//navegador/browser/ui/seletor_de_cor.cc",
++      "//navegador/browser/ui/seletor_de_cor.h",
        "browser_manager_service.cc",
        "browser_manager_service.h",
        "browser_manager_service_factory.cc",
-@@ -1558,6 +1573,9 @@ static_library("ui") {
+@@ -1558,6 +1575,9 @@ static_library("ui") {
  
      # Non-android deps for "ui" target.
      deps += [
@@ -41,7 +43,7 @@ index 82f397571f..8587929e99 100644
        ":accelerator_table",
        ":browser_actions",
        ":browser_select_file_dialog_controller",
-@@ -3877,6 +3895,10 @@ source_set("layout_constants") {
+@@ -3877,6 +3897,10 @@ source_set("layout_constants") {
    sources = [
      "layout_constants.cc",
      "layout_constants.h",

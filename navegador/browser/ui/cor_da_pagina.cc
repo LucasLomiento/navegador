@@ -13,14 +13,17 @@
 #include "base/task/bind_post_task.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "components/prefs/pref_service.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "navegador/browser/containers/espacos_dados.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/view.h"
@@ -219,6 +222,12 @@ END_METADATA
 }  // namespace
 
 std::optional<SkColor> CorDaBarra(const BrowserView* browser_view) {
+  // Desligado nas Configurações do Navegador (Aparência): barra neutra.
+  if (browser_view && browser_view->browser() &&
+      !browser_view->browser()->GetProfile()->GetPrefs()->GetBoolean(
+          navegador::espacos::kBarraNaCorDoSitePref)) {
+    return std::nullopt;
+  }
   auto& cores = Cores();
   auto it = cores.find(browser_view);
   return it == cores.end() ? std::nullopt : it->second;

@@ -1,13 +1,14 @@
 diff --git i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
-index 1044c32c43..72c680b6cf 100644
+index 1044c32c43..a0dd0ddbbb 100644
 --- i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
 +++ w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
-@@ -1,57 +1,69 @@
+@@ -1,54 +1,98 @@
  <!doctype html>
 -<html dir="$i18n{textdirection}" lang="$i18n{language}"
 -    $i18n{hascustombackground} $i18n{isdark} $i18n{webuiRoundedIconsAttribute}>
-+<!-- navegador: nova aba no estilo do Dia (degradê suave e o logo no centro;
-+     a busca é pela barra de endereço, que já abre focada). -->
++<!-- navegador: nova aba calma, no estilo do Dia: hora e data grandes no
++     centro e os sites mais visitados embaixo. A busca é pela barra de
++     endereço, que já abre focada. -->
 +<html dir="$i18n{textdirection}" lang="$i18n{language}" $i18n{isdark}>
    <head>
      <meta charset="utf-8">
@@ -20,7 +21,13 @@ index 1044c32c43..72c680b6cf 100644
 -        background-color: $i18n{colorBackground};
 -        background-position: $i18n{backgroundPosition};
 -        background-repeat: $i18n{backgroundTiling};
-+        background-color: #ffffff;
++        --texto: rgba(20, 20, 24, .92);
++        --texto-2: rgba(20, 20, 24, .52);
++        --brilho-1: rgba(79, 140, 255, .10);
++        --brilho-2: rgba(195, 139, 255, .08);
++        /* O script da página põe a cor do tema por cima; a nossa vale. */
++        background-color: #ffffff !important;
++        background-image: none !important;
 +        color-scheme: light dark;
          height: 100%;
 -        overflow: auto;
@@ -30,7 +37,11 @@ index 1044c32c43..72c680b6cf 100644
          html {
 -          --ntp-focus-shadow-color: rgba(var(--google-blue-300-rgb), .5);
 -          --ntp-theme-text-color: white;
-+          background-color: #1f1f1f;
++          --texto: rgba(255, 255, 255, .92);
++          --texto-2: rgba(255, 255, 255, .48);
++          --brilho-1: rgba(79, 140, 255, .09);
++          --brilho-2: rgba(195, 139, 255, .07);
++          background-color: #1f1f1f !important;
          }
        }
  
@@ -43,64 +54,105 @@ index 1044c32c43..72c680b6cf 100644
        body {
          align-items: center;
 +        background:
-+            radial-gradient(55% 45% at 50% 42%, rgba(79, 140, 255, .14),
++            radial-gradient(60% 50% at 50% 38%, var(--brilho-1),
 +                            transparent 72%),
-+            radial-gradient(45% 40% at 50% 62%, rgba(195, 139, 255, .11),
++            radial-gradient(50% 45% at 50% 66%, var(--brilho-2),
 +                            transparent 72%);
++        box-sizing: border-box;
++        color: var(--texto);
          display: flex;
++        flex-direction: column;
++        font-family: system-ui, sans-serif;
          height: 100vh;
          justify-content: center;
          margin: 0;
++        padding-bottom: 6vh;
++        user-select: none;
++      }
++
++      .hora {
++        font-feature-settings: "tnum";
++        font-size: clamp(56px, 9vw, 96px);
++        font-weight: 250;
++        letter-spacing: -0.03em;
++        line-height: 1;
++      }
++
++      .data {
++        color: var(--texto-2);
++        font-size: 15px;
++        font-weight: 450;
++        margin-top: 14px;
++      }
++
++      .data::first-letter {
++        text-transform: uppercase;
        }
  
--      cr-most-visited {
+       cr-most-visited {
 -        --most-visited-focus-shadow: 0 0 0 2px var(--ntp-focus-shadow-color);
 -        --most-visited-text-color: var(--ntp-theme-text-color);
--        --most-visited-text-shadow: none;
--      }
--
++        --most-visited-focus-shadow: 0 0 0 2px rgba(122, 162, 255, .5);
++        --most-visited-text-color: var(--texto);
+         --most-visited-text-shadow: none;
++        margin-top: 44px;
+       }
+ 
 -      html[has-custom-background] cr-most-visited {
 -        --most-visited-text-shadow: 0 0 16px rgba(0, 0, 0, .3);
-+      .logo {
-+        filter: drop-shadow(0 10px 28px rgba(79, 140, 255, .28));
-+        height: 76px;
-+        opacity: .92;
-+        width: 76px;
++      .hora, .data {
++        animation: chegar .5s cubic-bezier(.2, .8, .2, 1) both;
++      }
++
++      cr-most-visited {
++        animation: chegar .5s .08s cubic-bezier(.2, .8, .2, 1) both;
++      }
++
++      @keyframes chegar {
++        from {
++          opacity: 0;
++          transform: translateY(6px);
++        }
        }
      </style>
    </head>
    <body>
--    <script type="module" src="strings.m.js"></script>
--    <cr-most-visited></cr-most-visited>
--    <script type="module" src="new_tab_page_third_party.js"></script>
--    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">
-+<svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" aria-hidden="true">
-+  <defs>
-+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
-+      <stop offset="0" stop-color="#4F8CFF"/>
-+      <stop offset="0.55" stop-color="#7B6CFF"/>
-+      <stop offset="1" stop-color="#C38BFF"/>
-+    </linearGradient>
-+    <linearGradient id="brilho" x1="0" y1="0" x2="0" y2="1">
-+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
-+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
-+    </linearGradient>
-+    <linearGradient id="agulha" x1="0" y1="0" x2="0" y2="1">
-+      <stop offset="0" stop-color="#FFFFFF"/>
-+      <stop offset="1" stop-color="#EAE6FF"/>
-+    </linearGradient>
-+  </defs>
-+  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#fundo)"/>
-+  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#brilho)"/>
-+  <g transform="rotate(45 128 128)">
-+    <path d="M128 52 L156 128 L100 128 Z" fill="url(#agulha)"/>
-+    <path d="M100 128 L156 128 L128 204 Z" fill="#FFFFFF" fill-opacity="0.38"/>
-+  </g>
-+  <circle cx="128" cy="128" r="11" fill="#FFFFFF"/>
-+  <circle cx="128" cy="128" r="5" fill="#7B6CFF"/>
-+</svg>
-   </body>
- </html>
++    <div class="hora" id="hora"></div>
++    <div class="data" id="data"></div>
+     <script type="module" src="strings.m.js"></script>
+     <cr-most-visited></cr-most-visited>
+     <script type="module" src="new_tab_page_third_party.js"></script>
+diff --git i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts
+index 47cdc104bb..ceb25b203b 100644
+--- i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts
++++ w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.ts
+@@ -30,3 +30,26 @@ callbackRouter.setTheme.addListener(theme => {
+   mostVisitedElement.theme = theme.mostVisited;
+ });
+ handler.updateTheme();
++
++// navegador: hora e data no centro da nova aba (no idioma do navegador).
++function mostrarHora() {
++  const agora = new Date();
++  const idioma = document.documentElement.lang || undefined;
++  const hora = document.querySelector('#hora');
++  const data = document.querySelector('#data');
++  if (hora) {
++    hora.textContent = agora.toLocaleTimeString(
++        idioma, {hour: '2-digit', minute: '2-digit'});
++  }
++  if (data) {
++    data.textContent = agora.toLocaleDateString(
++        idioma, {weekday: 'long', day: 'numeric', month: 'long'});
++  }
++}
++mostrarHora();
++// Acerta no começo de cada minuto.
++setTimeout(() => {
++  mostrarHora();
++  setInterval(mostrarHora, 60 * 1000);
++}, (60 - new Date().getSeconds()) * 1000);
++
 diff --git i/chrome/browser/search/search.cc w/chrome/browser/search/search.cc
 index 6d3e318b62..6c0187ca54 100644
 --- i/chrome/browser/search/search.cc
@@ -400,20 +452,37 @@ index a335e2d5cc..9e1616c111 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914..c7719a9b0b 100644
+index 29dfbde914..04e912441e 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,12 @@
  
  #include "chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.h"
  
++#include "navegador/browser/containers/espacos_dados.h"
 +#include "navegador/browser/ui/cores.h"
 +#include "navegador/browser/ui/visual.h"
++
++#include "chrome/browser/ui/views/frame/browser_view.h"
 +
  #include <algorithm>
  #include <memory>
  #include <optional>
-@@ -258,6 +261,15 @@ BrowserViewTabbedLayoutImpl::CalculateSeparatorInfo() const {
+@@ -83,6 +89,13 @@ constexpr double kGlassExpandOnHoverOpacity = 0.95;
+ 
+ // Increases the leading or trailing exclusion padding to `minimum`.
+ void IncreasePaddingToMinimum(BrowserLayoutParams& params, int minimum) {
++  // navegador: sem os botões da janela (desligados nas Configurações do
++  // Navegador), nada de "alça" de 36 antes do Voltar: a barra ficava com um
++  // vão grande à esquerda e nenhum à direita.
++  if (params.leading_exclusion.content.width() == 0 &&
++      params.trailing_exclusion.content.width() == 0) {
++    return;
++  }
+   // Default to increasing the trailing exclusion padding. On ChromeOS, the
+   // leading exclusion is sometimes used for a profile avatar while the trailing
+   // exclusion is used for the caption buttons. This keeps the padding
+@@ -258,6 +271,15 @@ BrowserViewTabbedLayoutImpl::CalculateSeparatorInfo() const {
        break;
    }
  
@@ -429,23 +498,34 @@ index 29dfbde914..c7719a9b0b 100644
    return info;
  }
  
-@@ -822,6 +834,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -822,6 +844,26 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                                 GetVerticalTabStripContentOverlap();
        params.InsetHorizontal(inset_amount, /*leading=*/true);
  
 +      // navegador: barra de navegação + página num cartão com margem até a
 +      // borda da janela (visual do Dia).
++      // A espessura é escolhida nas Configurações do Navegador (Aparência).
 +      if (!is_fullscreen(layout_data_->window_state)) {
-+        params.Inset(gfx::Insets::TLBR(navegador::visual::kCartaoMargem,
-+                                       GetVerticalTabStripContentOverlap(),
-+                                       navegador::visual::kCartaoMargem,
-+                                       navegador::visual::kCartaoMargem));
++        const auto* browser_view =
++            views::AsViewClass<BrowserView>(views().browser_view);
++        const int moldura =
++            browser_view ? navegador::espacos::Moldura(
++                               browser_view->browser()->GetProfile())
++                         : navegador::espacos::kMolduraPadrao;
++        // Com a lateral escondida, a borda dela (onde encosta o ponteiro)
++        // faz parte da moldura da esquerda: completa até a mesma espessura.
++        const int esquerda =
++            GetVerticalTabStripContentOverlap() +
++            (delegate().IsVerticalTabStripCollapsed()
++                 ? std::max(0, moldura - navegador::visual::kLateralRecolhida)
++                 : 0);
++        params.Inset(gfx::Insets::TLBR(moldura, esquerda, moldura, moldura));
 +      }
 +
        // Let the vertical tab strip animate out over the content.
        if (vertical_tab_strip_animation.current_motion) {
          clip_content_for_animation =
-@@ -855,8 +876,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -855,8 +897,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    if (IsParentedTo(views().vertical_tab_strip_top_corner,
                     views().browser_view)) {
      gfx::Rect corner_bounds;
@@ -456,7 +536,7 @@ index 29dfbde914..c7719a9b0b 100644
          vertical_tab_strip_animation.top_corner > 0.0;
  
      // The top corner is drawn when the tabstrip goes all the way to the top.
-@@ -878,8 +901,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -878,8 +922,10 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    if (IsParentedTo(views().vertical_tab_strip_bottom_corner,
                     views().browser_view)) {
      gfx::Rect corner_bounds;
@@ -467,7 +547,7 @@ index 29dfbde914..c7719a9b0b 100644
          vertical_tab_strip_animation.bottom_corner > 0.0;
      if (bottom_corner_visible) {
        auto preferred =
-@@ -968,7 +993,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -968,7 +1014,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
    ProposedLayout* main_background_layout = nullptr;
    if (IsParentedTo(views().main_background_region, views().browser_view)) {
      gfx::Rect main_background_bounds;
@@ -483,7 +563,7 @@ index 29dfbde914..c7719a9b0b 100644
        // In the future this should just be a 1px shim to avoid covering
        // transparency in the frame/tab strip, instead of extending the entire
        // background to the window edge.
-@@ -1231,6 +1263,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
+@@ -1231,6 +1284,14 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
        }
      }
      views().multi_contents_view->SetBackgroundRadii(content_corners);
@@ -498,7 +578,7 @@ index 29dfbde914..c7719a9b0b 100644
    }
  
    // Make final visual adjustments required for child views to paint.
-@@ -1427,9 +1467,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
+@@ -1427,9 +1488,16 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
    // By default, this is just a flat background.
    CustomCornersBackground::Corners corners;
  
@@ -517,7 +597,7 @@ index 29dfbde914..c7719a9b0b 100644
        layout_data_->window_state == WindowState::kNormal) {
      corners[CornerOrientation::kTopTrailing] =
          background->GetWindowCorner(/*upper=*/true);
-@@ -1524,6 +1571,15 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1524,6 +1592,24 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
            (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
            animation.expand_on_hover_opacity * expand_on_hover_opacity);
        vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
@@ -526,14 +606,23 @@ index 29dfbde914..c7719a9b0b 100644
 +      // navegador: vidro. A moldura translúcida já é pintada atrás; pintar de
 +      // novo aqui dobraria a opacidade. Só fica opaca quando a lateral
 +      // expande por cima da página (passar o mouse com ela recolhida).
++      // A opacidade dela é das Configurações do Navegador (Lateral); o
++      // desfoque do que fica atrás é da própria lateral (região).
 +      auto vertical_tabs_background_color = frame_color;
++      const auto* browser_view =
++          views::AsViewClass<BrowserView>(views().browser_view);
++      const float opacidade =
++          browser_view ? navegador::espacos::FlutuanteOpacidade(
++                             browser_view->browser()->GetProfile()) /
++                             100.0f
++                       : 1.0f;
 +      vertical_tabs_background_color.opacity =
-+          static_cast<float>(animation.expand_on_hover_opacity);
++          static_cast<float>(animation.expand_on_hover_opacity) * opacidade;
 +      vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
      } else {
        vertical_tabs_background->SetPrimaryColor(frame_color);
      }
-@@ -1707,6 +1763,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+@@ -1707,6 +1793,16 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
        break;
      }
      case TabStripType::kVertical: {
@@ -654,23 +743,26 @@ index cd6fa39dad..6b9401874b 100644
    // BrowserFrameView:
    BoundsAndMargins GetCaptionButtonBounds() const override;
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index b7cdb8f557..e053753069 100644
+index b7cdb8f557..77529fe4a4 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-@@ -4,6 +4,12 @@
+@@ -4,6 +4,15 @@
  
  #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
  
++#include "navegador/browser/containers/espacos_dados.h"
 +#include "navegador/browser/ui/cor_da_pagina.h"
 +#include "navegador/browser/ui/espacos.h"
 +#include "navegador/browser/ui/fixos.h"
 +#include "navegador/browser/ui/menu_do_logo.h"
 +#include "ui/views/window/non_client_view.h"
++#include "ui/aura/window.h"
++#include "ui/views/controls/menu/menu_controller.h"
 +
  #include <algorithm>
  #include <optional>
  
-@@ -110,6 +116,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -110,6 +119,9 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
    SetPaintToLayer();
    // Because corners may be transparent, this must be set to false.
    layer()->SetFillsBoundsOpaquely(false);
@@ -680,7 +772,7 @@ index b7cdb8f557..e053753069 100644
  
    const int region_horizontal_padding =
        GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
-@@ -136,6 +145,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -136,6 +148,8 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
        views::kMarginsKey, gfx::Insets::VH(0, region_horizontal_padding));
  
    top_button_separator_ = AddChildView(std::make_unique<views::Separator>());
@@ -689,7 +781,7 @@ index b7cdb8f557..e053753069 100644
    // The TopContainer handles the padding distance to the separator so that we
    // can control how far it is in the various states.
    top_button_separator_->SetProperty(
-@@ -147,10 +158,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -147,10 +161,12 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
            base::BindRepeating(
                &VerticalTabStripRegionView::RecordNewTabButtonPressed,
                base::Unretained(this))));
@@ -703,7 +795,7 @@ index b7cdb8f557..e053753069 100644
    bottom_button_container_->SetProperty(
        views::kMarginsKey,
        gfx::Insets::TLBR(
-@@ -160,6 +173,16 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
+@@ -160,6 +176,16 @@ VerticalTabStripRegionView::VerticalTabStripRegionView(
  
    gemini_button_ = AddChildView(std::make_unique<views::View>());
  
@@ -720,10 +812,46 @@ index b7cdb8f557..e053753069 100644
    resize_area_ = AddChildView(std::make_unique<views::ResizeArea>(this));
    resize_area_->SetProperty(views::kViewIgnoredByLayoutKey, true);
    resize_area_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
-@@ -375,6 +398,15 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
- void VerticalTabStripRegionView::Layout(PassKey) {
-   LayoutSuperclass<views::AccessiblePaneView>(this);
+@@ -363,9 +389,17 @@ void VerticalTabStripRegionView::AddedToWidget() {
+   if (GetFocusManager()) {
+     GetFocusManager()->AddFocusChangeListener(&focus_listener_);
+   }
++  if (aura::Window* janela = GetWidget()->GetNativeWindow()) {
++    janela->AddPreTargetHandler(&saida_da_janela_);
++    janela_observada_ = janela;
++  }
+ }
  
+ void VerticalTabStripRegionView::RemovedFromWidget() {
++  if (janela_observada_) {
++    janela_observada_->RemovePreTargetHandler(&saida_da_janela_);
++    janela_observada_ = nullptr;
++  }
+   if (GetFocusManager()) {
+     GetFocusManager()->RemoveFocusChangeListener(&focus_listener_);
+   }
+@@ -373,7 +407,31 @@ void VerticalTabStripRegionView::RemovedFromWidget() {
+ }
+ 
+ void VerticalTabStripRegionView::Layout(PassKey) {
+-  LayoutSuperclass<views::AccessiblePaneView>(this);
++  // navegador: abrindo ou escondendo, os itens ficam na largura cheia e a
++  // lateral desliza (a camada corta o que passa), como no Zen. Na largura do
++  // meio da animação o cabeçalho, as abas e as pastas se amassavam.
++  if (const int cheia = LarguraCheiaNaAnimacao(); cheia > width()) {
++    const views::ProposedLayout layout =
++        flex_layout_->GetProposedLayout(gfx::Size(cheia, height()));
++    for (const views::ChildLayout& filho : layout.child_layouts) {
++      if (filho.visible) {
++        gfx::Rect area = filho.bounds;
++        area.Offset(width() - cheia, 0);
++        filho.child_view->SetBoundsRect(area);
++      }
++    }
++  } else {
++    LayoutSuperclass<views::AccessiblePaneView>(this);
++  }
++
 +  // navegador: a sombra do cartão é pintada na moldura. Com a lateral mudando
 +  // de largura (abrir/recolher), a moldura é repintada inteira; repintada só
 +  // em faixas, ficavam sombras velhas (listras) atrás da lateral de vidro.
@@ -732,11 +860,131 @@ index b7cdb8f557..e053753069 100644
 +      widget->non_client_view()->frame_view()) {
 +    widget->non_client_view()->frame_view()->SchedulePaint();
 +  }
-+
+ 
    // Manually position the resize area as it overlaps views handled by the flex
    // layout.
-   resize_area_->SetBoundsRect(gfx::Rect(bounds().right() - resize_area_width_,
-@@ -744,6 +776,10 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
+@@ -459,6 +517,7 @@ bool VerticalTabStripRegionView::OnKeyPressed(const ui::KeyEvent& event) {
+ }
+ 
+ void VerticalTabStripRegionView::OnMouseEntered(const ui::MouseEvent& event) {
++  segurar_ate_ = base::TimeTicks();
+   if (mouse_exit_timer_.IsRunning()) {
+     mouse_exit_timer_.Stop();
+     return;
+@@ -467,6 +526,7 @@ void VerticalTabStripRegionView::OnMouseEntered(const ui::MouseEvent& event) {
+ }
+ 
+ void VerticalTabStripRegionView::OnMouseMoved(const ui::MouseEvent& event) {
++  segurar_ate_ = base::TimeTicks();
+   if (mouse_exit_timer_.IsRunning()) {
+     mouse_exit_timer_.Stop();
+   }
+@@ -491,9 +551,104 @@ void VerticalTabStripRegionView::HandleMouseExited() {
+     return;
+   }
+ #endif
++  // navegador: como o Zen (sidebar-keep-hover), a lateral aberta por cima da
++  // página espera um pouco antes de esconder: tirar o ponteiro sem querer e
++  // voltar não fecha. O tempo é das Configurações do Navegador (Lateral).
++  if (is_expanded_on_hover_) {
++    const int ms = navegador::espacos::EsconderDepoisMs(Perfil());
++    if (ms > 0 || !segurar_ate_.is_null()) {
++      mouse_exit_timer_.Start(
++          FROM_HERE, base::Milliseconds(ms),
++          base::BindOnce(&VerticalTabStripRegionView::FimDaFolga,
++                         base::Unretained(this)));
++      return;
++    }
++  }
+   UpdateExpandOnHoverState(false);
+ }
+ 
++Profile* VerticalTabStripRegionView::Perfil() const {
++  return browser_view()->browser()->GetProfile();
++}
++
++int VerticalTabStripRegionView::LarguraCheiaNaAnimacao() const {
++  const auto* controller =
++      BrowserAnimationController::From(browser_view()->browser());
++  if (!controller) {
++    return 0;
++  }
++  const auto motion =
++      controller->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip);
++  if (motion == TabStripAnimations::kExpand ||
++      motion == TabStripAnimations::kCollapse) {
++    return uncollapsed_width();
++  }
++  // A lateral por cima da página tem a largura padrão (como o layout da
++  // janela, browser_view_tabbed_layout_impl.cc).
++  if (motion == TabStripAnimations::kExpandOnHover ||
++      motion == TabStripAnimations::kCollapseOnHover) {
++    return tabs::kVerticalTabStripDefaultUncollapsedWidth;
++  }
++  return 0;
++}
++
++void VerticalTabStripRegionView::FimDaFolga() {
++  // Aberta pela saída na borda, ou com um menu dela aberto: espera mais.
++  base::TimeDelta falta = segurar_ate_ - base::TimeTicks::Now();
++  if (views::MenuController::GetActiveInstance()) {
++    falta = std::max(falta, base::Milliseconds(100));
++  }
++  if (!segurar_ate_.is_null() && falta.is_positive()) {
++    mouse_exit_timer_.Start(
++        FROM_HERE, falta,
++        base::BindOnce(&VerticalTabStripRegionView::FimDaFolga,
++                       base::Unretained(this)));
++    return;
++  }
++  if (views::MenuController::GetActiveInstance()) {
++    mouse_exit_timer_.Start(
++        FROM_HERE, base::Milliseconds(100),
++        base::BindOnce(&VerticalTabStripRegionView::FimDaFolga,
++                       base::Unretained(this)));
++    return;
++  }
++  segurar_ate_ = base::TimeTicks();
++  UpdateExpandOnHoverState(std::nullopt);
++}
++
++void VerticalTabStripRegionView::SaidaDaJanela::OnMouseEvent(
++    ui::MouseEvent* event) {
++  if (event->type() == ui::EventType::kMouseExited) {
++    lateral_->SaiuDaJanela(event->root_location());
++  }
++}
++
++// O Zen faz o mesmo: o ponteiro saiu da janela pela borda esquerda, perto da
++// lateral escondida (jogado pro canto da tela, além do vão entre as janelas).
++// A lateral abre e fica 1 s; voltando pra cima dela, segue como sempre.
++void VerticalTabStripRegionView::SaiuDaJanela(const gfx::Point& ponto) {
++  if (!GetWidget() || !state_controller_->ShouldDisplayVerticalTabs() ||
++      !state_controller_->IsCollapsed() ||
++      !state_controller_->IsExpandOnHoverEnabled() ||
++      !navegador::espacos::MostrarNaBorda(Perfil()) || !IsFrameActive()) {
++    return;
++  }
++  const gfx::Rect lateral = ConvertRectToWidget(GetLocalBounds());
++  constexpr int kDistancia = 10;
++  if (ponto.x() > lateral.right() + kDistancia ||
++      ponto.y() < lateral.y() - 7 || ponto.y() > lateral.bottom() + 7) {
++    return;
++  }
++  segurar_ate_ = base::TimeTicks::Now() + base::Milliseconds(1000);
++  if (!is_expanded_on_hover_) {
++    AnimateExpandOnHover(/*expand=*/true);
++  }
++  mouse_exit_timer_.Start(
++      FROM_HERE, base::Milliseconds(1000),
++      base::BindOnce(&VerticalTabStripRegionView::FimDaFolga,
++                     base::Unretained(this)));
++}
++
+ std::unique_ptr<ExpandOnHoverLock>
+ VerticalTabStripRegionView::GetExpandOnHoverLock(
+     ExpandOnHoverLockType lock_type) {
+@@ -744,6 +899,10 @@ void VerticalTabStripRegionView::OnTabStripViewSet() {
    CHECK(separator_index.has_value());
    ReorderChildView(tab_strip_view(), separator_index.value() + 1);
  
@@ -747,8 +995,48 @@ index b7cdb8f557..e053753069 100644
    OnCollapseStateChanged(state_controller_->GetCollapseState());
  }
  
+@@ -768,8 +927,11 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+ 
+   resize_area_width_ = collapsed ? kCollapsedResizeAreaWidth : kResizeAreaWidth;
+ 
++  // navegador: só recolhida de fato (como o TabView); no começo da animação
++  // os fixados sumiam de uma vez e tudo subia.
+   if (tab_strip_view()) {
+-    tab_strip_view()->SetCollapsedState(collapsed);
++    tab_strip_view()->SetCollapsedState(
++        state == tabs::VerticalTabStripCollapseState::kCollapsed);
+   }
+ 
+   if ((state == tabs::VerticalTabStripCollapseState::kCollapsing) ||
+@@ -907,6 +1069,13 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
+         hover_card_controller()->GetHoverCardHideLock();
+   }
+ 
++  // navegador: como o Zen, aparece na hora em que o ponteiro encosta na
++  // borda (o Chromium media a velocidade do ponteiro e esperava ~200 ms).
++  if (navegador::espacos::MostrarNaBorda(Perfil())) {
++    AnimateExpandOnHover(/*expand=*/true);
++    return;
++  }
++
+   if (tabs::kVerticalTabsExpandOnHoverUseVelocityHeuristic.Get()) {
+     CalculateMouseVelocityForExpandOnHover();
+   } else if (expand_on_hover_timer_.IsRunning()) {
+@@ -1027,6 +1196,12 @@ void VerticalTabStripRegionView::ResetExpandOnHoverTimers() {
+ void VerticalTabStripRegionView::AnimateExpandOnHover(bool expand) {
+   is_expanded_on_hover_ = expand;
+   ResetExpandOnHoverTimers();
++  // navegador: desfoque do que fica atrás da lateral por cima da página
++  // (Configurações do Navegador → Lateral).
++  if (layer()) {
++    layer()->SetBackgroundBlur(
++        expand ? navegador::espacos::FlutuanteDesfoque(Perfil()) : 0);
++  }
+ 
+   if (expand) {
+     expand_on_hover_start_time_ = base::TimeTicks::Now();
 diff --git i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 76f8e997d6..6aa66a5753 100644
+index 76f8e997d6..d293e738b1 100644
 --- i/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ w/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 @@ -7,6 +7,8 @@
@@ -760,7 +1048,20 @@ index 76f8e997d6..6aa66a5753 100644
  #include "base/callback_list.h"
  #include "base/containers/flat_set.h"
  #include "base/memory/raw_ptr.h"
-@@ -66,7 +68,10 @@ class VerticalTabStripRegionView final
+@@ -32,6 +34,12 @@
+ #include "ui/views/focus/focus_manager.h"
+ 
+ class BrowserView;
++
++namespace aura {
++class Window;
++}  // namespace aura
++
++class Profile;
+ class VerticalTabStripTopContainer;
+ class VerticalTabStripBottomContainer;
+ class VerticalTabStripFocusSwipeController;
+@@ -66,7 +74,10 @@ class VerticalTabStripRegionView final
    // TODO(crbug.com/465832180): Replace constant based width final max width for
    // view.
    static constexpr int kUncollapsedMaxWidth = 400;
@@ -772,6 +1073,34 @@ index 76f8e997d6..6aa66a5753 100644
    // TODO(crbug.com/465833741): Determine snapping behavior.
    static constexpr int kCollapseSnapWidth =
        (kUncollapsedMinWidth + kCollapsedWidth) / 2;
+@@ -304,6 +315,27 @@ class VerticalTabStripRegionView final
+   // The mouse exit event debounce timer.
+   base::OneShotTimer mouse_exit_timer_;
+ 
++  // navegador: lateral escondida como no modo compacto do Zen (ver o .cc).
++  int LarguraCheiaNaAnimacao() const;
++  void FimDaFolga();
++  void SaiuDaJanela(const gfx::Point& ponto_na_janela);
++  Profile* Perfil() const;
++  // O ponteiro saindo da janela (pra o canto da tela, além da borda da
++  // janela): a lateral não vê, a janela vê.
++  class SaidaDaJanela : public ui::EventHandler {
++   public:
++    explicit SaidaDaJanela(VerticalTabStripRegionView* lateral)
++        : lateral_(lateral) {}
++    void OnMouseEvent(ui::MouseEvent* event) override;
++
++   private:
++    raw_ptr<VerticalTabStripRegionView> lateral_;
++  };
++  SaidaDaJanela saida_da_janela_{this};
++  raw_ptr<aura::Window> janela_observada_ = nullptr;
++  // Aberta pela saída na borda: fica aberta pelo menos até aqui.
++  base::TimeTicks segurar_ate_;
++
+   base::CallbackListSubscription paint_as_active_subscription_;
+ };
+ 
 diff --git i/chrome/browser/ui/views/location_bar/location_bar_view.cc w/chrome/browser/ui/views/location_bar/location_bar_view.cc
 index 9251f8590b..c12aa1523a 100644
 --- i/chrome/browser/ui/views/location_bar/location_bar_view.cc

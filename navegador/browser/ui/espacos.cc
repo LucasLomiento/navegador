@@ -91,7 +91,11 @@ constexpr float kRaioBolinhaAtual = 4.0f;
 constexpr base::TimeDelta kIntervaloRodinha = base::Milliseconds(200);
 
 // Cor da paleta dos containers -> cor de grupo do Chromium.
-tab_groups::TabGroupColorId CorDoGrupo(std::string_view cor) {
+tab_groups::TabGroupColorId CorDoGrupo(std::string_view cor_escolhida) {
+  // Cor livre ("#RRGGBB"): a do grupo é a da paleta mais perto; a janela e
+  // as bolinhas usam a cor exata.
+  const std::string nome = containers::NomeMaisProximo(cor_escolhida);
+  const std::string_view cor = nome;
   if (cor == "roxo") {
     return tab_groups::TabGroupColorId::kPurple;
   }

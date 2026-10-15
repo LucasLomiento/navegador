@@ -29,7 +29,9 @@ inline constexpr int kEspacoEntreAbas = 5;
 
 // Lateral recolhida: só a borda onde se encosta o mouse pra ela aparecer
 // por cima (a lateral flutuante do Dia).
-inline constexpr int kLateralRecolhida = 8;
+inline constexpr int kLateralRecolhida = 3;
+// Abaixo disto (lateral estreita), a área dos fixados some.
+inline constexpr int kLarguraMinimaDosFixos = 100;
 
 // Id (views::View::SetID) da área dos fixados do espaço
 // (navegador/browser/ui/fixos.h) dentro do TabStripView: o layout dele põe

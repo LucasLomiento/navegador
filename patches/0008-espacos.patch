@@ -49,8 +49,42 @@ index 01f863a9f4..3892443aa9 100644
        base::UmaHistogramCounts1000(
            "Tab.ContextMenu.TogglePinned.SelectedTabsCount",
            selection_model_.size());
+diff --git i/chrome/browser/ui/views/animations/tab_strip_animations.cc w/chrome/browser/ui/views/animations/tab_strip_animations.cc
+index a276d311e0..97f0a80bd6 100644
+--- i/chrome/browser/ui/views/animations/tab_strip_animations.cc
++++ w/chrome/browser/ui/views/animations/tab_strip_animations.cc
+@@ -67,8 +67,10 @@ TabStripAnimations::GroupInfos TabStripAnimations::GenerateAnimations() const {
+   // these changes happen.
+   constexpr double kFirstCheckpoint = 0.25;
+   constexpr double kSecondCheckpoint = 0.75;
++  // navegador: como o modo compacto do Zen (entra em 0,25 s desacelerando,
++  // sai em 0,15 s).
+   constexpr int kExpandOnHoverMs = 250;
+-  constexpr int kCollapseOnHoverMs = 200;
++  constexpr int kCollapseOnHoverMs = 150;
+ 
+   // These control how the opacity of the vertical tab strip changes in
+   // translucent mode during expand-on-hover animations.
+@@ -114,7 +116,7 @@ TabStripAnimations::GroupInfos TabStripAnimations::GenerateAnimations() const {
+       // the animation and so shares the same animation parameters across all
+       // the supported platforms.
+       Motion(kExpandOnHover, TotalDurationMs(kExpandOnHoverMs),
+-             gfx::Tween::EASE_IN_OUT_EMPHASIZED,
++             gfx::Tween::FAST_OUT_SLOW_IN,
+              Animate(kTabStripHoverWidth, FromValue(0.0), ToValue(1.0)),
+              Animate(kTopCorner, FromValue(DefaultValue()), ToValue(-1.0)),
+              Animate(kBottomCorner, FromValue(1.0), ToValue(-1.0)),
+@@ -123,7 +125,7 @@ TabStripAnimations::GroupInfos TabStripAnimations::GenerateAnimations() const {
+                       Segment(StartMs(0), EndMs(kOpacityFadeMs), ToValue(1.0),
+                               kOpacityFadeInTween))),
+       Motion(kCollapseOnHover, TotalDurationMs(kCollapseOnHoverMs),
+-             gfx::Tween::EASE_IN_OUT_EMPHASIZED,
++             gfx::Tween::EASE_IN_OUT,
+              Animate(kTabStripHoverWidth, FromValue(1.0), ToValue(0.0)),
+              Animate(kTopCorner, FromValue(-1.0), ToValue(DefaultValue())),
+              Animate(kBottomCorner, FromValue(-1.0), ToValue(1.0)),
 diff --git i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
-index cd90578d55..39a8129552 100644
+index cd90578d55..443553a45e 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
 +++ w/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
 @@ -4,6 +4,8 @@
@@ -62,19 +96,20 @@ index cd90578d55..39a8129552 100644
  #include <algorithm>
  
  #include "base/logging.h"
-@@ -291,6 +293,27 @@ views::ProposedLayout TabStripViewLayout::CalculateVerticalLayout(
+@@ -291,6 +293,28 @@ views::ProposedLayout TabStripViewLayout::CalculateVerticalLayout(
      }
    }
  
 +  // navegador: os fixados do espaço (sites e pastas, como no Zen) entre os
-+  // favoritos e as abas; somem com a lateral recolhida.
++  // favoritos e as abas; somem só com a lateral estreita (recolhida de fato).
++  // Por cima da página (lateral escondida e o ponteiro na borda) aparecem.
 +  for (views::View* child : tab_strip_view->children()) {
 +    if (child->GetID() != navegador::visual::kIdAreaDeFixos) {
 +      continue;
 +    }
 +    const int largura =
 +        size_bounds.width().value() - 2 * region_horizontal_padding;
-+    int altura = is_collapsed
++    int altura = largura < navegador::visual::kLarguraMinimaDosFixos
 +                     ? 0
 +                     : child->GetHeightForWidth(std::max(largura, 0));
 +    if (size_bounds.height().is_bounded()) {

@@ -41,6 +41,21 @@ inline constexpr char kQuadroDeFavoritosPref[] =
 // Botões da janela (fechar, minimizar, maximizar) no canto da barra. Num
 // gerenciador de janelas por atalho (Hyprland) sobram: desligado por padrão.
 inline constexpr char kBotoesDaJanelaPref[] = "navegador.janela.botoes";
+// Espessura da moldura em volta do cartão (barra + página), em px.
+inline constexpr char kMolduraPref[] = "navegador.janela.moldura";
+// Barra de navegação na cor do topo da página (como o Dia).
+inline constexpr char kBarraNaCorDoSitePref[] = "navegador.barra.cor_do_site";
+// Lateral escondida que aparece por cima da página (como o modo compacto do
+// Zen): opacidade do fundo (0-100), desfoque do que está atrás (px), tempo
+// até esconder depois que o ponteiro sai (ms) e se aparece ao encostar o
+// ponteiro na borda esquerda.
+inline constexpr char kFlutuanteOpacidadePref[] =
+    "navegador.lateral.flutuante.opacidade";
+inline constexpr char kFlutuanteDesfoquePref[] =
+    "navegador.lateral.flutuante.desfoque";
+inline constexpr char kEsconderDepoisPref[] =
+    "navegador.lateral.esconder_depois_ms";
+inline constexpr char kMostrarNaBordaPref[] = "navegador.lateral.mostrar_na_borda";
 
 struct Espaco {
   std::string id;
@@ -108,6 +123,20 @@ void RestaurarAtalhos(Profile* profile);
 
 bool MostrarQuadroDeFavoritos(Profile* profile);
 bool MostrarBotoesDaJanela(Profile* profile);
+int Moldura(const Profile* profile);
+bool MostrarNaBorda(const Profile* profile);
+int EsconderDepoisMs(const Profile* profile);
+// 0-100.
+int FlutuanteOpacidade(const Profile* profile);
+// px.
+int FlutuanteDesfoque(const Profile* profile);
+
+// Padrões (também usados quando não há perfil à mão).
+inline constexpr int kMolduraPadrao = 3;
+inline constexpr int kFlutuanteOpacidadePadrao = 90;
+inline constexpr int kFlutuanteDesfoquePadrao = 20;
+// Como o Zen (zen.view.compact.sidebar-keep-hover.duration = 150).
+inline constexpr int kEsconderDepoisPadrao = 150;
 
 }  // namespace navegador::espacos
 

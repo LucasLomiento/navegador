@@ -76,6 +76,14 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterDictionaryPref(kAtalhosPref);
   registry->RegisterBooleanPref(kQuadroDeFavoritosPref, true);
   registry->RegisterBooleanPref(kBotoesDaJanelaPref, false);
+  registry->RegisterIntegerPref(kMolduraPref, kMolduraPadrao);
+  registry->RegisterBooleanPref(kBarraNaCorDoSitePref, true);
+  registry->RegisterIntegerPref(kFlutuanteOpacidadePref,
+                                kFlutuanteOpacidadePadrao);
+  registry->RegisterIntegerPref(kFlutuanteDesfoquePref,
+                                kFlutuanteDesfoquePadrao);
+  registry->RegisterIntegerPref(kEsconderDepoisPref, kEsconderDepoisPadrao);
+  registry->RegisterBooleanPref(kMostrarNaBordaPref, true);
 }
 
 std::vector<Espaco> Todos(Profile* profile) {
@@ -265,6 +273,29 @@ bool MostrarQuadroDeFavoritos(Profile* profile) {
 
 bool MostrarBotoesDaJanela(Profile* profile) {
   return profile->GetPrefs()->GetBoolean(kBotoesDaJanelaPref);
+}
+
+int Moldura(const Profile* profile) {
+  return std::clamp(profile->GetPrefs()->GetInteger(kMolduraPref), 0, 16);
+}
+
+bool MostrarNaBorda(const Profile* profile) {
+  return profile->GetPrefs()->GetBoolean(kMostrarNaBordaPref);
+}
+
+int EsconderDepoisMs(const Profile* profile) {
+  return std::clamp(profile->GetPrefs()->GetInteger(kEsconderDepoisPref), 0,
+                    3000);
+}
+
+int FlutuanteOpacidade(const Profile* profile) {
+  return std::clamp(profile->GetPrefs()->GetInteger(kFlutuanteOpacidadePref),
+                    20, 100);
+}
+
+int FlutuanteDesfoque(const Profile* profile) {
+  return std::clamp(profile->GetPrefs()->GetInteger(kFlutuanteDesfoquePref), 0,
+                    60);
 }
 
 }  // namespace navegador::espacos

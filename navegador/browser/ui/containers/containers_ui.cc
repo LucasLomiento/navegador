@@ -7,6 +7,8 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/no_destructor.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "cc/paint/paint_flags.h"
 #include "chrome/browser/profiles/profile.h"
@@ -24,6 +26,7 @@
 #include "navegador/browser/ui/containers/gerenciador.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/canvas.h"
+#include "ui/gfx/color_utils.h"
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/image/canvas_image_source.h"
 #include "ui/menus/simple_menu_model.h"
@@ -364,7 +367,50 @@ SkColor Cor(std::string_view nome) {
       return c.cor;
     }
   }
+  // Cor escolhida no seletor: "#RRGGBB".
+  uint32_t rgb = 0;
+  if (nome.size() == 7 && nome[0] == '#' &&
+      base::HexStringToUInt(nome.substr(1), &rgb)) {
+    return SkColorSetA(static_cast<SkColor>(rgb), SK_AlphaOPAQUE);
+  }
   return kCores[0].cor;
+}
+
+std::string Hex(SkColor cor) {
+  return base::StringPrintf("#%02X%02X%02X", SkColorGetR(cor),
+                            SkColorGetG(cor), SkColorGetB(cor));
+}
+
+std::string NomeMaisProximo(std::string_view cor) {
+  for (const CorNomeada& c : kCores) {
+    if (cor == c.nome) {
+      return c.nome;
+    }
+  }
+  // Pelo matiz (o cinza só pra cores sem saturação), que é o que a cor do
+  // grupo do Chromium carrega.
+  const SkColor alvo = Cor(cor);
+  color_utils::HSL hsl_alvo;
+  color_utils::SkColorToHSL(alvo, &hsl_alvo);
+  if (hsl_alvo.s < 0.15) {
+    return "cinza";
+  }
+  std::string melhor = kCores[0].nome;
+  double menor = 10;
+  for (const CorNomeada& c : kCores) {
+    if (std::string_view(c.nome) == "cinza") {
+      continue;
+    }
+    color_utils::HSL hsl;
+    color_utils::SkColorToHSL(c.cor, &hsl);
+    double d = std::abs(hsl.h - hsl_alvo.h);
+    d = std::min(d, 1 - d);
+    if (d < menor) {
+      menor = d;
+      melhor = c.nome;
+    }
+  }
+  return melhor;
 }
 
 ui::ImageModel Bolinha(std::string_view nome) {

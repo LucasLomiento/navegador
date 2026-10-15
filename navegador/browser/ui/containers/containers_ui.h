@@ -40,7 +40,13 @@ namespace navegador::containers {
 
 // Cor de verdade de um nome da paleta (azul, laranja, ...). As mesmas no
 // tema claro e no escuro: são vivas o bastante pros dois.
+// Também aceita "#RRGGBB" (cor escolhida no seletor de cor dos espaços).
 SkColor Cor(std::string_view nome);
+// "#RRGGBB".
+std::string Hex(SkColor cor);
+// Nome da paleta mais perto da cor (pelo matiz), pra quem só tem a paleta
+// (a cor do grupo de abas do Chromium).
+std::string NomeMaisProximo(std::string_view cor);
 
 // Bolinha da cor do container, pros menus.
 ui::ImageModel Bolinha(std::string_view nome);
