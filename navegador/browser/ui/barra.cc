@@ -1,6 +1,7 @@
 #include "navegador/browser/ui/barra.h"
 
 #include <map>
+#include <optional>
 #include <memory>
 
 #include "base/functional/bind.h"
@@ -22,6 +23,9 @@
 #include "ui/aura/window.h"
 #include "ui/events/event.h"
 #include "ui/events/event_handler.h"
+#include "ui/gfx/animation/animation_delegate.h"
+#include "ui/gfx/animation/slide_animation.h"
+#include "ui/gfx/animation/tween.h"
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
@@ -76,10 +80,12 @@ constexpr int kFolgaAbaixo = 12;
 // escondida).
 class Espia : public views::FocusChangeListener,
               public views::WidgetObserver,
-              public ui::EventHandler {
+              public ui::EventHandler,
+              public gfx::AnimationDelegate {
  public:
   Espia(BrowserView* view, views::Widget* widget)
       : view_(view), widget_(widget) {
+    animacao_.SetTweenType(gfx::Tween::FAST_OUT_SLOW_IN);
     observacao_.Observe(widget);
     widget->GetFocusManager()->AddFocusChangeListener(this);
     if (aura::Window* janela = widget->GetNativeWindow();
@@ -100,11 +106,14 @@ class Espia : public views::FocusChangeListener,
   }
 
   bool a_vista() const { return espiando_ || pelo_ponteiro_; }
+  // Quanto a barra já desceu (0 escondida, 1 inteira), na animação.
+  double valor() const { return animacao_.GetCurrentValue(); }
 
   // Ctrl+L / nova aba: à vista até o foco sair da barra.
   void Espiar() {
     espiando_ = true;
     esconder_.Stop();
+    Animar();
   }
 
   // A pref mudou: começa escondida, sem nada pendente.
@@ -112,7 +121,17 @@ class Espia : public views::FocusChangeListener,
     espiando_ = false;
     pelo_ponteiro_ = false;
     esconder_.Stop();
+    animacao_.Reset(0);
     fraco_.InvalidateWeakPtrs();
+  }
+
+  // gfx::AnimationDelegate: cada quadro refaz o layout (a barra desce por
+  // cima da página, que não muda de tamanho).
+  void AnimationProgressed(const gfx::Animation* animation) override {
+    Refazer(view_);
+  }
+  void AnimationEnded(const gfx::Animation* animation) override {
+    Refazer(view_);
   }
 
   // views::FocusChangeListener:
@@ -184,10 +203,23 @@ class Espia : public views::FocusChangeListener,
   void OnWidgetDestroying(views::Widget* widget) override;
 
  private:
+  // Desce ou sobe a barra conforme o estado, nos tempos da lateral escondida
+  // (tab_strip_animations.cc: 250 ms pra abrir, 150 ms pra fechar).
+  void Animar() {
+    if (a_vista()) {
+      animacao_.SetSlideDuration(base::Milliseconds(250));
+      animacao_.Show();
+    } else {
+      animacao_.SetSlideDuration(base::Milliseconds(150));
+      animacao_.Hide();
+    }
+    Refazer(view_);
+  }
+
   void MostrarPeloPonteiro() {
     pelo_ponteiro_ = true;
     esconder_.Stop();
-    Refazer(view_);
+    Animar();
   }
 
   void ContarFolga(base::TimeDelta folga) {
@@ -203,12 +235,12 @@ class Espia : public views::FocusChangeListener,
         view_->toolbar()->Contains(foco->GetFocusedView())) {
       espiando_ = true;
     }
-    Refazer(view_);
+    Animar();
   }
 
   void FimDoFoco() {
     espiando_ = false;
-    Refazer(view_);
+    Animar();
   }
 
   const raw_ptr<BrowserView> view_;
@@ -217,6 +249,7 @@ class Espia : public views::FocusChangeListener,
   bool espiando_ = false;
   bool pelo_ponteiro_ = false;
   base::OneShotTimer esconder_;
+  gfx::SlideAnimation animacao_{this};
   base::ScopedObservation<views::Widget, views::WidgetObserver> observacao_{
       this};
   base::WeakPtrFactory<Espia> fraco_{this};
@@ -254,7 +287,16 @@ bool Escondida(const BrowserView* view) {
   }
   // Consultado no layout: a primeira vez cria quem segue o ponteiro.
   Espia* espia = EspiaDe(const_cast<BrowserView*>(view));
-  return !espia || !espia->a_vista();
+  return !espia || (!espia->a_vista() && espia->valor() == 0);
+}
+
+std::optional<double> Sobreposta(const BrowserView* view) {
+  if (!Ligada(view) || Escondida(view)) {
+    return std::nullopt;
+  }
+  auto it = Espias().find(view);
+  return it == Espias().end() ? std::nullopt
+                              : std::optional<double>(it->second->valor());
 }
 
 void Definir(Profile* perfil, bool escondida) {
