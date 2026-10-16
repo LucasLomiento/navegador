@@ -5,7 +5,7 @@
 #   cd pacote && makepkg -sif
 pkgname=navegador
 pkgver=155.0.8059.79
-pkgrel=16
+pkgrel=17
 pkgdesc="Navegador próprio em cima do Chromium, com o visual do Dia"
 arch=(x86_64)
 url="https://github.com/LucasLomiento/navegador"

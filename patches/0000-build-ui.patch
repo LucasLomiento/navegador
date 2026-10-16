@@ -1,8 +1,17 @@
 diff --git i/chrome/browser/ui/BUILD.gn w/chrome/browser/ui/BUILD.gn
-index 82f397571f..6e391bae79 100644
+index 82f397571f..741bd1f867 100644
 --- i/chrome/browser/ui/BUILD.gn
 +++ w/chrome/browser/ui/BUILD.gn
-@@ -399,6 +399,7 @@ if (!is_android) {
+@@ -144,6 +144,8 @@ if (!is_android) {
+       "//ui/base/unowned_user_data",
+     ]
+     deps = [
++      "//navegador/browser/containers",  # navegador
++      "//components/sessions",  # navegador
+       "//chrome/app:generated_resources",
+       "//chrome/browser/favicon",
+       "//chrome/browser/resource_coordinator:mojo_bindings",
+@@ -399,6 +401,7 @@ if (!is_android) {
        "//chrome/browser:browser_public_dependencies",
      ]
      deps = [
@@ -10,7 +19,7 @@ index 82f397571f..6e391bae79 100644
        ":tab_ui_helper",
        "//base",
        "//chrome/browser/apps/app_service",
-@@ -1522,6 +1523,34 @@ static_library("ui") {
+@@ -1522,6 +1525,34 @@ static_library("ui") {
        "browser_commands.cc",
        "browser_commands.h",
        "browser_live_tab_context.cc",
@@ -45,7 +54,7 @@ index 82f397571f..6e391bae79 100644
        "browser_manager_service.cc",
        "browser_manager_service.h",
        "browser_manager_service_factory.cc",
-@@ -1558,6 +1587,11 @@ static_library("ui") {
+@@ -1558,6 +1589,11 @@ static_library("ui") {
  
      # Non-android deps for "ui" target.
      deps += [
@@ -57,7 +66,7 @@ index 82f397571f..6e391bae79 100644
        ":accelerator_table",
        ":browser_actions",
        ":browser_select_file_dialog_controller",
-@@ -3877,6 +3911,10 @@ source_set("layout_constants") {
+@@ -3877,6 +3913,10 @@ source_set("layout_constants") {
    sources = [
      "layout_constants.cc",
      "layout_constants.h",

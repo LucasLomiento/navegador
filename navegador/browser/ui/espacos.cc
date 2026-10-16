@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
@@ -38,6 +39,7 @@
 #include "navegador/browser/containers/containers.h"
 #include "navegador/browser/containers/espacos_dados.h"
 #include "navegador/browser/containers/fixos.h"
+#include "navegador/browser/ui/abas/abas.h"
 #include "navegador/browser/ui/atalhos.h"
 #include "navegador/browser/ui/configuracoes.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
@@ -1164,6 +1166,13 @@ void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
     containers::DefinirAbrirConfiguracoes(
         base::BindRepeating([](BrowserWindowInterface* janela) {
           configuracoes::Mostrar(janela);
+        }));
+    // Clique duplo no nome da aba (as abas não enxergam o TabUIHelper).
+    abas::DefinirRenomeador(base::BindRepeating(
+        [](tabs::TabInterface* aba, const std::u16string& nome) {
+          if (TabUIHelper* ajudante = TabUIHelper::From(aba)) {
+            ajudante->Renomear(nome);
+          }
         }));
   }
   // Espaçador: ocupa o que sobra embaixo das abas e empurra a faixa pro pé.

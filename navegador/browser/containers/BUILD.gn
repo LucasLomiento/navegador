@@ -8,6 +8,8 @@ source_set("containers") {
     "espacos_dados.h",
     "fixos.cc",
     "fixos.h",
+    "titulos.cc",
+    "titulos.h",
   ]
   deps = [
     "//base",

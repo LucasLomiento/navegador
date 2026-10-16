@@ -130,6 +130,13 @@ O menu da aba (`//chrome/browser/ui/tabs`) e o do logo (`toolbar:impl`) não enx
 - **Menu da aba**: "Fixar no espaço ›" (fora das pastas, numa pasta, "Nova pasta…"; "Desafixar" se já é fixada) e "Adicionar aos favoritos" (gancho no `CommandTogglePinned` do `TabStripModel`; aba fixada do Chromium, de antes, segue o caminho antigo).
 - **Menus da área**: site (renomear, usar o endereço atual, fechar a aba, mover, mover pra pasta, desafixar), pasta (renomear, abrir todos, fechar as abas, mover, excluir: as abas abertas viram comuns) e ladrilho (usar o endereço atual, fechar, mover, tirar dos favoritos).
 
+## Renomear no lugar (clique duplo)
+
+Clique duplo no nome de uma aba da lateral, de um site fixado ou de uma pasta abre um campo por cima do nome (`navegador::abas::EditarNoLugar`): Enter ou clicar fora grava, Esc cancela.
+
+- **Aba**: o nome fica na aba (`navegador/browser/containers/titulos.*`, dado do `WebContents`) e vale no lugar do título da página no `TabUIHelper::GetTitle` (lateral, cartão do hover, título da janela). Vazio volta o título da página. `TabUIHelper::Renomear` grava na sessão (`navegador_titulo` no extra_data, como o container) e avisa a aba; volta ao reabrir o navegador e no "reabrir aba fechada". As abas (`tabs/common`) não enxergam o `TabUIHelper`: chamam a ponte `abas::RenomearAba`, ligada em `espacos.cc`. Fixar uma aba renomeada leva o nome dado.
+- **Site fixado / pasta**: grava com `RenomearSite` / `RenomearPasta` (o site vazio volta a mostrar o endereço). Na pasta, o primeiro clique do duplo já abriu ou fechou: o segundo desfaz e o campo entra no cabeçalho novo depois da reconstrução (`edicao_pendente_`). O arrasto da área ignora o campo.
+
 ## Interface dos containers
 
 `navegador/browser/ui/containers/`:

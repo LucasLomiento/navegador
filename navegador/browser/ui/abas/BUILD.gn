@@ -5,10 +5,12 @@ source_set("abas") {
     "abas.h",
   ]
   deps = [
+    "//base",
     "//cc/paint",
     "//chrome/browser/ui:layout_constants",
     "//chrome/browser/ui/color:color_headers",
     "//ui/color",
+    "//ui/events",
     "//ui/gfx",
     "//ui/views",
   ]
