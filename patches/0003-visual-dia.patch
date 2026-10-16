@@ -873,10 +873,32 @@ index fcac4fe225..f4f7d71b2f 100644
  }
  
 diff --git i/chrome/browser/ui/views/frame/browser_frame_view_linux.cc w/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
-index 474b8356af..8aba37f23a 100644
+index 474b8356af..4ac1bdde83 100644
 --- i/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
 +++ w/chrome/browser/ui/views/frame/browser_frame_view_linux.cc
-@@ -191,12 +191,13 @@ BrowserLayoutParams BrowserFrameViewLinux::GetBrowserLayoutParams() const {
+@@ -125,17 +125,10 @@ int BrowserFrameViewLinux::NonClientHitTest(const gfx::Point& point) {
+ }
+ 
+ float BrowserFrameViewLinux::GetRestoredCornerRadiusDip() const {
+-#if BUILDFLAG(IS_LINUX)
+-  const bool tiled = browser_widget()->tiled();
+-#else
+-  const bool tiled = false;
+-#endif
+-  if (tiled || !UseCustomFrame() ||
+-      !views::Widget::IsWindowCompositingSupported()) {
+-    return 0;
+-  }
+-  return ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
+-      views::Emphasis::kHigh);
++  // navegador: a janela é sempre quadrada (recorte, fundo e sombra); quem
++  // arredonda, se quiser, é o sistema (o Hyprland, o KWin). No KDE o canto
++  // arredondado nosso não casava com a borda escura da lateral escondida.
++  return 0;
+ }
+ 
+ int BrowserFrameViewLinux::GetTranslucentTopAreaHeight() const {
+@@ -191,12 +184,13 @@ BrowserLayoutParams BrowserFrameViewLinux::GetBrowserLayoutParams() const {
  
  bool BrowserFrameViewLinux::CaptionButtonsOnLeadingEdge() const {
    auto* const provider = views::WindowButtonOrderProvider::GetInstance();
@@ -1119,7 +1141,7 @@ index 29dfbde914..985084bea3 100644
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-index 62f69255e0..2e2dcb188d 100644
+index 62f69255e0..2f88715b09 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 +++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 @@ -4,6 +4,15 @@
@@ -1188,7 +1210,7 @@ index 62f69255e0..2e2dcb188d 100644
  void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    TRACE_EVENT0("views.frame", "OpaqueBrowserFrameView::OnPaint");
    if (browser_widget()->IsFullscreen()) {
-@@ -670,6 +713,25 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -670,12 +713,45 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
      }
    }
  
@@ -1214,7 +1236,27 @@ index 62f69255e0..2e2dcb188d 100644
    if (IsFrameCondensed()) {
      PaintMaximizedFrameBorder(canvas);
    } else {
-@@ -689,6 +751,10 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+     PaintRestoredFrameBorder(canvas);
+   }
+ 
++  // navegador: sem o vidro, a moldura toda (em volta do cartão) numa cor só,
++  // como no vidro. Nenhuma View cobre a margem do cartão e a janela é
++  // translúcida (pela sombra que o Chromium desenha em volta): a margem
++  // ficava transparente (no KDE aparecia o que estava atrás da janela), e o
++  // alto ficava com o degradê da moldura do Chromium. Só a faixa da sombra
++  // fica de fora.
++  if (janela_normal) {
++    gfx::Rect visivel = GetLocalBounds();
++    if (janela_com_sombra) {
++      visivel.Inset(RestoredMirroredFrameBorderInsets());
++    }
++    canvas->FillRect(visivel, frame_color);
++  }
++
+   // The window icon and title are painted by their respective views.
+   /* TODO(pkasting):  If this window is active, we should also draw a drop
+    * shadow on the title.  This is tricky, because we don't want to hardcode a
+@@ -689,6 +765,10 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    if (!GetBrowserView()->toolbar()->custom_tab_bar()) {
      PaintClientEdge(canvas);
    }
