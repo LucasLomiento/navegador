@@ -1,4 +1,4 @@
-// Site do Navegador: a bússola que segue o ponteiro, a réplica interativa da
+// Site do Norte: a bússola que segue o ponteiro, a réplica interativa da
 // janela (espaços, abas, lateral que some, barra na cor do site) e os
 // detalhes dos cartões.
 
@@ -191,7 +191,7 @@ const PAGINAS = {
       <ol>${[78, 64, 88, 55, 71, 82, 60, 76, 69, 85, 58, 73].map((l) => `<li><i style="width:${l}%"></i><u></u></li>`).join('')}</ol>
     </div>`,
   codigo: () => `<div class="p-codigo">
-      <div class="gh-topo"><svg><use href="#i-github"/></svg><span>LucasLomiento / <b>navegador</b></span></div>
+      <div class="gh-topo"><svg><use href="#i-github"/></svg><span>LucasLomiento / <b>norte</b></span></div>
       <div class="pr-titulo">Lateral que some com Ctrl+S <em>#42</em></div>
       <span class="pr-estado"><svg class="i"><use href="#i-git-pull-request"/></svg>Aberto</span>
       <div class="arquivo">

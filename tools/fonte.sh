@@ -2,7 +2,7 @@
 # Prepara a árvore do Chromium com as nossas mudanças:
 #   1. liga navegador/ dentro dela como src/navegador
 #   2. aplica patches/*.patch em ordem (pula os que já estão aplicados)
-#   3. troca "Chromium" por "Navegador" nos textos (tools/marca.py)
+#   3. troca "Chromium" por "Norte" nos textos (tools/marca.py)
 #   4. põe os ícones do navegador (tools/icones.sh)
 #
 #   tools/fonte.sh            -> prepara

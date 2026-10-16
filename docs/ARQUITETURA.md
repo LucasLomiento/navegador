@@ -2,6 +2,10 @@
 
 O navegador é o Chromium com uma camada nossa por cima, no esquema do Brave: o código do Chromium fica intacto o máximo possível, e o que é nosso mora em `navegador/` (ligado dentro da árvore como `src/navegador`) e em `patches/` (o mínimo de mudanças em arquivos do Chromium).
 
+## Nome: Norte
+
+O produto se chama **Norte** desde a versão 21 (até a 20, "Navegador"). Por dentro, o código continua "navegador" (a pasta `navegador/`, os namespaces `navegador::`, as prefs `navegador.*`, a sessão): é só "browser" em português e não aparece pra quem usa. O que mudou: os textos (`tools/marca.py`), o `BRANDING`, o perfil em `~/.config/norte` (`MudarDoNomeAntigo` em `chrome_paths_linux.cc` muda a pasta antiga na primeira vez, a não ser que o antigo esteja aberto nela), o `norte.desktop` (app_id `norte`), o ícone `norte`, `/usr/lib/norte/norte` e `/usr/bin/norte`, as políticas em `/etc/norte/policies`, os manifestos de native messaging em `/etc/norte/native-messaging-hosts` (o do 1Password vem no pacote; os do Chromium, do usuário e do sistema, também valem) e os repositórios `LucasLomiento/norte` e `norte-releases`. Ficam do nome antigo, pra quem atualiza: o comando `navegador`, o `navegador.desktop` escondido (o "navegador padrão" escolhido antes), `/usr/lib/navegador/navegador` (o "Reiniciar" de uma versão antiga chama esse caminho), o `navegador.db` nas releases e, por enquanto, o nome do pacote (os atualizadores até a versão 20 instalam com `pacman -U --noconfirm`, que não troca um pacote por outro; a 21 já passa `--ask=4`).
+
 ## Base
 
 - **Versão**: `CHROMIUM_VERSION` (tag estável do Chromium). Atualizar = trocar a versão, `tools/fonte.sh`, reaplicar os patches, compilar.
@@ -33,7 +37,7 @@ As medidas da primeira versão vieram do Dia rodando, comparado lado a lado com 
 - Sem login na conta Google (`signin.allowed` falso) e sem convite no botão de perfil.
 - Sem barra de grupos salvos na nova aba; sem o botão "tudo" (grupos) no cabeçalho da lateral.
 - Texto da lateral em 13; logo vetorial do navegador (`kProductIcon`, apagado como o do Dia) no cabeçalho, e a seta de "abas recentes" (a busca de abas do Chromium) à direita.
-- Marca: `tools/marca.py` troca "Chromium" por "Navegador" nos textos de marca (o `chromium_strings.grd` com as partes `.grdp`, o dos componentes e mensagens escolhidas do `generated_resources`), recalculando os ids das traduções; `tools/icones.sh` gera os logos (inclusive os das páginas internas).
+- Marca: `tools/marca.py` troca "Chromium" por "Norte" (o nome do produto; até a versão 20, "Navegador") nos textos de marca (o `chromium_strings.grd` com as partes `.grdp`, o dos componentes e mensagens escolhidas do `generated_resources`), recalculando os ids das traduções; `tools/icones.sh` gera os logos (inclusive os das páginas internas).
 
 ## Bloqueador de anúncios e rastreadores
 
@@ -98,7 +102,7 @@ Na janela, cada espaço é um **grupo de abas focado** (`features::kTabGroupsFoc
 
 ## Configurações e atalhos
 
-`navegador/browser/ui/configuracoes.*`: janela "Configurações do Navegador" (Ctrl+, ou menu do logo, ou menu do nome do espaço: "Atalhos do teclado…" e "Configurações do Navegador…"), diálogo do Chromium (`constrained_window`, 820×600) no desenho da janela de configurações do Dia (Preferences/*.xaml): menu de 200 à esquerda (ícone + nome, o escolhido com fundo e a pílula de destaque), e páginas com título de 20 e seções (título + cartão com contorno; linhas com título de 14, descrição de 12 e o controle à direita). Páginas:
+`navegador/browser/ui/configuracoes.*`: janela "Configurações do Norte" (Ctrl+, ou menu do logo, ou menu do nome do espaço: "Atalhos do teclado…" e "Configurações do Norte…"), diálogo do Chromium (`constrained_window`, 820×600) no desenho da janela de configurações do Dia (Preferences/*.xaml): menu de 200 à esquerda (ícone + nome, o escolhido com fundo e a pílula de destaque), e páginas com título de 20 e seções (título + cartão com contorno; linhas com título de 14, descrição de 12 e o controle à direita). Páginas:
   - **Geral**: começar com uma nova aba ou as abas de onde parei (`SessionStartupPref`), botões da janela (`navegador.janela.botoes`, desligados), atalhos pras configurações e extensões do Chromium.
   - **Aparência**: modo claro/escuro/sistema (`ThemeService::SetBrowserColorScheme`), espessura da moldura (`navegador.janela.moldura`, 0–12, padrão 3) e a barra na cor do site (`navegador.barra.cor_do_site`, lido no `cor_da_pagina::CorDaBarra`).
   - **Lateral**: mostrar ao encostar na borda (`navegador.lateral.mostrar_na_borda`), esconder depois de (`navegador.lateral.esconder_depois_ms`, padrão 150 como o Zen), opacidade e desfoque da lateral por cima da página (`navegador.lateral.flutuante.opacidade` 90 / `.desfoque` 20) e o quadro de favoritos vazio.

@@ -71,7 +71,7 @@ namespace {
 constexpr net::NetworkTrafficAnnotationTag kAnotacao =
     net::DefineNetworkTrafficAnnotation("navegador_atualizador", R"(
         semantics {
-          sender: "Atualizador do Navegador"
+          sender: "Atualizador do Norte"
           description:
             "Procura a última versão do navegador nas Releases do GitHub."
           trigger: "Ao abrir o navegador, ou em 'Procurar agora'."
@@ -80,8 +80,8 @@ constexpr net::NetworkTrafficAnnotationTag kAnotacao =
         }
         policy {
           cookies_allowed: NO
-          setting: "Configurações do Navegador → Geral → Atualizações."
-          policy_exception_justification: "Navegador próprio."
+          setting: "Configurações do Norte → Geral → Atualizações."
+          policy_exception_justification: "Navegador próprio (Norte)."
         })");
 
 enum class Situacao { kNada, kDisponivel, kInstalando, kInstalada, kErro };
@@ -383,6 +383,10 @@ void InstalarArquivo(base::FilePath pacote) {
             comando.AppendArg("/usr/bin/pacman");
             comando.AppendArg("-U");
             comando.AppendArg("--noconfirm");
+            // Responde "sim" a "X e Y estão em conflito. Remover Y?" (o
+            // --noconfirm responde "não"): o pacote vai trocar de nome
+            // (navegador -> norte) e o novo substitui o antigo.
+            comando.AppendArg("--ask=4");
             comando.AppendArgPath(pacote);
             base::LaunchOptions opcoes;
             opcoes.allow_new_privs = true;

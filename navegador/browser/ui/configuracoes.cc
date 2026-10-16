@@ -1745,7 +1745,7 @@ void Mostrar(BrowserWindowInterface* browser, Aba aba) {
   }
 
   auto dialogo = std::make_unique<views::DialogDelegate>();
-  dialogo->SetTitle(u"Configurações do Navegador");
+  dialogo->SetTitle(u"Configurações do Norte");
   dialogo->SetShowTitle(false);
   dialogo->SetModalType(ui::mojom::ModalType::kWindow);
   // O "X" do quadro do diálogo, sem título, ocupava uma faixa vazia inteira

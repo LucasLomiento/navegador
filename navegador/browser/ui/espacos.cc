@@ -299,7 +299,7 @@ class TituloDoEspaco : public views::Button,
     menu_->AddItem(kEditar, u"Editar espaços…");
     menu_->AddSeparator(ui::NORMAL_SEPARATOR);
     menu_->AddItem(kAtalhos, u"Atalhos do teclado…");
-    menu_->AddItem(kConfiguracoes, u"Configurações do Navegador…");
+    menu_->AddItem(kConfiguracoes, u"Configurações do Norte…");
     runner_ = std::make_unique<views::MenuRunner>(
         menu_.get(), views::MenuRunner::HAS_MNEMONICS,
         base::BindRepeating(&TituloDoEspaco::MenuFechou,

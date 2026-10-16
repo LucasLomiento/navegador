@@ -1,16 +1,20 @@
 #!/bin/bash
 # Publica o pacote mais novo de pacote/ nas Releases públicas
-# (LucasLomiento/navegador-releases): só os pacotes e o repositório do
-# pacman; o código fica neste repositório. Depois refaz o site (site/).
+# (LucasLomiento/norte-releases, que antes do Norte se chamava
+# navegador-releases: o GitHub redireciona o nome antigo): só os pacotes e o
+# repositório do pacman; o código fica neste repositório. Depois refaz o site
+# (site/).
 #
 #   tools/publicar.sh "notas da versão (markdown)"
 #
-# Cada release leva o pacote e o banco do pacman (navegador.db), então o
-# Server ".../releases/latest/download" do pacman.conf sempre aponta pra
-# versão mais nova. O atualizador do navegador lê a mesma release pela API.
+# Cada release leva o pacote e o banco do pacman, com dois nomes: norte.db
+# (seção [norte] do pacman.conf, a de agora) e navegador.db (a [navegador] de
+# quem instalou antes do Norte). O Server ".../releases/latest/download"
+# sempre aponta pra versão mais nova. O atualizador do Norte lê a mesma
+# release pela API.
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
-REPO=LucasLomiento/navegador-releases
+REPO=LucasLomiento/norte-releases
 NOTAS="${1:-}"
 
 PKG=$(ls -t "$RAIZ"/pacote/navegador-*-x86_64.pkg.tar.zst | head -1)
@@ -28,7 +32,7 @@ TRAB=$(mktemp -d)
 trap 'rm -rf "$TRAB"' EXIT
 if ! gh repo view "$REPO" >/dev/null 2>&1; then
   gh repo create "$REPO" --public \
-    --description "Navegador (Chromium com espaços, containers e lateral): versões pro Arch Linux e Windows"
+    --description "Norte (Chromium com espaços, containers e lateral): versões pro Arch Linux"
 fi
 gh repo clone "$REPO" "$TRAB/repo" -- -q 2>/dev/null || {
   mkdir -p "$TRAB/repo"; git -C "$TRAB/repo" init -q -b main
@@ -41,27 +45,33 @@ if [[ -n "$(git -C "$TRAB/repo" status --porcelain)" ]]; then
   git -C "$TRAB/repo" push -q -u origin HEAD:main
 fi
 
-# Repositório do pacman só com esta versão.
+# Repositório do pacman só com esta versão, com os dois nomes.
 mkdir "$TRAB/pub"
 cp "$PKG" "$TRAB/pub/"
-(cd "$TRAB/pub" && repo-add -q navegador.db.tar.gz "$(basename "$PKG")" >/dev/null &&
-  rm -f navegador.db navegador.files &&
-  cp navegador.db.tar.gz navegador.db && cp navegador.files.tar.gz navegador.files)
+(cd "$TRAB/pub" && repo-add -q norte.db.tar.gz "$(basename "$PKG")" >/dev/null &&
+  rm -f norte.db norte.files &&
+  cp norte.db.tar.gz norte.db && cp norte.files.tar.gz norte.files &&
+  for ext in db files db.tar.gz files.tar.gz; do
+    cp "norte.$ext" "navegador.$ext"
+  done)
 
 [[ -z "$NOTAS" ]] && NOTAS="Navegador $VERSAO."
 NOTAS="$NOTAS
 
-**Instalar ou atualizar:** veja o [README](https://github.com/$REPO#readme) (Arch e derivados: repositório do pacman ou o .pkg.tar.zst; Windows: o .exe)."
+**Instalar ou atualizar:** veja o [README](https://github.com/$REPO#readme) (Arch e derivados: repositório do pacman ou o .pkg.tar.zst)."
 # O instalador do Windows da mesma versão (tools/windows.sh pacote), se houver.
-ARQUIVOS=("$TRAB/pub/$(basename "$PKG")" "$TRAB/pub/navegador.db"
-          "$TRAB/pub/navegador.files" "$TRAB/pub/navegador.db.tar.gz"
-          "$TRAB/pub/navegador.files.tar.gz")
+ARQUIVOS=("$TRAB/pub/$(basename "$PKG")")
+for nome in norte navegador; do
+  for ext in db files db.tar.gz files.tar.gz; do
+    ARQUIVOS+=("$TRAB/pub/$nome.$ext")
+  done
+done
 WINDOWS="$RAIZ/pacote/navegador-$VERSAO-windows-x64.exe"
 [[ -f "$WINDOWS" ]] && ARQUIVOS+=("$WINDOWS")
-gh release create "$TAG" --repo "$REPO" --title "Navegador $VERSAO" \
+gh release create "$TAG" --repo "$REPO" --title "Norte $VERSAO" \
   --notes "$NOTAS" --latest "${ARQUIVOS[@]}"
 echo "Publicado: https://github.com/$REPO/releases/tag/$TAG"
 # O site (GitHub Pages) lê as releases: refaz com a versão nova.
-gh workflow run site.yml --repo LucasLomiento/navegador --ref main >/dev/null 2>&1 &&
-  echo "Site: https://lucaslomiento.github.io/navegador/ (atualizando)" ||
+gh workflow run site.yml --repo LucasLomiento/norte --ref main >/dev/null 2>&1 &&
+  echo "Site: https://lucaslomiento.github.io/norte/ (atualizando)" ||
   echo "Aviso: não deu pra disparar o site (gh workflow run site.yml)." >&2

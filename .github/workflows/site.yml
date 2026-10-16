@@ -1,5 +1,5 @@
-# Site do Navegador no GitHub Pages (https://lucaslomiento.github.io/navegador/).
-# Gera a página com as releases de LucasLomiento/navegador-releases
+# Site do Norte no GitHub Pages (https://lucaslomiento.github.io/norte/).
+# Gera a página com as releases de LucasLomiento/norte-releases
 # (site/build.mjs) e publica. Roda quando o site muda na main e depois de
 # cada versão publicada (tools/publicar.sh dispara este aqui).
 

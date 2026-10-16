@@ -258,7 +258,7 @@ const std::vector<Atalho>& Atalhos() {
           {"espaco_3", u"Ir pro espaço 3", "Ctrl+Alt+3"},
           {"espaco_4", u"Ir pro espaço 4", "Ctrl+Alt+4"},
           {"espaco_5", u"Ir pro espaço 5", "Ctrl+Alt+5"},
-          {"configuracoes", u"Configurações do Navegador", "Ctrl+Comma"},
+          {"configuracoes", u"Configurações do Norte", "Ctrl+Comma"},
           {"containers", u"Gerenciar containers", ""},
       });
   return *atalhos;

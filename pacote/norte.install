@@ -1,0 +1,36 @@
+# Norte e o 1Password. O app do 1Password só conversa com a extensão em
+# navegadores da lista dele; os outros entram por
+# /etc/1password/custom_allowed_browsers (um nome de executável por linha:
+# "norte", de /usr/lib/norte/norte). O arquivo tem que ser do root e sem
+# escrita pra grupo ou outros, senão o 1Password ignora o arquivo inteiro.
+# O manifesto que liga a extensão ao app vem no pacote, em
+# /etc/norte/native-messaging-hosts.
+
+_lista=/etc/1password/custom_allowed_browsers
+
+_norte_no_1password() {
+  install -dm755 /etc/1password
+  [ -f "$_lista" ] || install -m644 /dev/null "$_lista"
+  if ! grep -qxF norte "$_lista"; then
+    # Sem quebra de linha no fim, o "norte" grudaria no último nome.
+    [ -s "$_lista" ] && [ -n "$(tail -c1 "$_lista")" ] && echo >> "$_lista"
+    echo norte >> "$_lista"
+  fi
+  chown root:root "$_lista"
+  chmod go-w "$_lista"
+}
+
+post_install() {
+  _norte_no_1password
+}
+
+post_upgrade() {
+  _norte_no_1password
+}
+
+post_remove() {
+  # Se outro pacote ainda instala o Norte (a troca de nome do pacote), o
+  # dele põe a linha de volta.
+  [ -f "$_lista" ] && sed -i '/^norte$/d' "$_lista"
+  return 0
+}

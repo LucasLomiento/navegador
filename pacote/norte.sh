@@ -1,17 +1,21 @@
 #!/bin/bash
-# Launcher do navegador. Flags extras do usuário (uma por linha, # comenta)
-# em ~/.config/navegador-flags.conf, como o chromium do Arch faz.
+# Lançador do Norte. Flags extras do usuário (uma por linha, # comenta) em
+# ~/.config/norte-flags.conf, como o chromium do Arch faz (o
+# navegador-flags.conf, do nome antigo, ainda vale).
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 FLAGS=()
-if [[ -f "$XDG_CONFIG_HOME/navegador-flags.conf" ]]; then
+for arquivo in "$XDG_CONFIG_HOME/norte-flags.conf" \
+               "$XDG_CONFIG_HOME/navegador-flags.conf"; do
+  [[ -f "$arquivo" ]] || continue
   while read -r linha; do
     [[ -z "$linha" || "$linha" = \#* ]] && continue
     FLAGS+=($linha)
-  done < "$XDG_CONFIG_HOME/navegador-flags.conf"
-fi
-# Interface em português (os textos próprios do navegador são em português).
-# Pra trocar: NAVEGADOR_IDIOMA=en-US no ambiente.
-IDIOMA="${NAVEGADOR_IDIOMA:-pt-BR}"
+  done < "$arquivo"
+  break
+done
+# Interface em português (os textos próprios do Norte são em português).
+# Pra trocar: NORTE_IDIOMA=en-US no ambiente.
+IDIOMA="${NORTE_IDIOMA:-${NAVEGADOR_IDIOMA:-pt-BR}}"
 export LANGUAGE="${IDIOMA/-/_}"
 
 # Integração com o sistema (as mesmas do chromium-flags.conf do Omarchy):
@@ -35,5 +39,5 @@ if ((${#EXTENSOES[@]})); then
   SISTEMA+=("--load-extension=$(IFS=,; echo "${EXTENSOES[*]}")")
 fi
 
-exec /usr/lib/navegador/navegador "${SISTEMA[@]}" --lang="$IDIOMA" \
+exec /usr/lib/norte/norte "${SISTEMA[@]}" --lang="$IDIOMA" \
   "${FLAGS[@]}" "$@"

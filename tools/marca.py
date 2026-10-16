@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Troca "Chromium" por "Navegador" nos textos da interface, sem perder as
+"""Troca "Chromium" por "Norte" (o nome do produto) nos textos da interface, sem perder as
 traduções.
 
 O grit identifica cada tradução (.xtb) por um hash do texto em inglês da
@@ -7,7 +7,7 @@ mensagem (.grd). Trocar o texto muda o hash e a tradução some (cai pro
 inglês). Então, pra cada mensagem dos arquivos de INTEIROS
 (chrome/app/chromium_strings.grd e o dos componentes):
 
-  1. calcula o id antigo (texto original) e o novo (texto com Navegador);
+  1. calcula o id antigo (texto original) e o novo (texto com Norte);
   2. em cada chromium_strings_*.xtb, renomeia a tradução do id antigo pro
      novo e troca "Chromium" no texto traduzido.
 
@@ -25,7 +25,7 @@ import re
 import sys
 
 ANTIGO = "Chromium"
-NOVO = "Navegador"
+NOVO = "Norte"
 # Nomes que não são o produto: ficam como estão.
 PRESERVAR = ("Chromium OS", "ChromiumOS", "Chromium Authors", "chromium.org",
              "Chromium Embedded",

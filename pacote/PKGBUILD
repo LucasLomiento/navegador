@@ -1,14 +1,20 @@
-# Pacote do navegador a partir da compilação já feita (tools/compilar.sh
+# Pacote do Norte a partir da compilação já feita (tools/compilar.sh
 # com tools/args-release.gn em out/release). Não compila nada aqui: o
 # Chromium leva horas e é compilado pelos scripts do repo.
 #
 #   cd pacote && makepkg -sif
+# O pacote ainda se chama "navegador" (o nome antigo do Norte): os
+# atualizadores das versões de antes da troca instalam com `pacman -U
+# --noconfirm`, que recusa trocar um pacote por outro. Depois que todo mundo
+# estiver numa versão com o atualizador novo (--ask=4), vira pkgname=norte
+# com replaces/conflicts/provides=navegador.
 pkgname=navegador
 pkgver=155.0.8059.79
-pkgrel=20
-pkgdesc="Navegador próprio em cima do Chromium, com o visual do Dia"
+pkgrel=21
+pkgdesc="Norte: navegador em cima do Chromium, com abas na lateral, espaços e containers"
+provides=(norte)
 arch=(x86_64)
-url="https://github.com/LucasLomiento/navegador"
+url="https://github.com/LucasLomiento/norte"
 license=(BSD-3-Clause 'GPL-3.0-or-later OR CC-BY-SA-3.0' OFL-1.1)  # listas do bloqueador; fontes
 depends=(fontconfig alsa-lib at-spi2-core cups dbus desktop-file-utils gtk3 hicolor-icon-theme
          libcups libdrm libpulse libxkbcommon mesa nss pango systemd ttf-liberation
@@ -17,6 +23,7 @@ optdepends=('pipewire: compartilhar tela no Wayland'
             'kwallet: guardar senhas no KWallet'
             'gnome-keyring: guardar senhas no keyring do GNOME')
 options=(!strip !debug)
+install=norte.install
 
 # out/release (binário único) se estiver compilado; senão out/dev, que tem
 # a mesma otimização (is_debug = false, sem DCHECK), só dividido em
@@ -32,11 +39,11 @@ fi
 _repo="$(cd "$startdir/.." && pwd)"
 
 package() {
-  local destino="$pkgdir/usr/lib/navegador"
-  install -Dm755 "$_out/chrome" "$destino/navegador"
+  local destino="$pkgdir/usr/lib/norte"
+  install -Dm755 "$_out/chrome" "$destino/norte"
   # Sem a tabela de símbolos (527 -> 352 MB no release); o resto do pacote
   # fica como o Chromium entrega (options=!strip).
-  strip --strip-all "$destino/navegador"
+  strip --strip-all "$destino/norte"
   # Versão do pacote, pro atualizador comparar com a das Releases.
   echo "$pkgver-$pkgrel" > "$destino/VERSAO"
   install -Dm755 "$_out/chrome_crashpad_handler" "$destino/chrome_crashpad_handler"
@@ -78,23 +85,37 @@ package() {
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE-listas-do-bloqueador"
 
   # Fontes do desenho (Geist na interface, Bricolage Grotesque nos títulos).
-  install -Dm644 -t "$pkgdir/usr/share/fonts/navegador" \
+  install -Dm644 -t "$pkgdir/usr/share/fonts/norte" \
     "$_repo"/navegador/app/fontes/*.ttf
   install -Dm644 "$_repo/navegador/app/fontes/OFL-Geist.txt" \
     "$pkgdir/usr/share/licenses/$pkgname/OFL-Geist.txt"
   install -Dm644 "$_repo/navegador/app/fontes/OFL-BricolageGrotesque.txt" \
     "$pkgdir/usr/share/licenses/$pkgname/OFL-BricolageGrotesque.txt"
 
-  install -Dm755 "$_repo/pacote/navegador.sh" "$pkgdir/usr/bin/navegador"
+  install -Dm755 "$_repo/pacote/norte.sh" "$pkgdir/usr/bin/norte"
+  install -Dm644 "$_repo/pacote/norte.desktop" \
+    "$pkgdir/usr/share/applications/norte.desktop"
+  # Do nome antigo: o comando, o "navegador padrão" de quem já tinha
+  # escolhido (escondido do menu) e o caminho do binário, que o "Reiniciar"
+  # depois de atualizar de uma versão antiga ainda chama.
+  ln -s norte "$pkgdir/usr/bin/navegador"
   install -Dm644 "$_repo/pacote/navegador.desktop" \
     "$pkgdir/usr/share/applications/navegador.desktop"
+  install -dm755 "$pkgdir/usr/lib/navegador"
+  ln -s ../norte/norte "$pkgdir/usr/lib/navegador/navegador"
+
+  # 1Password: o manifesto que liga a extensão ao app (o mesmo que o
+  # 1Password põe pro Chromium); o norte.install põe o Norte na lista de
+  # navegadores em que o app confia.
+  install -Dm644 "$_repo/pacote/1password/com.1password.1password.json" \
+    "$pkgdir/etc/norte/native-messaging-hosts/com.1password.1password.json"
   for tam in 16 24 32 48 64 128 256 512; do
     install -dm755 "$pkgdir/usr/share/icons/hicolor/${tam}x${tam}/apps"
     rsvg-convert -w $tam -h $tam "$_repo/navegador/app/icone.svg" \
-      -o "$pkgdir/usr/share/icons/hicolor/${tam}x${tam}/apps/navegador.png"
+      -o "$pkgdir/usr/share/icons/hicolor/${tam}x${tam}/apps/norte.png"
   done
   install -Dm644 "$_repo/navegador/app/icone.svg" \
-    "$pkgdir/usr/share/icons/hicolor/scalable/apps/navegador.svg"
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/norte.svg"
   install -Dm644 "$HOME/Work/navegador-chromium/src/LICENSE" \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

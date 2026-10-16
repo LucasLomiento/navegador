@@ -1,6 +1,6 @@
 // Atualizador: ao abrir o navegador (o primeiro processo depois de fechar
 // todas as janelas), procura a última versão nas Releases do GitHub
-// (LucasLomiento/navegador-releases) e, se for mais nova que a instalada,
+// (LucasLomiento/norte-releases) e, se for mais nova que a instalada,
 // mostra um aviso no pé da lateral. "Atualizar" instala o pacote novo com o
 // pacman (pela janela de senha do sistema, pkexec) e oferece reiniciar.
 //
@@ -28,7 +28,9 @@ class View;
 namespace navegador::atualizador {
 
 // Releases públicas (só os pacotes; o código fica no repositório privado).
-inline constexpr char kRepositorio[] = "LucasLomiento/navegador-releases";
+// (Era navegador-releases: o GitHub redireciona o nome antigo, então as
+// versões anteriores ao Norte continuam achando as novas.)
+inline constexpr char kRepositorio[] = "LucasLomiento/norte-releases";
 
 // Aviso no pé da lateral (escondido enquanto não há versão nova). A primeira
 // janela do processo também dispara a procura, se estiver ligada.

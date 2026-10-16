@@ -11,7 +11,7 @@ makepkg -f                                  # monta o navegador-*.pkg.tar.zst
 sudo pacman -U navegador-*.pkg.tar.zst      # instala (pede senha)
 ```
 
-Depois, `navegador` no terminal ou "Navegador" no menu de apps. Na primeira
+Depois, `norte` no terminal ou "Norte" no menu de apps. Na primeira
 vez aparece a tela de boas-vindas, onde dá pra deixar ele como navegador
 padrão.
 
@@ -45,8 +45,8 @@ padrão.
 
 ## Espaços, fixados e configurações
 
-- **Configurações do Navegador**: `Ctrl+,` ou menu do logo → "Configurações
-  do Navegador…". Abas: Espaços (nome, emoji, cor, container de cada espaço,
+- **Configurações do Norte**: `Ctrl+,` ou menu do logo → "Configurações
+  do Norte…". Abas: Espaços (nome, emoji, cor, container de cada espaço,
   ordem, excluir, novo), Containers e Atalhos (clicar no atalho e apertar as
   teclas novas; Esc cancela, Backspace tira). As configurações do Chromium
   continuam no menu do logo → Configurações.
@@ -69,7 +69,7 @@ padrão.
 - `Ctrl+Alt+→` / `Ctrl+Alt+←`: próximo / anterior espaço.
 - `Ctrl+Alt+1` … `Ctrl+Alt+5`: ir pro espaço 1 a 5.
 - `Ctrl+Alt+N`: novo espaço.
-- `Ctrl+,`: Configurações do Navegador.
+- `Ctrl+,`: Configurações do Norte.
 - Clique direito na aba: "Abrir em container"; num link: "Abrir link em
   container"; no "+ Nova aba": "Nova aba em container".
 - A cor da lateral: menu do logo → Mais ferramentas → Personalizar (ou

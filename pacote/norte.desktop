@@ -1,0 +1,22 @@
+[Desktop Entry]
+Version=1.0
+Name=Norte
+GenericName=Navegador de internet
+Comment=Navegar na internet
+Exec=norte %U
+StartupNotify=true
+StartupWMClass=norte
+Terminal=false
+Icon=norte
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;application/pdf;
+Actions=nova-janela;nova-janela-anonima;
+
+[Desktop Action nova-janela]
+Name=Nova janela
+Exec=norte
+
+[Desktop Action nova-janela-anonima]
+Name=Nova janela anônima
+Exec=norte --incognito

@@ -1,10 +1,10 @@
-# Navegador
+# Norte
 
-**Site:** [lucaslomiento.github.io/navegador](https://lucaslomiento.github.io/navegador/)
+**Site:** [lucaslomiento.github.io/norte](https://lucaslomiento.github.io/norte/)
 
-Um navegador em cima do Chromium, com as abas numa lateral, **espaços**, **containers** e um **bloqueador de anúncios** embutido. Escuro, minimalista e sem recursos de IA.
+O Norte é um navegador em cima do Chromium, com as abas numa lateral, **espaços**, **containers** e um **bloqueador de anúncios** embutido. Escuro, minimalista e sem recursos de IA. (Até a versão 20 ele se chamava Navegador.)
 
-![Navegador](docs/imagens/navegador.png)
+![Norte](docs/imagens/navegador.png)
 
 ## Recursos
 
@@ -21,14 +21,14 @@ Um navegador em cima do Chromium, com as abas numa lateral, **espaços**, **cont
 
 ## Instalar
 
-As versões ficam em [LucasLomiento/navegador-releases](https://github.com/LucasLomiento/navegador-releases).
+As versões ficam em [LucasLomiento/norte-releases](https://github.com/LucasLomiento/norte-releases).
 
 - **Arch Linux e derivados** (CachyOS, EndeavourOS, Manjaro): pelo repositório do pacman, que atualiza junto com o sistema. O passo a passo está no README de lá.
 - **Windows:** ainda não tem versão pronta. O código já está preparado (ver "Compilar"), falta testar.
 
 ## Compilar
 
-O repositório guarda só o que é do Navegador: as mudanças nos arquivos do Chromium (`patches/`), o código novo (`navegador/`) e os scripts (`tools/`). O Chromium é baixado à parte, na versão de `CHROMIUM_VERSION`.
+O repositório guarda só o que é do Norte: as mudanças nos arquivos do Chromium (`patches/`), o código novo (`navegador/`) e os scripts (`tools/`). O Chromium é baixado à parte, na versão de `CHROMIUM_VERSION`.
 
 1. Instale o [depot_tools](https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html) e baixe o Chromium da tag de `CHROMIUM_VERSION` com o `gclient`. Use uma solução `src` com `"managed": False`.
 2. `tools/fonte.sh` liga o `navegador/` na árvore, aplica os patches, troca o nome do produto nos textos e põe os ícones.
@@ -44,8 +44,8 @@ Como cada parte funciona: [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ## Licenças
 
-- **Código do Navegador:** BSD-3-Clause ([LICENSE](LICENSE)), a mesma do Chromium.
-- **Chromium:** BSD e as licenças dos componentes dele (`chrome://credits`). O Navegador não é um produto do Google.
+- **Código do Norte:** BSD-3-Clause ([LICENSE](LICENSE)), a mesma do Chromium.
+- **Chromium:** BSD e as licenças dos componentes dele (`chrome://credits`). O Norte não é um produto do Google.
 - **Fontes Geist e Bricolage Grotesque:** SIL Open Font License 1.1 (`navegador/app/fontes`).
 - **Ícones do [Lucide](https://lucide.dev):** ISC (`navegador/icones`).
 - **Listas do bloqueador**, baixadas na hora de empacotar: EasyList sob GPL v3 ou CC BY-SA 3.0, e uBlock Origin sob GPL v3.

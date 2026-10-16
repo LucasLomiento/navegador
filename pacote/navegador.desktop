@@ -1,22 +1,15 @@
 [Desktop Entry]
+# O nome antigo do Norte. Escondido do menu de apps: só mantém o "navegador
+# padrão" de quem já tinha o navegador.desktop escolhido (links continuam
+# abrindo no Norte).
 Version=1.0
-Name=Navegador
+Name=Norte
 GenericName=Navegador de internet
-Comment=Navegar na internet
-Exec=navegador %U
-StartupNotify=true
-StartupWMClass=navegador
+Exec=norte %U
+StartupWMClass=norte
 Terminal=false
-Icon=navegador
+Icon=norte
 Type=Application
 Categories=Network;WebBrowser;
 MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;application/pdf;
-Actions=nova-janela;nova-janela-anonima;
-
-[Desktop Action nova-janela]
-Name=Nova janela
-Exec=navegador
-
-[Desktop Action nova-janela-anonima]
-Name=Nova janela anônima
-Exec=navegador --incognito
+NoDisplay=true

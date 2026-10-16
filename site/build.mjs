@@ -1,5 +1,5 @@
-// Gera o site do Navegador (GitHub Pages): junta o modelo de site/src com as
-// releases de LucasLomiento/navegador-releases (novidades, versão e links de
+// Gera o site do Norte (GitHub Pages): junta o modelo de site/src com as
+// releases de LucasLomiento/norte-releases (novidades, versão e links de
 // download) e escreve em site/dist.
 //
 //   node site/build.mjs            (GITHUB_TOKEN opcional; sem ele, 60 pedidos/h)
@@ -12,7 +12,7 @@ import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const REPO = 'LucasLomiento/navegador-releases'
+const REPO = 'LucasLomiento/norte-releases'
 const RAIZ = dirname(fileURLToPath(import.meta.url))
 const SAIDA = join(RAIZ, 'dist')
 /** Quantas versões aparecem abertas; o resto fica em "versões anteriores". */
@@ -81,7 +81,7 @@ const hora = (iso) =>
 const megas = (bytes) => `${(bytes / 1024 / 1024).toFixed(0)} MB`
 
 async function releases() {
-  const cabecalhos = { Accept: 'application/vnd.github+json', 'User-Agent': 'navegador-site' }
+  const cabecalhos = { Accept: 'application/vnd.github+json', 'User-Agent': 'norte-site' }
   if (process.env.GITHUB_TOKEN) cabecalhos.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
   const resposta = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=100`, { headers: cabecalhos })
   if (!resposta.ok) throw new Error(`GitHub respondeu ${resposta.status} ao listar as releases`)
