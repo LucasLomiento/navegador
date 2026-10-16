@@ -1162,14 +1162,15 @@ index 29dfbde914..c7d6d3eff1 100644
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-index 62f69255e0..2f88715b09 100644
+index 62f69255e0..15241b3316 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 +++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-@@ -4,6 +4,15 @@
+@@ -4,6 +4,16 @@
  
  #include "chrome/browser/ui/views/frame/opaque_browser_frame_view.h"
  
 +#include "navegador/browser/containers/espacos_dados.h"
++#include "navegador/browser/ui/barra.h"
 +#include "navegador/browser/ui/cores.h"
 +#include "navegador/browser/ui/visual.h"
 +
@@ -1181,7 +1182,7 @@ index 62f69255e0..2f88715b09 100644
  #include <algorithm>
  #include <utility>
  
-@@ -531,7 +540,12 @@ gfx::Size OpaqueBrowserFrameView::GetBrowserViewMinimumSize() const {
+@@ -531,7 +541,15 @@ gfx::Size OpaqueBrowserFrameView::GetBrowserViewMinimumSize() const {
  }
  
  bool OpaqueBrowserFrameView::ShouldShowCaptionButtons() const {
@@ -1189,13 +1190,16 @@ index 62f69255e0..2f88715b09 100644
 +  // navegador: botões da janela só se a pessoa quiser (Configurações do
 +  // Navegador → Geral); num gerenciador por atalho, a janela fecha pelo
 +  // atalho do sistema.
++  // Com a barra escondida (Ctrl+Shift+S), os botões somem junto e voltam
++  // com ela (ponteiro no alto da página).
 +  return GetShowWindowTitleBar() &&
 +         navegador::espacos::MostrarBotoesDaJanela(
-+             GetBrowserView()->browser()->GetProfile());
++             GetBrowserView()->browser()->GetProfile()) &&
++         !navegador::barra::Escondida(GetBrowserView());
  }
  
  bool OpaqueBrowserFrameView::IsRegularOrGuestSession() const {
-@@ -629,6 +643,35 @@ int OpaqueBrowserFrameView::WebAppButtonHeight() const {
+@@ -629,6 +647,35 @@ int OpaqueBrowserFrameView::WebAppButtonHeight() const {
  // OpaqueBrowserFrameView, protected:
  
  // views::View:
@@ -1231,7 +1235,7 @@ index 62f69255e0..2f88715b09 100644
  void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    TRACE_EVENT0("views.frame", "OpaqueBrowserFrameView::OnPaint");
    if (browser_widget()->IsFullscreen()) {
-@@ -670,12 +713,45 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -670,12 +717,45 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
      }
    }
  
@@ -1277,7 +1281,7 @@ index 62f69255e0..2f88715b09 100644
    // The window icon and title are painted by their respective views.
    /* TODO(pkasting):  If this window is active, we should also draw a drop
     * shadow on the title.  This is tricky, because we don't want to hardcode a
-@@ -689,6 +765,10 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -689,6 +769,10 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    if (!GetBrowserView()->toolbar()->custom_tab_bar()) {
      PaintClientEdge(canvas);
    }

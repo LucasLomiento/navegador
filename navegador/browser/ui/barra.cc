@@ -25,6 +25,7 @@
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
+#include "ui/views/window/non_client_view.h"
 
 namespace navegador::barra {
 
@@ -35,6 +36,11 @@ namespace {
 void Refazer(BrowserView* view) {
   view->InvalidateLayout();
   if (views::Widget* widget = view->GetWidget()) {
+    // A moldura também: os botões da janela somem e voltam com a barra.
+    if (widget->non_client_view() && widget->non_client_view()->frame_view()) {
+      widget->non_client_view()->frame_view()->InvalidateLayout();
+      widget->non_client_view()->frame_view()->SchedulePaint();
+    }
     widget->GetRootView()->SchedulePaint();
   }
 }
