@@ -1,3 +1,35 @@
+diff --git i/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc w/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
+index 9190f16df0..a1e73f1094 100644
+--- i/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
++++ w/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
+@@ -226,6 +226,14 @@ void TabGroupSyncDelegateDesktop::ConnectLocalTabGroup(
+     return;
+   }
+ 
++  // navegador: o grupo local pode não existir mais quando o serviço termina
++  // de carregar: os espaços juntam dois grupos do mesmo espaço numa janela
++  // (espacos.cc, Garantir) logo que a sessão é restaurada. Sem grupo, não há
++  // o que ligar (antes: CHECK no GetTabStripModelForLocalGroup).
++  if (!SavedTabGroupUtils::GetBrowserWithTabGroupId(group_id)) {
++    return;
++  }
++
+   // Before tracking, the local group needs to close tabs if there are more tabs
+   // than in the saved group. This is needed because ConnectToLocalTabGroup()
+   // expects that there exists a corresponding saved tab for each local tab.
+@@ -266,7 +274,11 @@ void TabGroupSyncDelegateDesktop::UpdateLocalTabGroup(
+   }
+ 
+   const LocalTabGroupID& group_id = group.local_group_id().value();
+-  CHECK(listener_->IsTrackingLocalTabGroup(group_id));
++  // navegador: grupo local que já não existe (ver ConnectLocalTabGroup) não
++  // foi ligado; não há o que atualizar.
++  if (!listener_->IsTrackingLocalTabGroup(group_id)) {
++    return;
++  }
+ 
+   // Update the local group with the new data. This will open new tabs, close
+   // tabs, and navigate tabs to match the saved group.
 diff --git i/chrome/browser/ui/tabs/tab_strip_model.cc w/chrome/browser/ui/tabs/tab_strip_model.cc
 index 01f863a9f4..8ce4af925e 100644
 --- i/chrome/browser/ui/tabs/tab_strip_model.cc

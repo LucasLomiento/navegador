@@ -1,5 +1,6 @@
 #include "navegador/browser/ui/espacos.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -82,6 +83,7 @@
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/view.h"
+#include "ui/gfx/range/range.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/window/non_client_view.h"
@@ -1000,6 +1002,54 @@ class FaixaDeEspacos : public views::View,
                      .id;
       }
       Ligar(id, *espaco);
+    }
+
+    // Dois grupos do mesmo espaço na janela: a aba que saiu pra outra janela
+    // voltou com o grupo de lá. O foco ficava no grupo que chegou (só com
+    // ela) e as outras abas do espaço sumiam da lateral. Junta no grupo com
+    // mais abas; as que chegaram entram onde foram soltas (antes ou depois).
+    std::map<std::string, std::vector<tab_groups::TabGroupId>> por_espaco;
+    for (const tab_groups::TabGroupId& id :
+         model_->group_model()->ListTabGroups()) {
+      if (std::optional<std::string> espaco =
+              EspacoDoGrupo(perfil, id.ToString())) {
+        por_espaco[*espaco].push_back(id);
+      }
+    }
+    for (const auto& [espaco, grupos] : por_espaco) {
+      if (grupos.size() < 2) {
+        continue;
+      }
+      if (!grupos_salvos::Pronto(perfil)) {
+        // Sessão restaurando: espera o serviço de grupos salvos carregar.
+        base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+            FROM_HERE,
+            base::BindOnce(&FaixaDeEspacos::GarantirDepois,
+                           weak_factory_.GetWeakPtr()),
+            base::Milliseconds(300));
+        break;
+      }
+      const std::optional<tab_groups::TabGroupId> focado =
+          model_->GetFocusedGroup();
+      const tab_groups::TabGroupId fica = *std::ranges::max_element(
+          grupos, {}, [this](const tab_groups::TabGroupId& grupo) {
+            return model_->group_model()->GetTabGroup(grupo)->tab_count();
+          });
+      for (const tab_groups::TabGroupId& grupo : grupos) {
+        if (grupo == fica || !model_->group_model()->ContainsTabGroup(grupo)) {
+          continue;
+        }
+        const gfx::Range faixa =
+            model_->group_model()->GetTabGroup(grupo)->ListTabs();
+        std::vector<int> abas;
+        for (size_t i = faixa.start(); i < faixa.end(); ++i) {
+          abas.push_back(static_cast<int>(i));
+        }
+        model_->AddToExistingGroup(abas, fica);
+      }
+      if (focado && std::ranges::find(grupos, *focado) != grupos.end()) {
+        model_->SetFocusedGroup(fica);
+      }
     }
 
     // Abas soltas -> espaço atual.

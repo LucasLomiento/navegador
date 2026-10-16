@@ -32,8 +32,14 @@ class SemGruposSalvos : public base::SupportsUserData::Data,
     }
   }
 
+  // Carregou (o AddObserver avisa na hora se já estava pronto).
+  bool pronto() const { return pronto_; }
+
   // tab_groups::TabGroupSyncService::Observer:
-  void OnInitialized() override { Agendar(); }
+  void OnInitialized() override {
+    pronto_ = true;
+    Agendar();
+  }
 
   void OnWillBeDestroyed() override {
     servico_->RemoveObserver(this);
@@ -45,7 +51,6 @@ class SemGruposSalvos : public base::SupportsUserData::Data,
     Agendar();
   }
 
- private:
   // Fora da notificação do próprio serviço (mexer nele lá dentro reentra).
   void Agendar() {
     if (agendado_) {
@@ -57,6 +62,7 @@ class SemGruposSalvos : public base::SupportsUserData::Data,
                                   weak_factory_.GetWeakPtr()));
   }
 
+ private:
   void Limpar() {
     agendado_ = false;
     if (!servico_) {
@@ -77,6 +83,7 @@ class SemGruposSalvos : public base::SupportsUserData::Data,
 
   raw_ptr<tab_groups::TabGroupSyncService> servico_;
   bool agendado_ = false;
+  bool pronto_ = false;
   base::WeakPtrFactory<SemGruposSalvos> weak_factory_{this};
 };
 
@@ -92,9 +99,18 @@ void Desligar(Profile* perfil) {
     return;
   }
   auto observador = std::make_unique<SemGruposSalvos>(servico);
-  // Já pronto (janela aberta depois da partida): limpa agora também.
-  observador->OnInitialized();
+  // Janela aberta depois da partida: limpa agora também.
+  observador->Agendar();
   perfil->SetUserData(kChave, std::move(observador));
+}
+
+bool Pronto(Profile* perfil) {
+  if (!perfil) {
+    return true;
+  }
+  auto* observador =
+      static_cast<SemGruposSalvos*>(perfil->GetUserData(kChave));
+  return !observador || observador->pronto();
 }
 
 }  // namespace navegador::grupos_salvos

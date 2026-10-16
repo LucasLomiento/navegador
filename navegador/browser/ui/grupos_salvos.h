@@ -17,6 +17,11 @@ namespace navegador::grupos_salvos {
 // Uma vez por perfil (as janelas chamam ao abrir).
 void Desligar(Profile* perfil);
 
+// O serviço de grupos salvos já carregou? Antes disso ele ainda vai ligar os
+// grupos restaurados da sessão: juntar ou apagar um grupo nessa hora derruba
+// o navegador (CHECK no TabGroupSyncDelegateDesktop).
+bool Pronto(Profile* perfil);
+
 }  // namespace navegador::grupos_salvos
 
 #endif  // NAVEGADOR_BROWSER_UI_GRUPOS_SALVOS_H_
