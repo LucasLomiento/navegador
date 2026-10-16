@@ -329,6 +329,33 @@ index 0407b26b8a..15e228ee04 100644
    views::LayoutManagerBase* target_layout_manager() {
      return &*target_layout_manager_;
    }
+diff --git i/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc w/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
+index 9d34a6658a..07c1aaeede 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
+ 
++#include "navegador/browser/containers/espacos_dados.h"
++
+ #include <variant>
+ 
+ #include "base/memory/weak_ptr.h"
+@@ -127,7 +129,12 @@ const TabCollectionNode* TabStripCollectionController::GetAdjacentTab(
+ 
+ std::optional<tab_groups::TabGroupId>
+ TabStripCollectionController::GetFocusedGroup() const {
+-  return model_->GetFocusedGroup();
++  if (std::optional<tab_groups::TabGroupId> focado = model_->GetFocusedGroup()) {
++    return focado;
++  }
++  // navegador: sem grupo focado (no meio de um arrasto), a lateral continua
++  // só com o espaço da janela; os outros espaços não aparecem em grupos.
++  return navegador::espacos::GrupoVisivel(model_);
+ }
+ 
+ bool TabStripCollectionController::IsGroupCollapsed(
 diff --git i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
 index cd90578d55..443553a45e 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc

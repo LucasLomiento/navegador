@@ -17,7 +17,11 @@
 #include <string_view>
 #include <vector>
 
+#include "base/functional/callback_forward.h"
+#include "components/tab_groups/tab_group_id.h"
+
 class Profile;
+class TabStripModel;
 
 namespace user_prefs {
 class PrefRegistrySyncable;
@@ -166,6 +170,16 @@ inline constexpr int kFlutuanteDesfoquePadrao = 20;
 // Como o Zen (zen.view.compact.sidebar-keep-hover.duration = 150).
 inline constexpr int kEsconderDepoisPadrao = 150;
 inline constexpr int kEsconderForaPadrao = 500;
+
+// O grupo do espaço que a janela mostra, pra lateral usar quando o modelo
+// está sem grupo focado (no meio de um arrasto, entre uma troca e outra): ela
+// continua só com o espaço da janela, sem os outros em grupos com cabeçalho.
+// Sem resposta (nullopt), a lateral mostra tudo, como o Chromium. Ligado pela
+// faixa dos espaços (navegador/browser/ui/espacos.cc).
+using GrupoVisivelFn = base::RepeatingCallback<
+    std::optional<tab_groups::TabGroupId>(const TabStripModel*)>;
+void DefinirGrupoVisivel(GrupoVisivelFn fn);
+std::optional<tab_groups::TabGroupId> GrupoVisivel(const TabStripModel* model);
 
 }  // namespace navegador::espacos
 

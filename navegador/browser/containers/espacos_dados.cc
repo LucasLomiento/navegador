@@ -1,5 +1,7 @@
 #include "navegador/browser/containers/espacos_dados.h"
 
+#include "base/functional/callback.h"
+
 #include <algorithm>
 #include <memory>
 #include <utility>
@@ -343,6 +345,23 @@ int FlutuanteOpacidade(const Profile* profile) {
 int FlutuanteDesfoque(const Profile* profile) {
   return std::clamp(profile->GetPrefs()->GetInteger(kFlutuanteDesfoquePref), 0,
                     60);
+}
+
+namespace {
+
+GrupoVisivelFn& FnDoGrupoVisivel() {
+  static base::NoDestructor<GrupoVisivelFn> fn;
+  return *fn;
+}
+
+}  // namespace
+
+void DefinirGrupoVisivel(GrupoVisivelFn fn) {
+  FnDoGrupoVisivel() = std::move(fn);
+}
+
+std::optional<tab_groups::TabGroupId> GrupoVisivel(const TabStripModel* model) {
+  return FnDoGrupoVisivel() ? FnDoGrupoVisivel().Run(model) : std::nullopt;
 }
 
 }  // namespace navegador::espacos

@@ -723,8 +723,9 @@ std::unique_ptr<views::View> PaginaAparencia(BrowserWindowInterface* browser) {
               perfil))));
   janela->Adicionar(Linha(
       u"Esconder a barra de endereço",
-      u"A página ocupa o cartão inteiro. O Ctrl+L e a nova aba mostram a "
-      u"barra enquanto você digita o endereço.",
+      u"A página ocupa o cartão inteiro. A barra aparece ao encostar o "
+      u"ponteiro no alto da página, e o Ctrl+L e a nova aba mostram ela "
+      u"enquanto você digita o endereço.",
       Interruptor(
           perfil->GetPrefs()->GetBoolean(espacos::kBarraEscondidaPref),
           u"Esconder a barra de endereço",

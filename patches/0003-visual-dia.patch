@@ -2154,7 +2154,7 @@ index c3035d4826..e082783f57 100644
  
      auto drag_data = tab_group_view->GetVisualDataForDraggedView(*child);
 diff --git i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
-index 5dd9f7ef1a..7418a942d9 100644
+index 5dd9f7ef1a..6969f5de67 100644
 --- i/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
 +++ w/chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc
 @@ -4,6 +4,8 @@
@@ -2189,6 +2189,18 @@ index 5dd9f7ef1a..7418a942d9 100644
      if (should_show) {
        num_children++;
      }
+@@ -368,6 +377,11 @@ bool UnpinnedTabContainerViewLayout::IsChildVisibleInContainer(
+   if (drag_data && drag_data->should_hide) {
+     return false;
+   }
++  // navegador: a aba sendo arrastada aparece mesmo vinda de outro espaço
++  // (a lateral só mostra o espaço da janela, ver GetFocusedGroup).
++  if (drag_data) {
++    return true;
++  }
+   if (focused_group_id.has_value() &&
+       GetGroupIdForChild(child) != focused_group_id.value()) {
+     return false;
 diff --git i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc w/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc
 index ffb1fdda20..3d8d92c6bf 100644
 --- i/chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.cc

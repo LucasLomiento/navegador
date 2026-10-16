@@ -19,6 +19,10 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "content/public/browser/web_contents.h"
+#include "content/public/browser/navigation_controller.h"
+#include "chrome/browser/sessions/session_restore.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
@@ -779,6 +783,23 @@ class FaixaDeEspacos : public views::View,
     }
   }
 
+  // O grupo do espaço que a janela mostra, pra lateral sem grupo focado
+  // (espacos_dados.h, GrupoVisivel).
+  std::optional<tab_groups::TabGroupId> GrupoVisivel() const {
+    if (espaco_visivel_.empty() || !model_->group_model()) {
+      return std::nullopt;
+    }
+    if (std::optional<tab_groups::TabGroupId> grupo =
+            GrupoDoEspaco(espaco_visivel_)) {
+      return grupo;
+    }
+    // O espaço da janela ficou sem abas (a última saiu num arrasto): a
+    // lateral fica vazia em vez de mostrar os outros espaços.
+    static const tab_groups::TabGroupId nenhum =
+        tab_groups::TabGroupId::GenerateNew();
+    return nenhum;
+  }
+
   // --- TabStripModelObserver -----------------------------------------------
 
   void OnTabStripModelChanged(
@@ -786,6 +807,15 @@ class FaixaDeEspacos : public views::View,
       const TabStripModelChange& change,
       const TabStripSelectionChange& selection) override {
     if (change.type() == TabStripModelChange::kInserted) {
+      if (TabDragController::IsActive()) {
+        for (const auto& inserida : change.GetInsert()->contents) {
+          if (inserida.tab) {
+            chegaram_.push_back(inserida.tab->GetHandle());
+          }
+        }
+      } else if (!SessionRestore::IsRestoring(Perfil())) {
+        entrou_aba_ = true;
+      }
       GarantirDepois();
     }
     if (selection.active_tab_changed() && selection.new_tab) {
@@ -806,6 +836,9 @@ class FaixaDeEspacos : public views::View,
       if (std::optional<std::string> espaco =
               EspacoDoGrupo(Perfil(), new_focused_group_id->ToString())) {
         DefinirAtivo(Perfil(), *espaco);
+        if (!TabDragController::IsActive()) {
+          espaco_visivel_ = *espaco;
+        }
       }
     } else {
       // Sem espaço não existe: volta a focar um.
@@ -949,6 +982,13 @@ class FaixaDeEspacos : public views::View,
         Focar(espaco);
       }
     }
+    // A última aba do espaço que a janela mostra saiu num arrasto (pra outra
+    // janela ou uma nova): a janela fica nele, com uma aba nova, em vez de
+    // pular pro espaço da aba que o Chromium ativou.
+    if (!espaco_visivel_.empty() && Get(perfil, espaco_visivel_) &&
+        !GrupoDoEspaco(espaco_visivel_)) {
+      Focar(espaco_visivel_);
+    }
 
     // Grupo sem espaço (sessão antiga, grupo vindo de outra janela): vira o
     // espaço do mesmo nome, ou um espaço novo com o nome e a cor dele.
@@ -1002,6 +1042,52 @@ class FaixaDeEspacos : public views::View,
                      .id;
       }
       Ligar(id, *espaco);
+    }
+
+    // Abas arrastadas de outra janela pra esta: entram no espaço que esta
+    // janela mostra (onde foram soltas), sem trazer o espaço delas junto. O
+    // container é da aba e vai com ela.
+    if (!chegaram_.empty()) {
+      const std::vector<tabs::TabHandle> chegaram = std::move(chegaram_);
+      chegaram_.clear();
+      std::vector<int> mover;
+      tabs::TabInterface* ativa = nullptr;
+      for (const tabs::TabHandle& handle : chegaram) {
+        tabs::TabInterface* aba = handle.Get();
+        const int index =
+            aba ? model_->GetIndexOfTab(aba) : TabStripModel::kNoTab;
+        if (espaco_visivel_.empty() || index == TabStripModel::kNoTab ||
+            model_->IsTabPinned(index)) {
+          continue;
+        }
+        const std::optional<tab_groups::TabGroupId> grupo = aba->GetGroup();
+        if (grupo &&
+            EspacoDoGrupo(perfil, grupo->ToString()) == espaco_visivel_) {
+          continue;
+        }
+        mover.push_back(index);
+        if (aba == model_->GetActiveTab()) {
+          ativa = aba;
+        }
+      }
+      if (!mover.empty()) {
+        std::ranges::sort(mover);
+        if (std::optional<tab_groups::TabGroupId> destino =
+                GrupoDoEspaco(espaco_visivel_)) {
+          // Foco antes: o grupo de onde elas saem some, e sumir o grupo
+          // focado reabria o espaço dele (espaco_a_manter_).
+          model_->SetFocusedGroup(*destino);
+          model_->AddToExistingGroup(mover, *destino);
+        } else {
+          const tab_groups::TabGroupId novo = model_->AddToNewGroup(mover);
+          Ligar(novo, espaco_visivel_);
+          model_->SetFocusedGroup(novo);
+        }
+        espaco_a_manter_.clear();
+        if (ativa) {
+          model_->ActivateTabAt(model_->GetIndexOfTab(ativa));
+        }
+      }
     }
 
     // Dois grupos do mesmo espaço na janela: a aba que saiu pra outra janela
@@ -1097,7 +1183,44 @@ class FaixaDeEspacos : public views::View,
         AplicarVisual(id, *espaco);
       }
     }
+    if (espaco_visivel_.empty() && model_->GetFocusedGroup()) {
+      espaco_visivel_ = EspacoAtual();
+    }
+    if (std::exchange(entrou_aba_, false)) {
+      FecharNovasGuiasVazias();
+    }
     Atualizar();
+  }
+
+  // Uma aba entrou no espaço (Ctrl+Shift+T, link, aba nova): as "Nova guia"
+  // vazias que sobraram nele (a que entra quando a última aba fecha, outra
+  // reaberta) saem, menos a ativa. Sem guardar no Ctrl+Shift+T.
+  void FecharNovasGuiasVazias() {
+    const std::optional<tab_groups::TabGroupId> grupo =
+        model_->GetFocusedGroup();
+    if (!grupo || !model_->group_model()->ContainsTabGroup(*grupo)) {
+      return;
+    }
+    const gfx::Range faixa =
+        model_->group_model()->GetTabGroup(*grupo)->ListTabs();
+    if (faixa.length() < 2) {
+      return;
+    }
+    std::vector<content::WebContents*> vazias;
+    for (size_t i = faixa.start(); i < faixa.end(); ++i) {
+      content::WebContents* aba = model_->GetWebContentsAt(static_cast<int>(i));
+      if (aba && aba != model_->GetActiveWebContents() && !aba->IsLoading() &&
+          aba->GetVisibleURL() == GURL(chrome::kChromeUINewTabURL) &&
+          aba->GetController().GetEntryCount() <= 1) {
+        vazias.push_back(aba);
+      }
+    }
+    for (content::WebContents* aba : vazias) {
+      const int index = model_->GetIndexOfWebContents(aba);
+      if (index != TabStripModel::kNoTab) {
+        model_->CloseWebContentsAt(index, TabCloseTypes::CLOSE_NONE);
+      }
+    }
   }
 
   void QuandoListaMudar() {
@@ -1233,6 +1356,14 @@ class FaixaDeEspacos : public views::View,
   std::map<ui::Accelerator, std::string> acoes_;
   std::map<std::string, tabs::TabHandle> ultima_aba_;
   std::string espaco_a_manter_;
+  // O espaço que esta janela mostra (vazio numa janela recém-criada, até o
+  // primeiro Garantir). Não muda no meio de um arrasto.
+  std::string espaco_visivel_;
+  // Abas que entraram nesta janela durante um arrasto (vindas de outra).
+  std::vector<tabs::TabHandle> chegaram_;
+  // Entrou aba fora de arrasto e de restauração: hora de tirar as "Nova guia"
+  // vazias que sobraram no espaço.
+  bool entrou_aba_ = false;
   base::TimeTicks ultima_rodinha_;
   std::unique_ptr<ui::SimpleMenuModel> menu_;
   std::unique_ptr<ui::SimpleMenuModel> submenu_containers_;
@@ -1283,6 +1414,16 @@ void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
               return;
             }
           }
+        }));
+    DefinirGrupoVisivel(base::BindRepeating(
+        [](const TabStripModel* model)
+            -> std::optional<tab_groups::TabGroupId> {
+          for (const auto& [janela, faixa] : Faixas()) {
+            if (janela->GetTabStripModel() == model) {
+              return faixa->GrupoVisivel();
+            }
+          }
+          return std::nullopt;
         }));
     containers::DefinirAbrirConfiguracoes(
         base::BindRepeating([](BrowserWindowInterface* janela) {

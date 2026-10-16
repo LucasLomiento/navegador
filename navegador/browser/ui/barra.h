@@ -1,7 +1,7 @@
 // Barra de endereço escondida (atalho "alternar_barra", Ctrl+Shift+S): a
-// página ocupa o cartão inteiro. O Ctrl+L e a nova aba mostram a barra
-// enquanto o foco estiver nela; ao sair (Enter, clique na página), ela some de
-// novo.
+// página ocupa o cartão inteiro. O ponteiro no alto da página (ou saindo da
+// janela por cima) mostra a barra até voltar pra página, como a lateral
+// escondida; o Ctrl+L e a nova aba mostram enquanto o foco estiver nela.
 
 #ifndef NAVEGADOR_BROWSER_UI_BARRA_H_
 #define NAVEGADOR_BROWSER_UI_BARRA_H_
