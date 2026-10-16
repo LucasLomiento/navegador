@@ -28,6 +28,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
@@ -863,6 +864,19 @@ class FaixaDeEspacos : public views::View,
   // entra no espaço atual e sempre tem um espaço focado.
   void Garantir() {
     garantia_pendente_ = false;
+    // Com uma aba sendo arrastada (pra fora, pra outra janela), mexer nos
+    // grupos confunde o arrasto do Chromium: a aba da janela nova entrava no
+    // grupo do espaço no meio do arrasto, e a janela travava ou o navegador
+    // caía (CHECK ao mover um grupo pra dentro de outro). Espera acabar.
+    if (TabDragController::IsActive()) {
+      garantia_pendente_ = true;
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&FaixaDeEspacos::Garantir,
+                         weak_factory_.GetWeakPtr()),
+          base::Milliseconds(150));
+      return;
+    }
     if (!model_->group_model() || model_->empty()) {
       return;
     }

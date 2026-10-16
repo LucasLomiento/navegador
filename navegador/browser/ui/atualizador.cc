@@ -257,6 +257,10 @@ void Comecar(bool procurar) {
           procurar));
 }
 
+#if !BUILDFLAG(IS_WIN)
+void InstalarArquivo(base::FilePath pacote);
+#endif
+
 void Instalar() {
   Estado& estado = Atual();
   if (estado.situacao != Situacao::kDisponivel &&
@@ -320,12 +324,44 @@ void Instalar() {
       }),
       destino, 512 * 1024 * 1024);
 #else
-  // pacman instala direto do endereço; o pkexec pede a senha numa janela
-  // do sistema (o agente do polkit).
+  // Baixa o pacote e instala o arquivo. O `pacman -U <endereço>` exige a
+  // assinatura (.sig) de pacote baixado por link (RemoteFileSigLevel =
+  // Required, o padrão do Arch), e os pacotes não são assinados: o GitHub
+  // dava 404 pro .sig e o pacman saía com 255. Arquivo local vale pelo
+  // LocalFileSigLevel (Optional). O pkexec pede a senha numa janela do
+  // sistema (o agente do polkit).
+  auto pedido = std::make_unique<network::ResourceRequest>();
+  pedido->url = GURL(estado.url_pacote);
+  pedido->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  estado.pedido =
+      network::SimpleURLLoader::Create(std::move(pedido), kAnotacao);
+  std::string nome = GURL(estado.url_pacote).ExtractFileName();
+  if (!base::EndsWith(nome, ".pkg.tar.zst")) {
+    nome = "navegador.pkg.tar.zst";
+  }
+  base::FilePath destino;
+  base::GetTempDir(&destino);
+  estado.pedido->DownloadToFile(
+      g_browser_process->shared_url_loader_factory().get(),
+      base::BindOnce(&InstalarArquivo), destino.AppendASCII(nome),
+      512 * 1024 * 1024);
+#endif
+}
+
+#if !BUILDFLAG(IS_WIN)
+// O pacote já baixado: pkexec pacman -U no arquivo, que é apagado depois.
+void InstalarArquivo(base::FilePath pacote) {
+  Atual().pedido.reset();
+  if (pacote.empty()) {
+    Atual().situacao = Situacao::kErro;
+    Atual().erro = u"Não deu pra baixar a versão nova.";
+    AvisarTodos();
+    return;
+  }
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
       base::BindOnce(
-          [](std::string url) {
+          [](base::FilePath pacote) {
             // O Chromium lança os filhos com PR_SET_NO_NEW_PRIVS, e com essa
             // trava o pkexec (setuid) não vira root: sai na hora com 127
             // ("pkexec must be setuid root"), sem pedir a senha. Daí o
@@ -347,18 +383,19 @@ void Instalar() {
             comando.AppendArg("/usr/bin/pacman");
             comando.AppendArg("-U");
             comando.AppendArg("--noconfirm");
-            comando.AppendArg(url);
+            comando.AppendArgPath(pacote);
             base::LaunchOptions opcoes;
             opcoes.allow_new_privs = true;
             base::Process processo = base::LaunchProcess(comando, opcoes);
             int codigo = -1;
             if (!processo.IsValid() ||
                 !processo.WaitForExitWithTimeout(base::Minutes(15), &codigo)) {
-              return -1;
+              codigo = -1;
             }
+            base::DeleteFile(pacote);
             return codigo;
           },
-          estado.url_pacote),
+          pacote),
       base::BindOnce([](int codigo) {
         Estado& estado = Atual();
         if (codigo == 0) {
@@ -374,8 +411,8 @@ void Instalar() {
         }
         AvisarTodos();
       }));
-#endif
 }
+#endif  // !BUILDFLAG(IS_WIN)
 
 // --- Aviso no pé da lateral -------------------------------------------------
 

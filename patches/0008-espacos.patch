@@ -1,5 +1,5 @@
 diff --git i/chrome/browser/ui/tabs/tab_strip_model.cc w/chrome/browser/ui/tabs/tab_strip_model.cc
-index 01f863a9f4..3892443aa9 100644
+index 01f863a9f4..07fb19cbc2 100644
 --- i/chrome/browser/ui/tabs/tab_strip_model.cc
 +++ w/chrome/browser/ui/tabs/tab_strip_model.cc
 @@ -4,6 +4,8 @@
@@ -49,6 +49,29 @@ index 01f863a9f4..3892443aa9 100644
        base::UmaHistogramCounts1000(
            "Tab.ContextMenu.TogglePinned.SelectedTabsCount",
            selection_model_.size());
+@@ -5027,12 +5043,21 @@ void TabStripModel::MoveTabsToIndexImpl(
+   CHECK(all_tabs_pinned || all_tabs_unpinned);
+   CHECK(std::ranges::is_sorted(tab_indices));
+ 
++  // navegador: indo pra dentro de um grupo, um grupo inteiro selecionado (o
++  // espaço com uma aba só, que é a arrastada) não pode ir junto como grupo:
++  // grupo dentro de grupo derruba o navegador (CHECK no AddCollection). Vão
++  // as abas, uma a uma.
++  static constexpr tabs::TabCollection::TypeEnumSet kRetemDentroDeGrupo = {
++      tabs::TabCollection::Type::SPLIT};
++
+   // Update `contents_data`.
+   MoveTabsWithNotifications(
+       tab_indices, destination_index,
+       base::BindOnce(&tabs::TabStripCollection::MoveTabsRecursive,
+                      base::Unretained(contents_data_.get()), tab_indices,
+-                     destination_index, group, pin, kRetainCollectionTypes));
++                     destination_index, group, pin,
++                     group.has_value() ? kRetemDentroDeGrupo
++                                       : kRetainCollectionTypes));
+ }
+ 
+ void TabStripModel::TabGroupStateChanged(
 diff --git i/chrome/browser/ui/views/animations/tab_strip_animations.cc w/chrome/browser/ui/views/animations/tab_strip_animations.cc
 index a276d311e0..97f0a80bd6 100644
 --- i/chrome/browser/ui/views/animations/tab_strip_animations.cc
