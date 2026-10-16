@@ -47,4 +47,11 @@ rsvg-convert -w 32 -h 32 "$SVG" | magick png:- "xpm:$TMP"
 por "$TEMA/linux/product_logo_32.xpm"
 cp "$SVG" "$TMP"
 por "$TEMA/product_logo.svg"
+# Ícones do Lucide no lugar dos do Chromium (navegador/icones/LUGARES; os
+# .icon saem de tools/lucide.py).
+while read -r nome destino; do
+  case "$nome" in ''|\#*) continue ;; esac
+  cp "$RAIZ/navegador/icones/$nome.icon" "$TMP"
+  por "$SRC/$destino"
+done < "$RAIZ/navegador/icones/LUGARES"
 echo "icones: ok"

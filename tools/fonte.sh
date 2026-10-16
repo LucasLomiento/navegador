@@ -34,6 +34,11 @@ if [ "${1:-}" = "--gerar" ]; then
   done < "$RAIZ/patches/SERIES"
   excl=()
   for c in "${usados[@]}"; do excl+=(":(exclude)$c"); done
+  # Os ícones do Lucide são copiados pelo tools/icones.sh.
+  while read -r _nome destino; do
+    case "$_nome" in ''|\#*) continue ;; esac
+    excl+=(":(exclude)$destino")
+  done < "$RAIZ/navegador/icones/LUGARES"
   # Os textos com o nome do produto são gerados pelo tools/marca.py.
   git diff --binary -- . ':(exclude)navegador' \
     ':(exclude)chrome/app/chromium_strings.grd' \

@@ -1,5 +1,5 @@
 diff --git i/chrome/browser/ui/BUILD.gn w/chrome/browser/ui/BUILD.gn
-index 82f397571f..962735e5e3 100644
+index 82f397571f..0cdbb84ac0 100644
 --- i/chrome/browser/ui/BUILD.gn
 +++ w/chrome/browser/ui/BUILD.gn
 @@ -399,6 +399,7 @@ if (!is_android) {
@@ -10,7 +10,7 @@ index 82f397571f..962735e5e3 100644
        ":tab_ui_helper",
        "//base",
        "//chrome/browser/apps/app_service",
-@@ -1522,6 +1523,30 @@ static_library("ui") {
+@@ -1522,6 +1523,32 @@ static_library("ui") {
        "browser_commands.cc",
        "browser_commands.h",
        "browser_live_tab_context.cc",
@@ -30,6 +30,8 @@ index 82f397571f..962735e5e3 100644
 +      "//navegador/browser/ui/downloads/botao.h",
 +      "//navegador/browser/ui/espacos.cc",
 +      "//navegador/browser/ui/espacos.h",
++      "//navegador/browser/ui/fontes.cc",
++      "//navegador/browser/ui/fontes.h",
 +      "//navegador/browser/ui/fixos.cc",
 +      "//navegador/browser/ui/fixos.h",
 +      "//navegador/browser/ui/importar_zen.cc",
@@ -41,7 +43,7 @@ index 82f397571f..962735e5e3 100644
        "browser_manager_service.cc",
        "browser_manager_service.h",
        "browser_manager_service_factory.cc",
-@@ -1558,6 +1583,11 @@ static_library("ui") {
+@@ -1558,6 +1585,11 @@ static_library("ui") {
  
      # Non-android deps for "ui" target.
      deps += [
@@ -53,7 +55,7 @@ index 82f397571f..962735e5e3 100644
        ":accelerator_table",
        ":browser_actions",
        ":browser_select_file_dialog_controller",
-@@ -3877,6 +3907,10 @@ source_set("layout_constants") {
+@@ -3877,6 +3909,10 @@ source_set("layout_constants") {
    sources = [
      "layout_constants.cc",
      "layout_constants.h",
@@ -64,3 +66,18 @@ index 82f397571f..962735e5e3 100644
    ]
  
    public_deps = [ "//ui/gfx/geometry" ]
+diff --git i/chrome/installer/mini_installer/chrome.release w/chrome/installer/mini_installer/chrome.release
+index 037b80488c..8918ec426a 100644
+--- i/chrome/installer/mini_installer/chrome.release
++++ w/chrome/installer/mini_installer/chrome.release
+@@ -38,6 +38,10 @@ vk_swiftshader.dll: %(VersionDir)s\
+ vk_swiftshader_icd.json: %(VersionDir)s\
+ vulkan-1.dll: %(VersionDir)s\
+ v8_context_snapshot.bin: %(VersionDir)s\
++# navegador: versão do pacote (atualizador), regras do bloqueador e fontes.
++VERSAO: %(VersionDir)s\
++bloqueador\*: %(VersionDir)s\bloqueador\
++fontes\*.ttf: %(VersionDir)s\fontes\
+ #
+ # Sub directories living in the version dir
+ #

@@ -1,16 +1,17 @@
 diff --git i/chrome/browser/component_updater/registration.cc w/chrome/browser/component_updater/registration.cc
-index b11907b0f4..7907959fa5 100644
+index b11907b0f4..c4a149cf28 100644
 --- i/chrome/browser/component_updater/registration.cc
 +++ w/chrome/browser/component_updater/registration.cc
-@@ -90,6 +90,7 @@
+@@ -90,6 +90,8 @@
  
  #if BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
  #include "chrome/browser/component_updater/widevine_cdm_component_installer.h"
 +#include "navegador/browser/ui/bloqueador.h"
++#include "navegador/browser/ui/fontes.h"
  #endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
  
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-@@ -152,7 +153,9 @@ void RegisterComponentsForUpdate() {
+@@ -152,7 +154,11 @@ void RegisterComponentsForUpdate() {
    RegisterWidevineCdmComponent(cus);
  #endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
  
@@ -18,6 +19,8 @@ index b11907b0f4..7907959fa5 100644
 +  // navegador: o bloqueador usa as listas que vêm no pacote (EasyList etc.),
 +  // não as do Google (que só servem pra sites abusivos).
 +  navegador::bloqueador::CarregarListas();
++  // navegador: no Windows, as fontes do desenho pro usuário (fontes.h).
++  navegador::fontes::InstalarSeFaltar();
    RegisterOnDeviceHeadSuggestComponent(
        cus, g_browser_process->GetApplicationLocale());
    RegisterOptimizationHintsComponent(cus);

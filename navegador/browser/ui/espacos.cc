@@ -228,10 +228,11 @@ class TituloDoEspaco : public views::Button,
     rotulo_->SetElideBehavior(gfx::ELIDE_TAIL);
     // Texto onde o Dia põe o nome do perfil (~58 da borda da lateral).
     rotulo_->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(0, 8)));
-    rotulo_->SetFontList(
-        gfx::FontList()
-            .DeriveWithSizeDelta(13 - gfx::FontList().GetFontSize())
-            .DeriveWithWeight(gfx::Font::Weight::SEMIBOLD));
+    // Nome do espaço na Bricolage Grotesque (a fonte de títulos do desenho,
+    // como o nome do servidor no Resenha); sem ela, a da interface.
+    rotulo_->SetFontList(gfx::FontList(
+        {"Bricolage Grotesque", gfx::FontList().GetPrimaryFont().GetFontName()},
+        gfx::Font::NORMAL, 14, gfx::Font::Weight::SEMIBOLD));
     rotulo_->SetCanProcessEventsWithinSubtree(false);
     SetPreferredSize(gfx::Size(0, 32));
     views::InkDrop::Get(this)->SetMode(views::InkDropHost::InkDropMode::ON);

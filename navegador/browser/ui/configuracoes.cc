@@ -96,13 +96,22 @@ constexpr int kLarguraJanela = 820;
 constexpr int kAlturaJanela = 600;
 constexpr int kLarguraMenu = 200;
 constexpr int kAlturaItemMenu = 36;
-constexpr int kRaioCartao = 8;
+constexpr int kRaioCartao = 12;
 constexpr int kLarguraDescricao = 340;
 
 gfx::FontList Fonte(int tamanho, gfx::Font::Weight peso) {
   return gfx::FontList()
       .DeriveWithSizeDelta(tamanho - gfx::FontList().GetFontSize())
       .DeriveWithWeight(peso);
+}
+
+// Títulos de página e de seção na Bricolage Grotesque (a fonte de marca do
+// desenho, que vai no pacote); sem ela, a da interface.
+gfx::FontList FonteTitulo(int tamanho) {
+  return gfx::FontList({"Bricolage Grotesque",
+                        gfx::FontList().GetPrimaryFont().GetFontName()},
+                       gfx::Font::NORMAL, tamanho,
+                       gfx::Font::Weight::SEMIBOLD);
 }
 
 bool Escuro(const views::View* view) {
@@ -232,7 +241,7 @@ std::unique_ptr<views::View> Linha(std::u16string titulo,
                                    std::unique_ptr<views::View> controle) {
   auto linha = std::make_unique<views::View>();
   auto* layout = linha->SetLayoutManager(std::make_unique<views::BoxLayout>(
-      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(10, 14),
+      views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(12, 16),
       16));
   layout->set_cross_axis_alignment(
       views::BoxLayout::CrossAxisAlignment::kCenter);
@@ -384,8 +393,10 @@ class Pagina : public views::View {
     SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kVertical,
         gfx::Insets::TLBR(20, 28, 28, 28), 0));
-    AddChildView(Titulo(titulo, 20, gfx::Font::Weight::SEMIBOLD))
-        ->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 6, 0));
+    views::Label* rotulo =
+        AddChildView(Titulo(titulo, 22, gfx::Font::Weight::SEMIBOLD));
+    rotulo->SetFontList(FonteTitulo(22));
+    rotulo->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 6, 0));
     if (!subtitulo.empty()) {
       AddChildView(Descricao(subtitulo, 520))
           ->SetProperty(views::kMarginsKey, gfx::Insets::TLBR(0, 0, 4, 0));
@@ -396,6 +407,7 @@ class Pagina : public views::View {
     if (!titulo.empty()) {
       auto* cabecalho =
           AddChildView(Titulo(titulo, 15, gfx::Font::Weight::SEMIBOLD));
+      cabecalho->SetFontList(FonteTitulo(15));
       cabecalho->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(0, 2)));
       cabecalho->SetProperty(views::kMarginsKey,
                              gfx::Insets::TLBR(18, 0, 8, 0));
@@ -436,7 +448,7 @@ class LinhaDeImportar : public views::View {
  public:
   explicit LinhaDeImportar(Profile* perfil) : perfil_(perfil) {
     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(10, 14),
+        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(12, 16),
         16));
     layout->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);
@@ -513,7 +525,7 @@ class LinhaDeVersao : public views::View {
  public:
   explicit LinhaDeVersao(Profile* perfil) : perfil_(perfil) {
     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(10, 14),
+        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(12, 16),
         16));
     layout->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);
@@ -893,7 +905,7 @@ class LinhaDoEspaco : public views::Button {
                 PressedCallback callback)
       : views::Button(std::move(callback)) {
     auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(10, 14),
+        views::BoxLayout::Orientation::kHorizontal, gfx::Insets::VH(12, 16),
         12));
     layout->set_cross_axis_alignment(
         views::BoxLayout::CrossAxisAlignment::kCenter);

@@ -2,7 +2,9 @@
 
 #include <map>
 
+#include "base/environment.h"
 #include "base/no_destructor.h"
+#include "build/build_config.h"
 
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -14,6 +16,23 @@
 #include "ui/color/color_recipe.h"
 
 namespace navegador::cores {
+
+bool Vidro() {
+  static const bool vidro = [] {
+#if BUILDFLAG(IS_LINUX)
+    std::unique_ptr<base::Environment> ambiente = base::Environment::Create();
+    if (std::optional<std::string> forcado =
+            ambiente->GetVar("NAVEGADOR_VIDRO")) {
+      return *forcado != "0";
+    }
+    return ambiente->HasVar("HYPRLAND_INSTANCE_SIGNATURE");
+#else
+    return false;
+#endif
+  }();
+  return vidro;
+}
+
 
 namespace {
 
@@ -48,20 +67,121 @@ constexpr Paleta kClaro = {
     .destaque = SkColorSetRGB(0x00, 0x5F, 0xB8),
 };
 
+// Escuro: o "Noite elétrica" do Resenha (resenha/app/src/renderer/app.css):
+// grafite neutro, quase preto, sem tinta de cor; um acento só, o azul
+// elétrico. A lateral fica direto no fundo da janela e só o conteúdo é um
+// painel.
+namespace noite {
+constexpr SkColor kFundo = SkColorSetRGB(0x09, 0x09, 0x0B);    // --bg-canvas
+constexpr SkColor kPainel = SkColorSetRGB(0x11, 0x11, 0x13);   // --bg-panel
+constexpr SkColor kElevado = SkColorSetRGB(0x18, 0x18, 0x1B);  // --bg-raised
+constexpr SkColor kSobre = SkColorSetRGB(0x22, 0x22, 0x26);    // --bg-overlay
+constexpr SkColor kCampo = SkColorSetRGB(0x0C, 0x0C, 0x0E);    // --bg-input
+constexpr SkColor kTexto = SkColorSetRGB(0xF4, 0xF4, 0xF5);    // --fg
+constexpr SkColor kTexto2 = SkColorSetRGB(0xAA, 0xAA, 0xB3);   // --fg-2
+constexpr SkColor kTexto3 = SkColorSetRGB(0x88, 0x88, 0x92);   // --fg-3
+constexpr SkColor kTexto4 = SkColorSetRGB(0x52, 0x52, 0x5B);   // --fg-4
+// Camadas de interação brancas e translúcidas (--hover, --selected, --press).
+constexpr SkColor kHover = SkColorSetARGB(0x0B, 0xFF, 0xFF, 0xFF);
+constexpr SkColor kSelecionado = SkColorSetARGB(0x14, 0xFF, 0xFF, 0xFF);
+constexpr SkColor kPressionado = SkColorSetARGB(0x1C, 0xFF, 0xFF, 0xFF);
+constexpr SkColor kLinha = SkColorSetARGB(0x12, 0xFF, 0xFF, 0xFF);      // --line
+constexpr SkColor kLinhaForte = SkColorSetARGB(0x1F, 0xFF, 0xFF, 0xFF); // --line-strong
+// Azul elétrico: preenchimento com texto branco, e como texto/ícone.
+constexpr SkColor kAcento = SkColorSetRGB(0x2B, 0x6C, 0xF5);         // --accent
+constexpr SkColor kAcentoHover = SkColorSetRGB(0x35, 0x77, 0xF7);    // --accent-hover
+constexpr SkColor kAcentoTexto = SkColorSetRGB(0x7A, 0xAA, 0xFF);    // --accent-fg
+constexpr SkColor kAcentoMarca = SkColorSetRGB(0x4F, 0x8C, 0xFF);    // --brand-2
+constexpr SkColor kVermelho = SkColorSetRGB(0xFF, 0x5A, 0x6B);       // --red
+}  // namespace noite
+
 constexpr Paleta kEscuro = {
-    .fundo = SkColorSetRGB(0x20, 0x20, 0x20),
-    .barra = SkColorSetRGB(0x1F, 0x1F, 0x1F),
-    .pagina = SkColorSetRGB(0x1F, 0x1F, 0x1F),
-    .texto = SK_ColorWHITE,
-    .texto_inativo = SkColorSetARGB(0xC5, 0xFF, 0xFF, 0xFF),
-    .aba_ativa = SkColorSetARGB(0x1F, 0xFF, 0xFF, 0xFF),
-    .aba_hover = SkColorSetARGB(0x0B, 0xFF, 0xFF, 0xFF),
-    .aba_selecionada = SkColorSetARGB(0x1F, 0xFF, 0xFF, 0xFF),
-    .divisor = SkColorSetARGB(0x15, 0xFF, 0xFF, 0xFF),
-    .endereco = SkColorSetRGB(0x1F, 0x1F, 0x1F),
-    .endereco_hover = SkColorSetRGB(0x2B, 0x2B, 0x2B),
-    .destaque = SkColorSetRGB(0x60, 0xCD, 0xFF),
+    .fundo = noite::kFundo,
+    .barra = noite::kPainel,
+    .pagina = noite::kPainel,
+    .texto = noite::kTexto,
+    .texto_inativo = noite::kTexto2,
+    .aba_ativa = noite::kSelecionado,
+    .aba_hover = noite::kHover,
+    .aba_selecionada = noite::kSelecionado,
+    .divisor = noite::kLinha,
+    .endereco = noite::kPainel,
+    .endereco_hover = noite::kElevado,
+    .destaque = noite::kAcentoMarca,
 };
+
+// O resto da interface do Chromium (menus, balões, diálogos, páginas
+// internas como chrome://settings) sai das cores "de sistema" do Material;
+// recalculadas aqui, no fim, todas as que dependem delas mudam junto.
+void PintarSistemaEscuro(ui::ColorMixer& mixer) {
+  using namespace noite;
+  mixer[ui::kColorSysBase] = {kPainel};
+  mixer[ui::kColorSysBaseContainer] = {kElevado};
+  mixer[ui::kColorSysBaseContainerElevated] = {kSobre};
+  mixer[ui::kColorSysSurface] = {kElevado};
+  mixer[ui::kColorSysSurface1] = {kElevado};
+  mixer[ui::kColorSysSurface2] = {kElevado};
+  mixer[ui::kColorSysSurface3] = {SkColorSetRGB(0x1D, 0x1D, 0x21)};
+  mixer[ui::kColorSysSurface4] = {kSobre};
+  mixer[ui::kColorSysSurface5] = {SkColorSetRGB(0x26, 0x26, 0x2B)};
+  mixer[ui::kColorSysSurfaceVariant] = {kSobre};
+  mixer[ui::kColorSysSurfaceSection] = {kElevado};
+  mixer[ui::kColorSysBaseContainerOnSurface] = {kSobre};
+  mixer[ui::kColorSysNeutralContainer] = {kSobre};
+  mixer[ui::kColorSysHeader] = {kFundo};
+  mixer[ui::kColorSysHeaderInactive] = {kFundo};
+  mixer[ui::kColorSysHeaderContainer] = {kPainel};
+  mixer[ui::kColorSysHeaderContainerInactive] = {kPainel};
+  mixer[ui::kColorSysOmniboxContainer] = {kElevado};
+
+  mixer[ui::kColorSysOnSurface] = {kTexto};
+  mixer[ui::kColorSysOnSurfaceVariant] = {kTexto2};
+  mixer[ui::kColorSysOnSurfaceSecondary] = {kTexto2};
+  mixer[ui::kColorSysOnSurfaceSubtle] = {kTexto3};
+  mixer[ui::kColorSysOnSurfacePrimary] = {kAcentoTexto};
+  mixer[ui::kColorSysOnSurfacePrimaryInactive] = {kTexto3};
+
+  mixer[ui::kColorSysPrimary] = {kAcento};
+  mixer[ui::kColorSysOnPrimary] = {SK_ColorWHITE};
+  mixer[ui::kColorSysPrimaryContainer] = {
+      color_utils::AlphaBlend(kAcentoMarca, kElevado, 0.18f)};
+  mixer[ui::kColorSysOnPrimaryContainer] = {kAcentoTexto};
+  mixer[ui::kColorSysTonalContainer] = {
+      color_utils::AlphaBlend(kAcentoMarca, kElevado, 0.16f)};
+  mixer[ui::kColorSysOnTonalContainer] = {SkColorSetRGB(0xD6, 0xE4, 0xFF)};
+  mixer[ui::kColorSysBaseTonalContainer] = {
+      color_utils::AlphaBlend(kAcentoMarca, kPainel, 0.12f)};
+  mixer[ui::kColorSysOnBaseTonalContainer] = {SkColorSetRGB(0xD6, 0xE4, 0xFF)};
+  mixer[ui::kColorSysTonalOutline] = {
+      color_utils::AlphaBlend(kAcentoMarca, kElevado, 0.45f)};
+  mixer[ui::kColorSysInversePrimary] = {kAcento};
+
+  mixer[ui::kColorSysOutline] = {color_utils::AlphaBlend(SK_ColorWHITE, kElevado, 0.14f)};
+  mixer[ui::kColorSysNeutralOutline] = {color_utils::AlphaBlend(SK_ColorWHITE, kElevado, 0.12f)};
+  mixer[ui::kColorSysDivider] = {color_utils::AlphaBlend(SK_ColorWHITE, kElevado, 0.07f)};
+  mixer[ui::kColorSysOnHeaderDivider] = {kLinha};
+  mixer[ui::kColorSysOnHeaderPrimary] = {kTexto2};
+
+  mixer[ui::kColorSysStateHover] = {kHover};
+  mixer[ui::kColorSysStateHoverOnSubtle] = {kHover};
+  mixer[ui::kColorSysStateHoverOnProminent] = {SkColorSetARGB(0x14, 0xFF, 0xFF, 0xFF)};
+  mixer[ui::kColorSysStatePressed] = {kPressionado};
+  mixer[ui::kColorSysStateRippleNeutralOnSubtle] = {kPressionado};
+  mixer[ui::kColorSysStateRippleNeutralOnProminent] = {kPressionado};
+  mixer[ui::kColorSysStateRipplePrimary] = {SkColorSetA(kAcentoMarca, 0x3D)};
+  mixer[ui::kColorSysStateFocusRing] = {kAcentoMarca};
+  mixer[ui::kColorSysStateFocusHighlight] = {SkColorSetA(kAcentoMarca, 0x24)};
+  mixer[ui::kColorSysStateTextHighlight] = {SkColorSetA(kAcentoMarca, 0x5A)};
+  mixer[ui::kColorSysStateOnTextHighlight] = {kTexto};
+  mixer[ui::kColorSysStateDisabled] = {SkColorSetA(kTexto, 0x61)};
+  mixer[ui::kColorSysStateDisabledContainer] = {SkColorSetA(kTexto, 0x14)};
+  mixer[ui::kColorSysStateScrim] = {SkColorSetARGB(0xB3, 0x04, 0x04, 0x06)};
+  mixer[ui::kColorSysStateHeaderHover] = {kHover};
+  mixer[ui::kColorSysStateOnHeaderHover] = {kHover};
+
+  mixer[ui::kColorSysError] = {kVermelho};
+  mixer[ui::kColorSysShadow] = {SK_ColorBLACK};
+}
 
 // Cor da página na barra de navegação, com texto e ícones no contraste.
 class Barra : public ui::ColorProviderKey::InitializerSupplier {
@@ -182,11 +302,13 @@ void AddColorMixer(ui::ColorProvider* provider,
   SkColor fundo = p.fundo;
   if (key.user_color &&
       key.user_color_source == ui::ColorProviderKey::UserColorSource::kAccent) {
+    // Bem de leve: no escuro, o grafite com muita cor do espaço ficava
+    // pesado (o Resenha só tinge com o acento em fio, ícone ou barra).
     fundo = color_utils::AlphaBlend(*key.user_color, p.fundo,
-                                    escuro ? 0.22f : 0.18f);
+                                    escuro ? 0.12f : 0.14f);
   }
   const SkColor moldura =
-      kVidro ? SkColorSetA(fundo, escuro ? kVidroAlfaEscuro : kVidroAlfaClaro)
+      Vidro() ? SkColorSetA(fundo, escuro ? kVidroAlfaEscuro : kVidroAlfaClaro)
              : fundo;
   mixer[ui::kColorFrameActive] = {moldura};
   mixer[ui::kColorFrameInactive] = {moldura};
@@ -235,6 +357,22 @@ void AddColorMixer(ui::ColorProvider* provider,
 
   // Destaque (barra de carregamento, foco, botões principais).
   mixer[ui::kColorAccent] = {p.destaque};
+
+  if (escuro) {
+    PintarSistemaEscuro(mixer);
+    // Links e botões de texto no azul claro (o preenchido fica no escuro).
+    mixer[ui::kColorLinkForegroundDefault] = {noite::kAcentoTexto};
+    mixer[ui::kColorButtonForeground] = {noite::kTexto};
+    // Menus e balões no elevado, com a seleção cinza (não azul) como no
+    // Resenha.
+    mixer[ui::kColorMenuBackground] = {noite::kElevado};
+    mixer[ui::kColorMenuItemBackgroundHighlighted] = {noite::kSobre};
+    mixer[ui::kColorMenuSeparator] = {noite::kLinha};
+    mixer[ui::kColorBubbleBackground] = {noite::kElevado};
+    mixer[ui::kColorDialogBackground] = {noite::kElevado};
+    // Cor do espaço na moldura, mais discreta (grafite sujo de cor fica
+    // pesado).
+  }
 
   if (barra) {
     barra->Pintar(mixer);

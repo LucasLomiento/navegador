@@ -19,9 +19,13 @@ namespace navegador::cores {
 
 // Vidro (o "acrílico" do Dia): a moldura, que é o fundo da barra lateral e
 // da margem em volta do cartão, sai translúcida e a janela não se declara
-// opaca, pro desfoque do compositor (Hyprland) aparecer atrás. O cartão
-// (barra de navegação e página) continua opaco.
-inline constexpr bool kVidro = true;
+// opaca, pro desfoque do compositor aparecer atrás. O cartão (barra de
+// navegação e página) continua opaco.
+//
+// Só no Hyprland, que desfoca o que fica atrás das janelas translúcidas: no
+// KDE e no GNOME (e no Windows) a moldura mostrava o papel de parede cru, sem
+// desfoque. NAVEGADOR_VIDRO=0/1 força (testes).
+bool Vidro();
 inline constexpr unsigned char kVidroAlfaClaro = 0xE6;
 inline constexpr unsigned char kVidroAlfaEscuro = 0xC0;
 

@@ -9,8 +9,8 @@ pkgrel=14
 pkgdesc="Navegador próprio em cima do Chromium, com o visual do Dia"
 arch=(x86_64)
 url="https://github.com/LucasLomiento/navegador"
-license=(BSD-3-Clause 'GPL-3.0-or-later OR CC-BY-SA-3.0')  # o segundo: listas do bloqueador
-depends=(alsa-lib at-spi2-core cups dbus desktop-file-utils gtk3 hicolor-icon-theme
+license=(BSD-3-Clause 'GPL-3.0-or-later OR CC-BY-SA-3.0' OFL-1.1)  # listas do bloqueador; fontes
+depends=(fontconfig alsa-lib at-spi2-core cups dbus desktop-file-utils gtk3 hicolor-icon-theme
          libcups libdrm libpulse libxkbcommon mesa nss pango systemd ttf-liberation
          xdg-utils)
 optdepends=('pipewire: compartilhar tela no Wayland'
@@ -76,6 +76,14 @@ package() {
     "$bloqueador/cosmetico.txt" "$bloqueador/VERSAO" "$bloqueador/LICENSE"
   install -Dm644 "$bloqueador/LICENSE" \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE-listas-do-bloqueador"
+
+  # Fontes do desenho (Geist na interface, Bricolage Grotesque nos títulos).
+  install -Dm644 -t "$pkgdir/usr/share/fonts/navegador" \
+    "$_repo"/navegador/app/fontes/*.ttf
+  install -Dm644 "$_repo/navegador/app/fontes/OFL-Geist.txt" \
+    "$pkgdir/usr/share/licenses/$pkgname/OFL-Geist.txt"
+  install -Dm644 "$_repo/navegador/app/fontes/OFL-BricolageGrotesque.txt" \
+    "$pkgdir/usr/share/licenses/$pkgname/OFL-BricolageGrotesque.txt"
 
   install -Dm755 "$_repo/pacote/navegador.sh" "$pkgdir/usr/bin/navegador"
   install -Dm644 "$_repo/pacote/navegador.desktop" \

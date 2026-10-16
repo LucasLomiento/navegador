@@ -404,13 +404,14 @@ struct Pasta {
   std::unique_ptr<Cosmetico> cosmetico;
 };
 
-// Pasta das regras, ao lado do executável: o pacote instala em
-// /usr/lib/navegador/bloqueador (numa compilação de desenvolvimento, um link
-// pra pacote/bloqueador no out/).
+// Pasta das regras, ao lado do módulo: o pacote do Linux instala em
+// /usr/lib/navegador/bloqueador, o instalador do Windows na pasta da versão
+// (ao lado do chrome.dll); numa compilação de desenvolvimento, um link pra
+// pacote/bloqueador no out/.
 Pasta LerPasta() {
   Pasta lida;
   base::FilePath exe;
-  if (!base::PathService::Get(base::DIR_EXE, &exe)) {
+  if (!base::PathService::Get(base::DIR_MODULE, &exe)) {
     return lida;
   }
   const base::FilePath pasta = exe.AppendASCII("bloqueador");

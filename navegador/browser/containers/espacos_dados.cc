@@ -1,8 +1,10 @@
 #include "navegador/browser/containers/espacos_dados.h"
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
+#include "base/environment.h"
 #include "base/no_destructor.h"
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
@@ -11,6 +13,7 @@
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "build/build_config.h"
 
 namespace navegador::espacos {
 
@@ -69,13 +72,31 @@ std::string NovoId() {
 
 }  // namespace
 
+namespace {
+
+// Botões da janela por padrão, menos num gerenciador por atalho (Hyprland,
+// Sway, i3), onde a janela fecha pelo atalho do sistema e eles só ocupam
+// espaço. No KDE, no GNOME e no Windows sem eles não dava pra fechar com o
+// mouse.
+bool BotoesPorPadrao() {
+#if BUILDFLAG(IS_LINUX)
+  std::unique_ptr<base::Environment> ambiente = base::Environment::Create();
+  return !ambiente->HasVar("HYPRLAND_INSTANCE_SIGNATURE") &&
+         !ambiente->HasVar("SWAYSOCK") && !ambiente->HasVar("I3SOCK");
+#else
+  return true;
+#endif
+}
+
+}  // namespace
+
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterListPref(kListaPref, ListaPadrao());
   registry->RegisterDictionaryPref(kGruposPref);
   registry->RegisterStringPref(kAtivoPref, "pessoal");
   registry->RegisterDictionaryPref(kAtalhosPref);
   registry->RegisterBooleanPref(kQuadroDeFavoritosPref, true);
-  registry->RegisterBooleanPref(kBotoesDaJanelaPref, false);
+  registry->RegisterBooleanPref(kBotoesDaJanelaPref, BotoesPorPadrao());
   registry->RegisterIntegerPref(kMolduraPref, kMolduraPadrao);
   registry->RegisterBooleanPref(kBarraNaCorDoSitePref, true);
   registry->RegisterBooleanPref(kBarraNaTelaCheiaPref, true);

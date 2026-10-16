@@ -1,19 +1,21 @@
 diff --git i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
-index 1044c32c43..646da8b72d 100644
+index 1044c32c43..df7c80fa79 100644
 --- i/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
 +++ w/chrome/browser/resources/new_tab_page_third_party/new_tab_page_third_party.html
-@@ -1,56 +1,305 @@
+@@ -1,56 +1,330 @@
  <!doctype html>
 -<html dir="$i18n{textdirection}" lang="$i18n{language}"
 -    $i18n{hascustombackground} $i18n{isdark} $i18n{webuiRoundedIconsAttribute}>
-+<!-- navegador: nova aba calma, no estilo do Dia: hora e data grandes no
-+     centro e os atalhos embaixo. A busca é pela barra de endereço, que já
++<!-- navegador: nova aba calma, no desenho do navegador (o "Noite elétrica"
++     do Resenha): hora e data grandes no centro e os atalhos embaixo. A busca é pela barra de endereço, que já
 +     abre focada. O que aparece se escolhe no "Personalizar" do canto. -->
 +<html dir="$i18n{textdirection}" lang="$i18n{language}" $i18n{isdark}>
    <head>
      <meta charset="utf-8">
      <title>$i18n{title}</title>
      <style>
++      /* Tokens do "Noite elétrica" (Resenha): grafite neutro e azul
++         elétrico; o claro é a mesma ideia ao contrário. */
        html {
 -        --ntp-focus-shadow-color: rgba(var(--google-blue-600-rgb), .4);
 -        --ntp-theme-text-color: var(--google-grey-800);
@@ -21,12 +23,24 @@ index 1044c32c43..646da8b72d 100644
 -        background-color: $i18n{colorBackground};
 -        background-position: $i18n{backgroundPosition};
 -        background-repeat: $i18n{backgroundTiling};
-+        --texto: rgba(20, 20, 24, .92);
-+        --texto-2: rgba(20, 20, 24, .52);
-+        --brilho-1: rgba(79, 140, 255, .10);
-+        --brilho-2: rgba(195, 139, 255, .08);
++        --fundo: #ffffff;
++        --elevado: #f4f4f5;
++        --texto: #18181b;
++        --texto-2: #52525b;
++        --texto-3: #71717a;
++        --linha: rgba(0, 0, 0, .08);
++        --linha-forte: rgba(0, 0, 0, .12);
++        --hover: rgba(0, 0, 0, .045);
++        --selecionado: rgba(0, 0, 0, .07);
++        --acento: #2b6cf5;
++        --acento-texto: #2b6cf5;
++        --luz: rgba(43, 108, 245, .07);
++        --sombra: 0 24px 60px -18px rgba(0, 0, 0, .25),
++                  0 6px 18px rgba(0, 0, 0, .08);
++        --fonte: 'Geist', 'Geist Variable', 'Inter', system-ui, sans-serif;
++        --fonte-titulo: 'Bricolage Grotesque', var(--fonte);
 +        /* O script da página põe a cor do tema por cima; a nossa vale. */
-+        background-color: #ffffff !important;
++        background-color: var(--fundo) !important;
 +        background-image: none !important;
 +        color-scheme: light dark;
          height: 100%;
@@ -37,11 +51,19 @@ index 1044c32c43..646da8b72d 100644
          html {
 -          --ntp-focus-shadow-color: rgba(var(--google-blue-300-rgb), .5);
 -          --ntp-theme-text-color: white;
-+          --texto: rgba(255, 255, 255, .92);
-+          --texto-2: rgba(255, 255, 255, .48);
-+          --brilho-1: rgba(79, 140, 255, .09);
-+          --brilho-2: rgba(195, 139, 255, .07);
-+          background-color: #1f1f1f !important;
++          --fundo: #111113;
++          --elevado: #18181b;
++          --texto: #f4f4f5;
++          --texto-2: #aaaab3;
++          --texto-3: #888892;
++          --linha: rgba(255, 255, 255, .07);
++          --linha-forte: rgba(255, 255, 255, .12);
++          --hover: rgba(255, 255, 255, .045);
++          --selecionado: rgba(255, 255, 255, .08);
++          --acento-texto: #7aaaff;
++          --luz: rgba(79, 140, 255, .08);
++          --sombra: 0 34px 80px -20px rgba(0, 0, 0, .82),
++                    0 8px 24px rgba(0, 0, 0, .4);
          }
        }
  
@@ -53,36 +75,38 @@ index 1044c32c43..646da8b72d 100644
 -
        body {
          align-items: center;
-+        background:
-+            radial-gradient(60% 50% at 50% 38%, var(--brilho-1),
-+                            transparent 72%),
-+            radial-gradient(50% 45% at 50% 66%, var(--brilho-2),
-+                            transparent 72%);
++        /* Uma luz azul bem fraca no alto à esquerda, que some no meio. */
++        background: radial-gradient(70% 60% at 12% 0%, var(--luz),
++                                    transparent 70%);
 +        box-sizing: border-box;
 +        color: var(--texto);
          display: flex;
 +        flex-direction: column;
-+        font-family: system-ui, sans-serif;
++        font-family: var(--fonte);
          height: 100vh;
          justify-content: center;
          margin: 0;
 +        padding-bottom: 6vh;
 +        user-select: none;
++        -webkit-font-smoothing: antialiased;
 +      }
 +
 +      .hora {
++        font-family: var(--fonte-titulo);
 +        font-feature-settings: "tnum";
-+        font-size: clamp(56px, 9vw, 96px);
-+        font-weight: 250;
-+        letter-spacing: -0.03em;
++        font-size: clamp(64px, 10vw, 116px);
++        font-variation-settings: "opsz" 96;
++        font-weight: 300;
++        letter-spacing: -0.035em;
 +        line-height: 1;
 +      }
 +
 +      .data {
-+        color: var(--texto-2);
++        color: var(--texto-3);
 +        font-size: 15px;
 +        font-weight: 450;
-+        margin-top: 14px;
++        letter-spacing: .005em;
++        margin-top: 16px;
 +      }
 +
 +      .data::first-letter {
@@ -92,20 +116,24 @@ index 1044c32c43..646da8b72d 100644
        cr-most-visited {
 -        --most-visited-focus-shadow: 0 0 0 2px var(--ntp-focus-shadow-color);
 -        --most-visited-text-color: var(--ntp-theme-text-color);
-+        --most-visited-focus-shadow: 0 0 0 2px rgba(122, 162, 255, .5);
-+        --most-visited-text-color: var(--texto);
++        --most-visited-focus-shadow: inset 0 0 0 1.5px rgba(79, 140, 255, .85);
++        --most-visited-text-color: var(--texto-2);
          --most-visited-text-shadow: none;
-+        margin-top: 44px;
++        --most-visited-title-font-size: 12px;
++        /* O tema do Chromium põe as cores dele direto no elemento. */
++        --tile-background-color: var(--elevado) !important;
++        --tile-hover-color: var(--hover) !important;
++        margin-top: 48px;
        }
  
 -      html[has-custom-background] cr-most-visited {
 -        --most-visited-text-shadow: 0 0 16px rgba(0, 0, 0, .3);
 +      .hora, .data {
-+        animation: chegar .5s cubic-bezier(.2, .8, .2, 1) both;
++        animation: chegar .26s cubic-bezier(.2, .8, .2, 1) both;
 +      }
 +
 +      cr-most-visited {
-+        animation: chegar .5s .08s cubic-bezier(.2, .8, .2, 1) both;
++        animation: chegar .26s .06s cubic-bezier(.2, .8, .2, 1) both;
 +      }
 +
 +      @keyframes chegar {
@@ -115,37 +143,33 @@ index 1044c32c43..646da8b72d 100644
 +        }
 +      }
 +
++      @media (prefers-reduced-motion: reduce) {
++        .hora, .data, cr-most-visited, .painel {
++          animation: none !important;
++        }
++      }
++
 +      [hidden] {
 +        display: none !important;
 +      }
 +
-+      /* Personalizar: botão discreto no canto e um painel pequeno. */
++      /* Personalizar: botão discreto no canto e um painel pequeno (o
++         Popover do Resenha: elevado, fio de 1 px, sombra grande). */
 +      html {
-+        --painel-fundo: rgba(255, 255, 255, .96);
-+        --painel-borda: rgba(0, 0, 0, .08);
-+        --painel-sombra: 0 12px 32px rgba(0, 0, 0, .14);
-+        --controle: rgba(0, 0, 0, .06);
-+        --controle-ativo: #ffffff;
-+        --chave-desligada: rgba(0, 0, 0, .18);
-+        --destaque: #3b82f6;
-+      }
-+
-+      @media (prefers-color-scheme: dark) {
-+        html {
-+          --painel-fundo: rgba(40, 40, 44, .96);
-+          --painel-borda: rgba(255, 255, 255, .08);
-+          --painel-sombra: 0 12px 32px rgba(0, 0, 0, .45);
-+          --controle: rgba(255, 255, 255, .07);
-+          --controle-ativo: rgba(255, 255, 255, .16);
-+          --chave-desligada: rgba(255, 255, 255, .2);
-+        }
++        --painel-fundo: var(--elevado);
++        --painel-borda: var(--linha-forte);
++        --painel-sombra: var(--sombra);
++        --controle: var(--hover);
++        --controle-ativo: var(--selecionado);
++        --chave-desligada: var(--linha-forte);
++        --destaque: var(--acento);
 +      }
 +
 +      .personalizar {
 +        align-items: center;
 +        background: transparent;
 +        border: 0;
-+        border-radius: 8px;
++        border-radius: 999px;
 +        bottom: 16px;
 +        color: var(--texto-2);
 +        cursor: pointer;
@@ -173,9 +197,9 @@ index 1044c32c43..646da8b72d 100644
 +        backdrop-filter: blur(20px);
 +        background: var(--painel-fundo);
 +        border: 1px solid var(--painel-borda);
-+        border-radius: 12px;
++        border-radius: 16px;
 +        bottom: 56px;
-+        box-shadow: var(--painel-sombra);
++        box-shadow: var(--painel-sombra), inset 0 1px 0 rgba(255, 255, 255, .055);
 +        box-sizing: border-box;
 +        font-size: 13px;
 +        padding: 12px;
@@ -193,7 +217,8 @@ index 1044c32c43..646da8b72d 100644
 +      }
 +
 +      .painel .titulo {
-+        font-size: 13px;
++        font-family: var(--fonte-titulo);
++        font-size: 15px;
 +        font-weight: 600;
 +        margin: 2px 2px 10px;
 +      }
@@ -253,7 +278,7 @@ index 1044c32c43..646da8b72d 100644
 +
 +      .segmentos {
 +        background: var(--controle);
-+        border-radius: 8px;
++        border-radius: 999px;
 +        display: flex;
 +        gap: 2px;
 +        padding: 2px;
@@ -262,7 +287,7 @@ index 1044c32c43..646da8b72d 100644
 +      .segmentos button {
 +        background: transparent;
 +        border: 0;
-+        border-radius: 6px;
++        border-radius: 999px;
 +        color: var(--texto-2);
 +        cursor: pointer;
 +        flex: 1;
@@ -274,7 +299,7 @@ index 1044c32c43..646da8b72d 100644
 +
 +      .segmentos button[aria-checked=true] {
 +        background: var(--controle-ativo);
-+        box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
++        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055);
 +        color: var(--texto);
 +      }
 +
@@ -484,6 +509,22 @@ index 6d3e318b62..6c0187ca54 100644
      if (default_is_google) {
        return NewTabURLDetails(local_url, NEW_TAB_URL_VALID);
      }
+diff --git i/chrome/browser/themes/theme_service.cc w/chrome/browser/themes/theme_service.cc
+index cb1dd91e6d..5517cc8945 100644
+--- i/chrome/browser/themes/theme_service.cc
++++ w/chrome/browser/themes/theme_service.cc
+@@ -314,9 +314,10 @@ void ThemeService::RegisterProfilePrefs(
+       prefs::kDeprecatedBrowserColorSchemeDoNotUse,
+       std::to_underlying(ThemeService::BrowserColorScheme::kSystem),
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
++  // navegador: escuro por padrão (o desenho do navegador é escuro primeiro).
+   registry->RegisterIntegerPref(
+       prefs::kBrowserColorScheme,
+-      std::to_underlying(ThemeService::BrowserColorScheme::kSystem));
++      std::to_underlying(ThemeService::BrowserColorScheme::kDark));
+   registry->RegisterIntegerPref(
+       prefs::kDeprecatedUserColorDoNotUse, SK_ColorTRANSPARENT,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
 diff --git i/chrome/browser/ui/browser_ui_controller/browser_ui_controller.cc w/chrome/browser/ui/browser_ui_controller/browser_ui_controller.cc
 index fcf93fb913..b063e687e3 100644
 --- i/chrome/browser/ui/browser_ui_controller/browser_ui_controller.cc
@@ -711,7 +752,7 @@ index 7a0e331ded..8d2dee8dfa 100644
  BASE_FEATURE_PARAM(bool, kTabGroupsFocusFreezing, &kTabGroupsFocusing, true);
  
 diff --git i/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc w/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc
-index 32e5c1a27f..9982ad53fa 100644
+index 32e5c1a27f..0ab4b1f800 100644
 --- i/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc
 +++ w/chrome/browser/ui/views/frame/browser_desktop_window_tree_host_linux.cc
 @@ -17,6 +17,7 @@
@@ -728,7 +769,7 @@ index 32e5c1a27f..9982ad53fa 100644
  
 -  if (ui::OzonePlatform::GetInstance()->IsWindowCompositingSupported()) {
 +  if (ui::OzonePlatform::GetInstance()->IsWindowCompositingSupported() &&
-+      navegador::cores::kVidro) {
++      navegador::cores::Vidro()) {
 +    // navegador: vidro. Nada é declarado opaco, pro compositor desfocar
 +    // atrás da moldura translúcida; a página é pintada opaca de todo jeito.
 +    window->SetOpaqueRegion(std::nullopt);
@@ -830,7 +871,7 @@ index a335e2d5cc..9e1616c111 100644
  #if BUILDFLAG(IS_CHROMEOS)
    // ChromeOS SystemWebApps use the OS theme all the time.
 diff --git i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-index 29dfbde914..04e912441e 100644
+index 29dfbde914..985084bea3 100644
 --- i/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ w/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 @@ -4,6 +4,12 @@
@@ -934,7 +975,7 @@ index 29dfbde914..04e912441e 100644
 +    // pode passar por trás dela: com um painel lateral aberto a lateral ficava
 +    // cinza, sem o vidro e sem a cor escolhida.
 +    const bool lateral_de_vidro =
-+        navegador::cores::kVidro &&
++        navegador::cores::Vidro() &&
 +        layout_data_->tab_strip_type == TabStripType::kVertical;
 +    if (layout_data_->separator_info.adjust_for_missing_separator &&
 +        !lateral_de_vidro) {
@@ -979,7 +1020,7 @@ index 29dfbde914..04e912441e 100644
            (1.0 - animation.expand_on_hover_opacity) * frame_color.opacity +
            animation.expand_on_hover_opacity * expand_on_hover_opacity);
        vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
-+    } else if (navegador::cores::kVidro &&
++    } else if (navegador::cores::Vidro() &&
 +               !is_fullscreen(layout_data_->window_state)) {
 +      // navegador: vidro. A moldura translúcida já é pintada atrás; pintar de
 +      // novo aqui dobraria a opacidade. Só fica opaca quando a lateral
@@ -1018,7 +1059,7 @@ index 29dfbde914..04e912441e 100644
        // browser.
        if (layout_data_->window_state == WindowState::kNormal &&
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
-index 62f69255e0..f10b693e88 100644
+index 62f69255e0..2e2dcb188d 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 +++ w/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
 @@ -4,6 +4,15 @@
@@ -1087,16 +1128,22 @@ index 62f69255e0..f10b693e88 100644
  void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
    TRACE_EVENT0("views.frame", "OpaqueBrowserFrameView::OnPaint");
    if (browser_widget()->IsFullscreen()) {
-@@ -670,6 +713,19 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+@@ -670,6 +713,25 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
      }
    }
  
 +  // navegador: vidro. A moldura é um fundo só, translúcido, na janela toda
 +  // (atrás da lateral e da margem do cartão). Pintada em partes (faixa de
-+  // cima + bordas), cada região saía num tom.
-+  if (navegador::cores::kVidro &&
-+      GetBrowserView()->browser()->GetType() ==
-+          BrowserWindowInterface::Type::TYPE_NORMAL) {
++  // cima + bordas), cada região saía num tom. Janela solta (com a sombra
++  // que o Chromium desenha em volta, numa faixa transparente) usa a pintura
++  // normal: pintar a janela toda enchia a faixa da sombra de vidro.
++  bool janela_com_sombra = !IsFrameCondensed() && ShouldDrawRestoredFrameShadow();
++#if BUILDFLAG(IS_LINUX)
++  janela_com_sombra = janela_com_sombra && !browser_widget()->tiled();
++#endif
++  const bool janela_normal = GetBrowserView()->browser()->GetType() ==
++                             BrowserWindowInterface::Type::TYPE_NORMAL;
++  if (navegador::cores::Vidro() && janela_normal && !janela_com_sombra) {
 +    // Src (substitui) e não SrcOver: repintar um pedaço da moldura (a lateral
 +    // abrindo e fechando) somava a cor translúcida por cima e deixava listras.
 +    canvas->FillRect(GetLocalBounds(), frame_color, SkBlendMode::kSrc);
@@ -1107,6 +1154,17 @@ index 62f69255e0..f10b693e88 100644
    if (IsFrameCondensed()) {
      PaintMaximizedFrameBorder(canvas);
    } else {
+@@ -689,6 +751,10 @@ void OpaqueBrowserFrameView::OnPaint(gfx::Canvas* canvas) {
+   if (!GetBrowserView()->toolbar()->custom_tab_bar()) {
+     PaintClientEdge(canvas);
+   }
++  // navegador: a sombra do cartão também com a moldura opaca.
++  if (janela_normal) {
++    PintarSombraDoCartao(canvas);
++  }
+ }
+ 
+ OpaqueBrowserFrameView::BoundsAndMargins
 diff --git i/chrome/browser/ui/views/frame/opaque_browser_frame_view.h w/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
 index cd6fa39dad..6b9401874b 100644
 --- i/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
@@ -2177,6 +2235,61 @@ index fceda6b642..7ae8e7bc8c 100644
    return gfx::TruncateString(formatted_text, max_url_display_chars_,
                               gfx::CHARACTER_BREAK);
  }
+diff --git i/ui/base/webui/web_ui_util.cc w/ui/base/webui/web_ui_util.cc
+index 46ca6525b0..f8067705ec 100644
+--- i/ui/base/webui/web_ui_util.cc
++++ w/ui/base/webui/web_ui_util.cc
+@@ -45,7 +45,9 @@ constexpr float kMaxScaleFactor = 1000.0f;
+ 
+ std::string GetFontFamilyMd() {
+ #if BUILDFLAG(IS_LINUX)
+-  return "Roboto, " + GetFontFamily();
++  // navegador: a fonte da interface (Geist) também nas páginas internas, em
++  // vez da Roboto.
++  return GetFontFamily();
+ #else
+   return GetFontFamily();
+ #endif
+diff --git i/ui/gfx/paint_vector_icon.cc w/ui/gfx/paint_vector_icon.cc
+index eef47b4c9b..7a93595423 100644
+--- i/ui/gfx/paint_vector_icon.cc
++++ w/ui/gfx/paint_vector_icon.cc
+@@ -183,6 +183,8 @@ void PaintPath(Canvas* canvas,
+       case STROKE:
+         flags.setStyle(cc::PaintFlags::kStroke_Style);
+         flags.setStrokeWidth(arg(0));
++        // navegador: junções arredondadas, como nos ícones do Lucide.
++        flags.setStrokeJoin(cc::PaintFlags::kRound_Join);
+         break;
+ 
+       case CAP_SQUARE:
+diff --git i/ui/gfx/platform_font_skia.cc w/ui/gfx/platform_font_skia.cc
+index 64f072febc..4fae0330d0 100644
+--- i/ui/gfx/platform_font_skia.cc
++++ w/ui/gfx/platform_font_skia.cc
+@@ -202,6 +202,22 @@ void PlatformFontSkia::EnsuresDefaultFontIsInitialized() {
+     params = gfx::GetFontRenderParams(FontRenderParamsQuery(), nullptr);
+   }
+ 
++  // navegador: interface na Geist (vai no pacote), em 13 px, como o resto do
++  // desenho do navegador (o "Noite elétrica" do Resenha). Sem ela, fica a do
++  // sistema. Confere o nome: o fontconfig às vezes devolve outra no lugar.
++  {
++    sk_sp<SkTypeface> geist =
++        skia::MakeTypefaceFromName("Geist", SkFontStyle());
++    SkString nome;
++    if (geist) {
++      geist->getFamilyName(&nome);
++    }
++    if (geist && nome.equals("Geist")) {
++      family = "Geist";
++      size_pixels = 13;
++    }
++  }
++
+   bool success = false;
+   sk_sp<SkTypeface> typeface =
+       CreateSkTypeface(style & Font::ITALIC, weight, &family, &success);
 diff --git i/ui/views/controls/menu/menu_config.cc w/ui/views/controls/menu/menu_config.cc
 index a711c50328..67b4fecdde 100644
 --- i/ui/views/controls/menu/menu_config.cc

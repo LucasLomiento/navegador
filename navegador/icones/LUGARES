@@ -1,0 +1,36 @@
+# Ícones do Lucide (licença ISC) no lugar dos do Chromium: "<nome no Lucide> <arquivo .icon no src>".
+# tools/icones.sh gera (tools/lucide.py) e copia; tools/fonte.sh --gerar deixa estes caminhos fora dos patches.
+arrow-left components/vector_icons/arrow_back.icon
+arrow-right components/vector_icons/arrow_forward.icon
+rotate-cw components/vector_icons/refresh.icon
+x components/vector_icons/close.icon
+x chrome/app/vector_icons/close.icon
+x ui/views/vector_icons/close.icon
+plus chrome/app/vector_icons/add.icon
+download components/vector_icons/download.icon
+download chrome/app/vector_icons/download.icon
+pin chrome/app/vector_icons/keep.icon
+pin ui/views/vector_icons/keep.icon
+chevron-right chrome/app/vector_icons/chevron_right.icon
+chevron-right chrome/app/vector_icons/keyboard_arrow_right.icon
+chevron-down chrome/app/vector_icons/keyboard_arrow_down.icon
+chevron-down components/vector_icons/keyboard_arrow_down.icon
+settings chrome/app/vector_icons/settings.icon
+settings components/vector_icons/settings.icon
+search components/vector_icons/search.icon
+settings-2 components/omnibox/browser/vector_icons/page_info_custom.icon
+settings-2 components/omnibox/browser/vector_icons/secure_page_info_chrome_refresh_old.icon
+settings-2 components/vector_icons/tune.icon
+folder components/vector_icons/folder_flippable.icon
+folder-open components/vector_icons/folder_open.icon
+trash chrome/app/vector_icons/delete.icon
+trash ui/views/vector_icons/delete.icon
+check chrome/app/vector_icons/check.icon
+check ui/views/vector_icons/check.icon
+briefcase components/vector_icons/work.icon
+list chrome/app/vector_icons/view_list.icon
+layout-grid chrome/app/vector_icons/grid_view.icon
+keyboard components/vector_icons/keyboard.icon
+paintbrush chrome/app/vector_icons/brush_filled.icon
+star components/omnibox/browser/vector_icons/star.icon
+star chrome/app/vector_icons/star.icon

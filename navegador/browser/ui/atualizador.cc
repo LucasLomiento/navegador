@@ -4,6 +4,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "base/json/json_reader.h"
 #include "base/memory/raw_ptr.h"
 #include "base/no_destructor.h"
+#include "base/files/file_util.h"
 #include "base/path_service.h"
 #include "base/process/launch.h"
 #include "base/process/process.h"
@@ -53,6 +55,7 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
+#include "build/build_config.h"
 #include "url/gurl.h"
 
 namespace navegador::atualizador {
@@ -76,6 +79,14 @@ constexpr net::NetworkTrafficAnnotationTag kAnotacao =
         })");
 
 enum class Situacao { kNada, kDisponivel, kInstalando, kInstalada, kErro };
+
+// O arquivo da release pra este sistema: o pacote do pacman (Arch e
+// derivados) ou o instalador do Windows (por usuário, sem pedir senha).
+#if BUILDFLAG(IS_WIN)
+constexpr std::string_view kFimDoPacote = "-windows-x64.exe";
+#else
+constexpr std::string_view kFimDoPacote = ".pkg.tar.zst";
+#endif
 
 struct Versao {
   base::Version chromium;
@@ -133,7 +144,7 @@ void AvisarTodos();
 std::string LerArquivoDeVersao() {
   base::FilePath pasta;
   std::string texto;
-  if (!base::PathService::Get(base::DIR_EXE, &pasta) ||
+  if (!base::PathService::Get(base::DIR_MODULE, &pasta) ||
       !base::ReadFileToString(pasta.Append("VERSAO"), &texto)) {
     return std::string();
   }
@@ -177,7 +188,7 @@ void Chegou(std::optional<std::string> corpo) {
       const std::string* nome = d ? d->FindString("name") : nullptr;
       const std::string* endereco =
           d ? d->FindString("browser_download_url") : nullptr;
-      if (nome && endereco && nome->ends_with(".pkg.tar.zst")) {
+      if (nome && endereco && nome->ends_with(kFimDoPacote)) {
         url = *endereco;
       }
     }
@@ -248,6 +259,61 @@ void Instalar() {
   }
   estado.situacao = Situacao::kInstalando;
   AvisarTodos();
+#if BUILDFLAG(IS_WIN)
+  // Baixa o instalador e roda: ele põe a versão nova ao lado da atual (a
+  // troca vale ao reiniciar), sem pedir senha.
+  auto pedido = std::make_unique<network::ResourceRequest>();
+  pedido->url = GURL(estado.url_pacote);
+  pedido->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  estado.pedido = network::SimpleURLLoader::Create(std::move(pedido), kAnotacao);
+  base::FilePath destino;
+  base::GetTempDir(&destino);
+  destino = destino.AppendASCII("navegador-instalador.exe");
+  estado.pedido->DownloadToFile(
+      g_browser_process->shared_url_loader_factory().get(),
+      base::BindOnce([](base::FilePath instalador) {
+        Atual().pedido.reset();
+        if (instalador.empty()) {
+          Atual().situacao = Situacao::kErro;
+          Atual().erro = u"Não deu pra baixar o instalador.";
+          AvisarTodos();
+          return;
+        }
+        base::ThreadPool::PostTaskAndReplyWithResult(
+            FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+            base::BindOnce(
+                [](base::FilePath instalador) {
+                  base::CommandLine comando(instalador);
+                  comando.AppendSwitch("do-not-launch-chrome");
+                  base::Process processo =
+                      base::LaunchProcess(comando, base::LaunchOptions());
+                  int codigo = -1;
+                  if (!processo.IsValid() ||
+                      !processo.WaitForExitWithTimeout(base::Minutes(15),
+                                                       &codigo)) {
+                    return -1;
+                  }
+                  base::DeleteFile(instalador);
+                  return codigo;
+                },
+                instalador),
+            base::BindOnce([](int codigo) {
+              Estado& estado = Atual();
+              // Códigos do instalador do Chromium (installer::InstallStatus):
+              // 0 primeira instalação, 1 reparo, 2 versão nova, 4 já tinha
+              // uma mais nova.
+              if (codigo == 0 || codigo == 1 || codigo == 2 || codigo == 4) {
+                estado.situacao = Situacao::kInstalada;
+              } else {
+                estado.situacao = Situacao::kErro;
+                estado.erro = u"O instalador não conseguiu atualizar (código " +
+                              base::NumberToString16(codigo) + u").";
+              }
+              AvisarTodos();
+            }));
+      }),
+      destino, 512 * 1024 * 1024);
+#else
   // pacman instala direto do endereço; o pkexec pede a senha numa janela
   // do sistema (o agente do polkit).
   base::ThreadPool::PostTaskAndReplyWithResult(
@@ -283,6 +349,7 @@ void Instalar() {
         }
         AvisarTodos();
       }));
+#endif
 }
 
 // --- Aviso no pé da lateral -------------------------------------------------

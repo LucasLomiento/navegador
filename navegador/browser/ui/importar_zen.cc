@@ -12,6 +12,7 @@
 #include "base/barrier_closure.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "build/build_config.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/json/json_reader.h"
@@ -181,6 +182,14 @@ std::optional<base::FilePath> PerfilDentroDe(const base::FilePath& raiz) {
 }
 
 std::optional<base::FilePath> AcharPerfil() {
+#if BUILDFLAG(IS_WIN)
+  // %APPDATA%\zen (o profiles.ini fica ali, os perfis em Profiles\).
+  base::FilePath roaming;
+  if (base::PathService::Get(base::DIR_ROAMING_APP_DATA, &roaming)) {
+    return PerfilDentroDe(roaming.AppendASCII("zen"));
+  }
+  return std::nullopt;
+#else
   const base::FilePath casa = base::GetHomeDir();
   for (const char* raiz :
        {".config/zen", ".zen", ".var/app/app.zen_browser.zen/config/zen",
@@ -191,6 +200,7 @@ std::optional<base::FilePath> AcharPerfil() {
     }
   }
   return std::nullopt;
+#endif
 }
 
 // Bloco LZ4 (o "mozLz40" do Firefox é cabeçalho + tamanho + um bloco).
