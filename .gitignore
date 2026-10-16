@@ -9,3 +9,4 @@ out/
 pkg/
 *.pkg.tar.*
 pacote/bloqueador/
+site/dist/

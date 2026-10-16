@@ -1,7 +1,7 @@
 #!/bin/bash
 # Publica o pacote mais novo de pacote/ nas Releases públicas
 # (LucasLomiento/navegador-releases): só os pacotes e o repositório do
-# pacman; o código fica neste repositório, privado.
+# pacman; o código fica neste repositório. Depois refaz o site (site/).
 #
 #   tools/publicar.sh "notas da versão (markdown)"
 #
@@ -61,3 +61,7 @@ WINDOWS="$RAIZ/pacote/navegador-$VERSAO-windows-x64.exe"
 gh release create "$TAG" --repo "$REPO" --title "Navegador $VERSAO" \
   --notes "$NOTAS" --latest "${ARQUIVOS[@]}"
 echo "Publicado: https://github.com/$REPO/releases/tag/$TAG"
+# O site (GitHub Pages) lê as releases: refaz com a versão nova.
+gh workflow run site.yml --repo LucasLomiento/navegador --ref main >/dev/null 2>&1 &&
+  echo "Site: https://lucaslomiento.github.io/navegador/ (atualizando)" ||
+  echo "Aviso: não deu pra disparar o site (gh workflow run site.yml)." >&2
