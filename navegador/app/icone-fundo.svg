@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- O ícone com fundo, guardado pra quando o sistema exigir um (Windows):
+       o squircle grafite do Resenha (superelipse, n=5) com a mesma agulha.
+       No Linux vale o icone.svg, sem fundo. -->
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="15.5" x2="0" y2="240.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#232329"/>
+      <stop offset="1" stop-color="#121215"/>
+    </linearGradient>
+    <clipPath id="forma"><path d="M240.5 128C240.5 239.95 239.95 240.5 128 240.5C16.05 240.5 15.5 239.95 15.5 128C15.5 16.05 16.05 15.5 128 15.5C239.95 15.5 240.5 16.05 240.5 128Z"/></clipPath>
+  </defs>
+  <path fill="url(#fundo)" d="M240.5 128C240.5 239.95 239.95 240.5 128 240.5C16.05 240.5 15.5 239.95 15.5 128C15.5 16.05 16.05 15.5 128 15.5C239.95 15.5 240.5 16.05 240.5 128Z"/>
+  <path fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="3" clip-path="url(#forma)" d="M240.5 128C240.5 239.95 239.95 240.5 128 240.5C16.05 240.5 15.5 239.95 15.5 128C15.5 16.05 16.05 15.5 128 15.5C239.95 15.5 240.5 16.05 240.5 128Z"/>
+  <g transform="rotate(45 128 128)">
+    <path d="M128 34 L93 128 L128 128 Z" fill="#8cb6ff"/>
+    <path d="M128 34 L163 128 L128 128 Z" fill="#2b6cf5"/>
+    <path d="M93 128 L128 222 L128 128 Z" fill="#e4e4e7"/>
+    <path d="M163 128 L128 222 L128 128 Z" fill="#9b9ba4"/>
+  </g>
+  <circle cx="128" cy="128" r="10" fill="#ffffff"/>
+  <circle cx="128" cy="128" r="4.5" fill="#2b6cf5"/>
+</svg>

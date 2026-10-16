@@ -43,6 +43,7 @@
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/atualizador.h"
 #include "navegador/browser/ui/downloads/botao.h"
+#include "navegador/browser/ui/grupos_salvos.h"
 #include "navegador/browser/ui/containers/espaco.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/metadata/metadata_header_macros.h"
@@ -1144,6 +1145,9 @@ std::optional<SkColor> CorDaJanela(BrowserWindowInterface* browser) {
 }
 
 void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
+  // Os espaços usam grupos de abas; o Chromium não guarda mais esses grupos
+  // na lista de salvos (ver grupos_salvos.h).
+  grupos_salvos::Desligar(browser->GetProfile());
   // "Mover para o espaço" no menu da aba (containers_ui não enxerga daqui).
   static bool ponte_ligada = false;
   if (!ponte_ligada) {

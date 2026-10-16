@@ -1,6 +1,8 @@
 #!/bin/bash
-# Gera os ícones do navegador (navegador/app/icone.svg) nos tamanhos que o
-# Chromium usa e põe no lugar dos do Chromium. Roda pelo tools/fonte.sh.
+# Gera os ícones do navegador (navegador/app/icone.svg, só a agulha, sem
+# fundo) nos tamanhos que o Chromium usa e põe no lugar dos do Chromium. Roda
+# pelo tools/fonte.sh. O icone-fundo.svg (quadrado grafite) fica pro sistema
+# que exigir fundo; o Linux não exige.
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="${NAVEGADOR_SRC:-$HOME/Work/navegador-chromium/src}"

@@ -1,0 +1,26 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// vector_icons.h.template is used to generate vector_icons.h. Edit the former
+// rather than the latter.
+
+#ifndef NAVEGADOR_ICONES_MENU_VECTOR_ICONS_H_
+#define NAVEGADOR_ICONES_MENU_VECTOR_ICONS_H_
+
+namespace gfx {
+struct VectorIcon;
+}
+
+namespace navegador::icones_menu {
+
+#define VECTOR_ICON_TEMPLATE_H(icon_name) \
+extern const gfx::VectorIcon icon_name;
+
+TEMPLATE_PLACEHOLDER
+
+#undef VECTOR_ICON_TEMPLATE_H
+
+}  // namespace navegador::icones_menu
+
+#endif  // NAVEGADOR_ICONES_MENU_VECTOR_ICONS_H_

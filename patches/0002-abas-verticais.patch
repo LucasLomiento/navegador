@@ -241,7 +241,7 @@ index 22ece00a8c..88a105da9d 100644
      collapse_action->SetEnabled(ShouldDisplayVerticalTabs());
    }
 diff --git i/chrome/browser/ui/toolbar/app_menu_model.cc w/chrome/browser/ui/toolbar/app_menu_model.cc
-index f8f6a64f35..8e88e3ce25 100644
+index f8f6a64f35..8aedcc0bdd 100644
 --- i/chrome/browser/ui/toolbar/app_menu_model.cc
 +++ w/chrome/browser/ui/toolbar/app_menu_model.cc
 @@ -4,6 +4,8 @@
@@ -281,17 +281,20 @@ index f8f6a64f35..8e88e3ce25 100644
  
    if (CustomizeChromePageHandler::IsSupported(
            NtpCustomBackgroundServiceFactory::GetForProfile(
-@@ -1258,6 +1241,9 @@ void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
+@@ -1258,6 +1241,12 @@ void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
    LogMenuMetrics(command_id);
  
    switch (command_id) {
++    // navegador: "Configurações" abre as do navegador; as do Chromium ficam
++    // dentro delas, em "Configurações avançadas".
++    case IDC_OPTIONS:
 +    case kNavegadorConfiguracoes:
 +      navegador::containers::MostrarConfiguracoes(browser_);
 +      return;
      case IDC_SHOW_BOOKMARK_SIDE_PANEL:
      case IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL:
      case IDC_SHOW_READING_MODE_SIDE_PANEL:
-@@ -1994,6 +1980,9 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
+@@ -1994,6 +1983,9 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
    switch (command_id) {
      case IDC_NEW_INCOGNITO_WINDOW:
        return IncognitoModePrefs::IsIncognitoAllowed(browser_->GetProfile());
@@ -301,7 +304,7 @@ index f8f6a64f35..8e88e3ce25 100644
      default:
        return chrome::IsCommandEnabled(browser_, command_id);
    }
-@@ -2114,6 +2103,26 @@ void AppMenuModel::Build() {
+@@ -2114,6 +2106,21 @@ void AppMenuModel::Build() {
      }
    }
  
@@ -318,16 +321,23 @@ index f8f6a64f35..8e88e3ce25 100644
 +                             vector_icons::kCookieIcon, ui::kColorMenuIcon,
 +                             ui::SimpleMenuModel::kDefaultIconSize));
 +    }
-+    AddItemWithIcon(kNavegadorConfiguracoes, u"Configurações do Navegador…",
-+                    ui::ImageModel::FromVectorIcon(
-+                        vector_icons::kTuneIcon,
-+                        ui::kColorMenuIcon,
-+                        ui::SimpleMenuModel::kDefaultIconSize));
 +  }
 +
    AddSeparator(ui::NORMAL_SEPARATOR);
  
  #if !BUILDFLAG(IS_CHROMEOS)
+@@ -2180,7 +2187,10 @@ void AppMenuModel::Build() {
+         kBookmarksMenuItem);
+   }
+ 
+-  if (browser_->GetProfile()->IsRegularProfile()) {
++  // navegador: sem "Grupos de guias": os espaços fazem esse papel (e os
++  // grupos deles não ficam salvos, ver navegador/browser/ui/grupos_salvos.h).
++  constexpr bool kNavegadorGruposDeGuias = false;
++  if (kNavegadorGruposDeGuias && browser_->GetProfile()->IsRegularProfile()) {
+     auto saved_tab_groups_model = std::make_unique<ui::SimpleMenuModel>(this);
+     sub_menus_.push_back(std::move(saved_tab_groups_model));
+     AddSubMenuWithStringIdAndVectorIcon(
 diff --git i/chrome/browser/ui/toolbar/app_menu_model.h w/chrome/browser/ui/toolbar/app_menu_model.h
 index ed3f1fa50b..8d1a49dbe3 100644
 --- i/chrome/browser/ui/toolbar/app_menu_model.h

@@ -64,6 +64,8 @@
 #include "ui/views/background.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/button.h"
+#include "ui/views/controls/button/image_button.h"
+#include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/button/toggle_button.h"
@@ -649,7 +651,7 @@ std::unique_ptr<views::View> PaginaGeral(BrowserWindowInterface* browser) {
 
   Cartao* chromium = pagina->Secao(u"Mais configurações");
   chromium->Adicionar(Linha(
-      u"Configurações do Chromium",
+      u"Configurações avançadas",
       u"Senhas, privacidade, downloads, idioma e mecanismo de busca.",
       Botao(u"Abrir", base::BindRepeating(&AbrirPagina, browser,
                                           "chrome://settings"))));
@@ -1400,6 +1402,56 @@ class PaginaDeAtalhos : public views::View {
 BEGIN_METADATA(PaginaDeAtalhos)
 END_METADATA
 
+// O conteúdo do diálogo ocupando tudo e um "X" flutuando no canto de cima,
+// por cima da página (no lugar do X do quadro, que reservava uma faixa).
+class ComBotaoDeFechar : public views::View {
+  METADATA_HEADER(ComBotaoDeFechar, views::View)
+
+ public:
+  ComBotaoDeFechar() {
+    fechar_ = AddChildView(views::CreateVectorImageButtonWithNativeTheme(
+        base::BindRepeating(
+            [](views::View* view) {
+              if (view->GetWidget()) {
+                view->GetWidget()->Close();
+              }
+            },
+            base::Unretained(this)),
+        vector_icons::kCloseIcon, 18));
+    fechar_->SetTooltipText(u"Fechar");
+    fechar_->GetViewAccessibility().SetName(u"Fechar");
+    views::InstallCircleHighlightPathGenerator(fechar_);
+  }
+
+  // views::View:
+  void Layout(PassKey) override {
+    for (views::View* filho : children()) {
+      if (filho != fechar_) {
+        filho->SetBoundsRect(GetLocalBounds());
+      }
+    }
+    const gfx::Size tamanho = fechar_->GetPreferredSize();
+    fechar_->SetBounds(width() - tamanho.width() - 14, 14, tamanho.width(),
+                       tamanho.height());
+  }
+
+  gfx::Size CalculatePreferredSize(
+      const views::SizeBounds& limites) const override {
+    for (views::View* filho : children()) {
+      if (filho != fechar_) {
+        return filho->GetPreferredSize(limites);
+      }
+    }
+    return gfx::Size();
+  }
+
+ private:
+  raw_ptr<views::ImageButton> fechar_;
+};
+
+BEGIN_METADATA(ComBotaoDeFechar)
+END_METADATA
+
 // --- Janela ------------------------------------------------------------------
 
 // Item do menu da esquerda: ícone e nome; o escolhido tem fundo e a pílula
@@ -1696,15 +1748,16 @@ void Mostrar(BrowserWindowInterface* browser, Aba aba) {
   dialogo->SetTitle(u"Configurações do Navegador");
   dialogo->SetShowTitle(false);
   dialogo->SetModalType(ui::mojom::ModalType::kWindow);
-  dialogo->SetShowCloseButton(true);
+  // O "X" do quadro do diálogo, sem título, ocupava uma faixa vazia inteira
+  // no alto; o nosso flutua no canto (ComBotaoDeFechar).
+  dialogo->SetShowCloseButton(false);
   dialogo->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
   dialogo->set_margins(gfx::Insets());
   dialogo->set_fixed_width(kLarguraJanela);
 
-  auto conteudo = std::make_unique<views::View>();
-  conteudo->SetLayoutManager(std::make_unique<views::FillLayout>());
+  auto conteudo = std::make_unique<ComBotaoDeFechar>();
   conteudo
-      ->AddChildView(std::make_unique<JanelaDeConfiguracoes>(browser))
+      ->AddChildViewAt(std::make_unique<JanelaDeConfiguracoes>(browser), 0)
       ->Selecionar(aba);
   dialogo->SetContentsView(std::move(conteudo));
 

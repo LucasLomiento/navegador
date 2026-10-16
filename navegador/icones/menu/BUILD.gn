@@ -1,0 +1,53 @@
+# Ícones do Lucide (licença ISC, ../LICENSE-lucide) pro menu do botão direito
+# das páginas. Gerados por tools/lucide.py; o nome do arquivo vira o do ícone
+# (printer.icon -> navegador::icones_menu::kPrinterIcon).
+
+import("//components/vector_icons/vector_icons.gni")
+
+aggregate_vector_icons("icones_menu") {
+  icon_directory = "."
+  sources = [
+    "app_window.icon",
+    "arrow_left.icon",
+    "arrow_right.icon",
+    "arrow_up_right.icon",
+    "briefcase.icon",
+    "captions.icon",
+    "clipboard_paste.icon",
+    "code.icon",
+    "columns_2.icon",
+    "copy.icon",
+    "download.icon",
+    "face_slightly_smiling.icon",
+    "hat_glasses.icon",
+    "image_down.icon",
+    "image.icon",
+    "languages.icon",
+    "link.icon",
+    "minimize_2.icon",
+    "picture_in_picture_2.icon",
+    "printer.icon",
+    "qr_code.icon",
+    "redo_2.icon",
+    "repeat.icon",
+    "rotate_cw.icon",
+    "scissors.icon",
+    "search.icon",
+    "spell_check.icon",
+    "square_arrow_out_up_right.icon",
+    "square_mouse_pointer.icon",
+    "text_cursor.icon",
+    "undo_2.icon",
+    "volume_x.icon",
+  ]
+}
+
+source_set("menu") {
+  sources = get_target_outputs(":icones_menu")
+  deps = [
+    ":icones_menu",
+    "//base",
+    "//skia",
+    "//ui/gfx",
+  ]
+}

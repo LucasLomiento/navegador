@@ -1646,7 +1646,7 @@ index 76f8e997d6..a4b8aa7040 100644
  };
  
 diff --git i/chrome/browser/ui/views/location_bar/location_bar_view.cc w/chrome/browser/ui/views/location_bar/location_bar_view.cc
-index 9251f8590b..c12aa1523a 100644
+index 9251f8590b..66cf8ac8be 100644
 --- i/chrome/browser/ui/views/location_bar/location_bar_view.cc
 +++ w/chrome/browser/ui/views/location_bar/location_bar_view.cc
 @@ -4,6 +4,9 @@
@@ -1659,7 +1659,18 @@ index 9251f8590b..c12aa1523a 100644
  #include <algorithm>
  #include <memory>
  #include <ranges>
-@@ -853,6 +856,7 @@ void LocationBarView::Layout(PassKey) {
+@@ -274,6 +277,10 @@ LocationBarView::~LocationBarView() {
+ }
+ 
+ void LocationBarView::Init() {
++  // navegador: a saída do ponteiro conta pra barra toda, ícones inclusive
++  // (ver OnOmniboxHovered).
++  SetNotifyEnterExitOnChild(true);
++
+   TRACE_EVENT0("omnibox", "LocationBarView::Init");
+   static bool has_logged_startup_to_init = false;
+   if (!has_logged_startup_to_init) {
+@@ -853,6 +860,7 @@ void LocationBarView::Layout(PassKey) {
      }
    }
  
@@ -1667,7 +1678,7 @@ index 9251f8590b..c12aa1523a 100644
    if (ShouldShowKeywordBubble()) {
      location_icon_view_->SetVisible(false);
      leading_decorations.AddDecoration(
-@@ -862,14 +866,25 @@ void LocationBarView::Layout(PassKey) {
+@@ -862,14 +870,25 @@ void LocationBarView::Layout(PassKey) {
    } else if (location_icon_view_->GetShowText() &&
               !ShouldChipOverrideLocationIcon()) {
      location_icon_view_->SetVisible(true);
@@ -1696,7 +1707,7 @@ index 9251f8590b..c12aa1523a 100644
    } else {
      location_icon_view_->SetVisible(false);
    }
-@@ -882,6 +897,10 @@ void LocationBarView::Layout(PassKey) {
+@@ -882,6 +901,10 @@ void LocationBarView::Layout(PassKey) {
            /*max_fraction=*/0, intra_item_padding, edge_padding, view);
      }
    };
@@ -1707,7 +1718,7 @@ index 9251f8590b..c12aa1523a 100644
  
    if (features::IsPageActionsElevatedToolbarEnabled()) {
      if (page_action_container_ && page_action_container_->GetVisible()) {
-@@ -1066,6 +1085,12 @@ void LocationBarView::Update(WebContents* contents) {
+@@ -1066,6 +1089,12 @@ void LocationBarView::Update(WebContents* contents) {
    } else {
      omnibox_view_->Update();
    }
@@ -1720,7 +1731,7 @@ index 9251f8590b..c12aa1523a 100644
  
    // Ensures that the page action updates is performed after the omnibox update.
    // So we can determine whether page actions should be hidden or not.
-@@ -1437,6 +1462,29 @@ void LocationBarView::RefreshBackground() {
+@@ -1437,6 +1466,29 @@ void LocationBarView::RefreshBackground() {
      permission_dashboard_view_->SetDividerBackgroundColor(background_color_);
    }
  
@@ -1750,7 +1761,7 @@ index 9251f8590b..c12aa1523a 100644
    SchedulePaint();
  }
  
-@@ -2041,6 +2089,10 @@ void LocationBarView::OnOmniboxFocused() {
+@@ -2041,6 +2093,10 @@ void LocationBarView::OnOmniboxFocused() {
    // the omnibox is intentional, snapping is better than transitioning here.
    hover_animation_.Reset();
    RefreshBackground();
@@ -1761,7 +1772,7 @@ index 9251f8590b..c12aa1523a 100644
  
    // The AI mode page action should only be visible when the omnibox
    // is focused, so if there is a change in focus, refresh the icon.
-@@ -2067,6 +2119,8 @@ void LocationBarView::OnOmniboxBlurred() {
+@@ -2067,6 +2123,8 @@ void LocationBarView::OnOmniboxBlurred() {
    RefreshAiModePageAction();
  
    location_icon_view_->Update(false, false);
@@ -1770,7 +1781,21 @@ index 9251f8590b..c12aa1523a 100644
  }
  
  bool LocationBarView::IsFullWebUiOmniboxReady() const {
-@@ -2083,6 +2137,33 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
+@@ -2075,6 +2133,13 @@ bool LocationBarView::IsFullWebUiOmniboxReady() const {
+ }
+ 
+ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
++  // navegador: o campo de texto avisa "saiu" quando o ponteiro passa pros
++  // ícones da direita (favoritar, baixar, o do site), que acendem com o hover
++  // da barra: apagavam embaixo do ponteiro. Só sai de verdade fora da barra
++  // toda (a barra também avisa, com SetNotifyEnterExitOnChild).
++  if (!is_hovering && IsMouseHovered()) {
++    return;
++  }
+   if (is_hovering) {
+     // Only show the hover animation when omnibox is in unfocused steady state.
+     if (!omnibox_view_->HasFocus()) {
+@@ -2083,6 +2148,33 @@ void LocationBarView::OnOmniboxHovered(bool is_hovering) {
    } else {
      hover_animation_.Hide();
    }
@@ -2235,6 +2260,20 @@ index fceda6b642..7ae8e7bc8c 100644
    return gfx::TruncateString(formatted_text, max_url_display_chars_,
                               gfx::CHARACTER_BREAK);
  }
+diff --git i/media/base/media_switches.cc w/media/base/media_switches.cc
+index 3f75c218a3..733d9e4417 100644
+--- i/media/base/media_switches.cc
++++ w/media/base/media_switches.cc
+@@ -551,7 +551,8 @@ BASE_FEATURE(kDocumentPictureInPictureReparenting,
+ BASE_FEATURE(kEnableRtcpReporting, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ // Enables user control over muting tab audio from the tab strip.
+-BASE_FEATURE(kEnableTabMuting, base::FEATURE_DISABLED_BY_DEFAULT);
++// navegador: clicar no ícone de som da aba silencia ela (na lateral também).
++BASE_FEATURE(kEnableTabMuting, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ // Enables tracking the occlusion of HW secure encrypted video elements.
+ // The HW secure check is OS agnostic, but this switch is currently only
 diff --git i/ui/base/webui/web_ui_util.cc w/ui/base/webui/web_ui_util.cc
 index 46ca6525b0..f8067705ec 100644
 --- i/ui/base/webui/web_ui_util.cc
@@ -2324,3 +2363,26 @@ index a711c50328..67b4fecdde 100644
  }
  
  // static
+diff --git i/ui/webui/resources/cr_elements/cr_shared_vars.css w/ui/webui/resources/cr_elements/cr_shared_vars.css
+index f478ceca5c..bfb802db0b 100644
+--- i/ui/webui/resources/cr_elements/cr_shared_vars.css
++++ w/ui/webui/resources/cr_elements/cr_shared_vars.css
+@@ -123,7 +123,8 @@ html {
+   --cr-elevation-5: var(--cr-shadow-key-color_) 0 4px 4px 0,
+                     var(--cr-shadow-ambient-color_) 0 8px 12px 6px;
+ 
+-  --cr-card-shadow: var(--cr-elevation-2);
++  /* navegador: borda fina no lugar da sombra do Material. */
++  --cr-card-shadow: 0 0 0 1px var(--cr-separator-color);
+ 
+   --cr-focused-item-color: var(--google-grey-300);
+   --cr-form-field-label-color: var(--google-grey-700);
+@@ -185,7 +186,7 @@ html {
+   --cr-toolbar-height: 56px;
+ 
+   /** MD Refresh Styles */
+-  --cr-card-border-radius: 8px;
++  --cr-card-border-radius: 14px;  /* navegador (era 8px) */
+   --cr-disabled-opacity: .38;
+   --cr-form-field-bottom-spacing: 16px;
+   --cr-form-field-label-font-size: .625rem;

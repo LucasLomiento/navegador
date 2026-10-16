@@ -106,31 +106,177 @@ index fd19a4fbea..56e399c735 100644
    content::RenderFrameHost* main_frame = web_contents->GetPrimaryMainFrame();
    bool is_primary_main_frame_navigation =
 diff --git i/chrome/browser/renderer_context_menu/BUILD.gn w/chrome/browser/renderer_context_menu/BUILD.gn
-index b2e9ee838f..083cd94bb3 100644
+index b2e9ee838f..7430aec948 100644
 --- i/chrome/browser/renderer_context_menu/BUILD.gn
 +++ w/chrome/browser/renderer_context_menu/BUILD.gn
-@@ -78,6 +78,7 @@ source_set("impl") {
+@@ -78,6 +78,8 @@ source_set("impl") {
    sources = [ "context_menu_content_type_factory.cc" ]
  
    deps = [
 +    "//navegador/browser/ui/containers:containers_ui",  # navegador
++    "//navegador/icones/menu",  # navegador
      ":renderer_context_menu",
      "//base",
      "//base:i18n",
 diff --git i/chrome/browser/renderer_context_menu/render_view_context_menu.cc w/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index 1a4de31b32..c4d9849635 100644
+index 1a4de31b32..0ce71ed9e6 100644
 --- i/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ w/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,9 @@
  
  #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
  
 +#include "navegador/browser/ui/containers/containers_ui.h"
++#include "navegador/icones/menu/vector_icons.h"
 +
  #include <stddef.h>
  
  #include <algorithm>
-@@ -2146,6 +2148,20 @@ void RenderViewContextMenu::AppendLinkItems() {
+@@ -431,6 +434,134 @@ constexpr int IDC_SPELLCHECK_LANGUAGES_LAST =
+ 
+ constexpr int kTabMenuIconSize = 16;
+ 
++// navegador: ícone do Lucide de cada item comum do menu (nulo: sem ícone).
++const gfx::VectorIcon* NavegadorIconeDoItem(int id) {
++  namespace im = navegador::icones_menu;
++  switch (id) {
++    case IDC_BACK:
++      return &im::kArrowLeftIcon;
++    case IDC_FORWARD:
++      return &im::kArrowRightIcon;
++    case IDC_RELOAD:
++    case IDC_CONTENT_CONTEXT_RELOADFRAME:
++      return &im::kRotateCwIcon;
++    case IDC_SAVE_PAGE:
++    case IDC_CONTENT_CONTEXT_SAVELINKAS:
++    case IDC_CONTENT_CONTEXT_SAVEAVAS:
++    case IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS:
++    case IDC_CONTENT_CONTEXT_SAVEPLUGINAS:
++      return &im::kDownloadIcon;
++    case IDC_PRINT:
++      return &im::kPrinterIcon;
++    case IDC_VIEW_SOURCE:
++    case IDC_CONTENT_CONTEXT_VIEWFRAMESOURCE:
++      return &im::kCodeIcon;
++    case IDC_CONTENT_CONTEXT_INSPECTELEMENT:
++      return &im::kSquareMousePointerIcon;
++    case IDC_CONTENT_CONTEXT_COPY:
++    case IDC_CONTENT_CONTEXT_COPYIMAGE:
++    case IDC_CONTENT_CONTEXT_COPYLINKTEXT:
++    case IDC_CONTENT_CONTEXT_COPYVIDEOFRAME:
++      return &im::kCopyIcon;
++    case IDC_CONTENT_CONTEXT_CUT:
++      return &im::kScissorsIcon;
++    case IDC_CONTENT_CONTEXT_PASTE:
++    case IDC_CONTENT_CONTEXT_PASTE_AND_MATCH_STYLE:
++      return &im::kClipboardPasteIcon;
++    case IDC_CONTENT_CONTEXT_UNDO:
++      return &im::kUndo2Icon;
++    case IDC_CONTENT_CONTEXT_REDO:
++      return &im::kRedo2Icon;
++    case IDC_CONTENT_CONTEXT_SELECTALL:
++      return &im::kTextCursorIcon;
++    case IDC_CONTENT_CONTEXT_COPYLINKLOCATION:
++    case IDC_CONTENT_CONTEXT_COPYIMAGELOCATION:
++    case IDC_CONTENT_CONTEXT_COPYAVLOCATION:
++    case IDC_CONTENT_CONTEXT_COPYLINKTOTEXT:
++      return &im::kLinkIcon;
++    case IDC_CONTENT_CONTEXT_OPENLINKNEWTAB:
++    case IDC_CONTENT_CONTEXT_OPENAVNEWTAB:
++      return &im::kSquareArrowOutUpRightIcon;
++    case IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW:
++      return &im::kAppWindowIcon;
++    case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD:
++      return &im::kHatGlassesIcon;
++    case IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW:
++      return &im::kColumns2Icon;
++    case IDC_CONTENT_CONTEXT_OPENLINKINPROFILE:
++      return &im::kBriefcaseIcon;
++    case IDC_CONTENT_CONTEXT_OPENIMAGENEWTAB:
++    case IDC_CONTENT_CONTEXT_OPEN_ORIGINAL_IMAGE_NEW_TAB:
++    case IDC_CONTENT_CONTEXT_LOAD_IMAGE:
++      return &im::kImageIcon;
++    case IDC_CONTENT_CONTEXT_SAVEIMAGEAS:
++      return &im::kImageDownIcon;
++    case IDC_CONTENT_CONTEXT_SEARCHWEBFOR:
++    case IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB:
++    case IDC_CONTENT_CONTEXT_SEARCHWEBFORIMAGE:
++    case IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME:
++    case IDC_CONTENT_CONTEXT_WEB_REGION_SEARCH:
++    case IDC_CONTENT_CONTEXT_SEARCHLENSFORIMAGE:
++    case IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME:
++    case IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH:
++      return &im::kSearchIcon;
++    case IDC_CONTENT_CONTEXT_GOTOURL:
++      return &im::kArrowUpRightIcon;
++    case IDC_CONTENT_CONTEXT_TRANSLATE:
++    case IDC_CONTENT_CONTEXT_PARTIAL_TRANSLATE:
++      return &im::kLanguagesIcon;
++    case IDC_CONTENT_CONTEXT_EXIT_FULLSCREEN:
++      return &im::kMinimize2Icon;
++    case IDC_CONTENT_CONTEXT_PICTUREINPICTURE:
++      return &im::kPictureInPicture2Icon;
++    case IDC_CONTENT_CONTEXT_LOOP:
++      return &im::kRepeatIcon;
++    case IDC_CONTENT_CONTEXT_GENERATE_QR_CODE:
++      return &im::kQrCodeIcon;
++    case IDC_CONTENT_CONTEXT_EMOJI:
++      return &im::kFaceSlightlySmilingIcon;
++    case IDC_SPELLCHECK_MENU:
++    case IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS:
++      return &im::kSpellCheckIcon;
++    case IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS:
++      return &im::kCaptionsIcon;
++    default:
++      return nullptr;
++  }
++}
++
++// navegador: o menu com menos cara de Chromium. Saem os itens que não usamos
++// (transmitir, modo de leitura, ouvir a página, lista de leitura), os comuns
++// ganham ícone e o código-fonte, um nome curto.
++void NavegadorArrumarMenu(ui::SimpleMenuModel& menu) {
++  for (int id : {IDC_ROUTE_MEDIA, IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE,
++                 IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE,
++                 IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST}) {
++    if (std::optional<size_t> i = menu.GetIndexOfCommandId(id)) {
++      menu.RemoveItemAt(*i);
++    }
++  }
++  // Separadores que sobraram: no começo, no fim ou dois seguidos.
++  for (size_t i = menu.GetItemCount(); i-- > 0;) {
++    if (menu.GetTypeAt(i) == ui::MenuModel::TYPE_SEPARATOR &&
++        (i == 0 || i + 1 == menu.GetItemCount() ||
++         menu.GetTypeAt(i - 1) == ui::MenuModel::TYPE_SEPARATOR)) {
++      menu.RemoveItemAt(i);
++    }
++  }
++  for (size_t i = 0; i < menu.GetItemCount(); ++i) {
++    if (const gfx::VectorIcon* icone =
++            NavegadorIconeDoItem(menu.GetCommandIdAt(i))) {
++      menu.SetIcon(i, ui::ImageModel::FromVectorIcon(
++                          *icone, ui::kColorMenuIcon,
++                          ui::SimpleMenuModel::kDefaultIconSize));
++    }
++  }
++  if (std::optional<size_t> i = menu.GetIndexOfCommandId(IDC_VIEW_SOURCE)) {
++    menu.SetLabel(*i, u"Ver código-fonte");
++  }
++}
++
+ base::OnceCallback<void(RenderViewContextMenu*)>* GetMenuShownCallback() {
+   static base::NoDestructor<base::OnceCallback<void(RenderViewContextMenu*)>>
+       callback;
+@@ -1578,6 +1709,8 @@ void RenderViewContextMenu::InitMenu() {
+       AppendReadAnythingItem();
+     }
+   }
++
++  NavegadorArrumarMenu(menu_model_);
+ }
+ 
+ Profile* RenderViewContextMenu::GetProfile() const {
+@@ -2146,6 +2279,20 @@ void RenderViewContextMenu::AppendLinkItems() {
      }
  #endif  // !BUILDFLAG(IS_CHROMEOS)
  

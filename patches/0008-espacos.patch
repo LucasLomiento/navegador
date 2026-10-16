@@ -83,6 +83,94 @@ index a276d311e0..97f0a80bd6 100644
               Animate(kTabStripHoverWidth, FromValue(1.0), ToValue(0.0)),
               Animate(kTopCorner, FromValue(-1.0), ToValue(DefaultValue())),
               Animate(kBottomCorner, FromValue(-1.0), ToValue(1.0)),
+diff --git i/chrome/browser/ui/views/tabs/common/root_tab_collection_node.cc w/chrome/browser/ui/views/tabs/common/root_tab_collection_node.cc
+index 7c362fa413..b17508cd9a 100644
+--- i/chrome/browser/ui/views/tabs/common/root_tab_collection_node.cc
++++ w/chrome/browser/ui/views/tabs/common/root_tab_collection_node.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h"  // navegador
+ #include "chrome/browser/ui/views/tabs/common/root_tab_collection_node.h"
+ 
+ #include "base/stl_util.h"
+@@ -261,6 +262,8 @@ void RootTabCollectionNode::OnTabGroupFocusChanged(
+   tab_strip_controller_->TabGroupFocusChanged(new_focused_group_id,
+                                               old_focused_group_id);
+ 
++  // navegador: troca de espaço instantânea (as abas não deslizam).
++  TabCollectionAnimatingLayoutManager::PularAnimacao();
+   if (view()) {
+     view()->InvalidateLayout();
+   }
+diff --git i/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc w/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
+index c16f623b16..5d0abc0929 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
++++ w/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <vector>
+ 
++#include "base/time/time.h"  // navegador
+ #include "base/check_deref.h"
+ #include "base/containers/flat_map.h"
+ #include "base/containers/flat_set.h"
+@@ -329,6 +330,20 @@ void TabCollectionAnimatingLayoutManager::UpdateCurrentLayout() {
+   current_layout_ = InterpolateLayout(percent);
+ }
+ 
++namespace {
++// navegador: ver PularAnimacao (o layout da troca roda no quadro seguinte,
++// em todos os contêineres de abas).
++base::TimeTicks& PularAnimacaoAte() {
++  static base::TimeTicks ate;
++  return ate;
++}
++}  // namespace
++
++// static
++void TabCollectionAnimatingLayoutManager::PularAnimacao() {
++  PularAnimacaoAte() = base::TimeTicks::Now() + base::Milliseconds(150);
++}
++
+ bool TabCollectionAnimatingLayoutManager::RecalculateTarget() {
+   if (!host_view()) {
+     return false;
+@@ -376,6 +391,17 @@ bool TabCollectionAnimatingLayoutManager::RecalculateTarget() {
+     return false;
+   }
+ 
++  // navegador: logo depois de uma troca de espaço, sem animação.
++  if (base::TimeTicks::Now() < PularAnimacaoAte()) {
++    current_layout_ = new_target;
++    SetStartingLayout(new_target);
++    SetTargetLayout(new_target);
++    starting_offset_ = 0.0;
++    current_offset_ = 1.0;
++    animation_.Reset(1.0);
++    return true;
++  }
++
+   // Animating bounds along the cross-axis is not supported and layout should
+   // immediately snap to target for cross-axis bounds changes.
+   const bool cross_axis_changed =
+diff --git i/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h w/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h
+index 0407b26b8a..15e228ee04 100644
+--- i/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h
++++ w/chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h
+@@ -125,6 +125,11 @@ class TabCollectionAnimatingLayoutManager
+ 
+   bool is_animating() const { return animation_.is_animating(); }
+ 
++  // navegador: os layouts recalculados logo em seguida vão direto pro
++  // resultado, sem animar (troca de espaço: as abas do outro espaço
++  // apareciam deslizando uma a uma).
++  static void PularAnimacao();
++
+   views::LayoutManagerBase* target_layout_manager() {
+     return &*target_layout_manager_;
+   }
 diff --git i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc w/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
 index cd90578d55..443553a45e 100644
 --- i/chrome/browser/ui/views/tabs/common/tab_strip_view_layout.cc
