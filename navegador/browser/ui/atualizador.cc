@@ -8,6 +8,12 @@
 #include <utility>
 #include <vector>
 
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_LINUX)
+#include <sys/prctl.h>
+#endif
+
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -320,13 +326,31 @@ void Instalar() {
       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
       base::BindOnce(
           [](std::string url) {
+            // O Chromium lança os filhos com PR_SET_NO_NEW_PRIVS, e com essa
+            // trava o pkexec (setuid) não vira root: sai na hora com 127
+            // ("pkexec must be setuid root"), sem pedir a senha. Daí o
+            // allow_new_privs. Se o próprio navegador já nasceu com a trava
+            // (aberto por quem a liga, como um app Electron), ela é herdada e
+            // não sai: o pkexec vai pelo gerenciador do usuário
+            // (systemd-run --user), que roda limpo; o --wait devolve o código
+            // do pkexec.
             base::CommandLine comando(base::FilePath("/usr/bin/pkexec"));
+            if (prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) == 1) {
+              comando = base::CommandLine(
+                  base::FilePath("/usr/bin/systemd-run"));
+              for (const char* arg :
+                   {"--user", "--wait", "--collect", "--quiet",
+                    "--service-type=exec", "/usr/bin/pkexec"}) {
+                comando.AppendArg(arg);
+              }
+            }
             comando.AppendArg("/usr/bin/pacman");
             comando.AppendArg("-U");
             comando.AppendArg("--noconfirm");
             comando.AppendArg(url);
-            base::Process processo =
-                base::LaunchProcess(comando, base::LaunchOptions());
+            base::LaunchOptions opcoes;
+            opcoes.allow_new_privs = true;
+            base::Process processo = base::LaunchProcess(comando, opcoes);
             int codigo = -1;
             if (!processo.IsValid() ||
                 !processo.WaitForExitWithTimeout(base::Minutes(15), &codigo)) {
@@ -343,7 +367,8 @@ void Instalar() {
           estado.situacao = Situacao::kErro;
           // 126/127: senha cancelada ou sem a janela de senha do sistema.
           estado.erro = codigo == 126 || codigo == 127
-                            ? u"Cancelado (ou o sistema não pediu a senha)."
+                            ? u"Cancelado (ou o sistema não pediu a senha). "
+                              u"No terminal: sudo pacman -Syu"
                             : u"O pacman não conseguiu instalar (código " +
                                   base::NumberToString16(codigo) + u").";
         }
