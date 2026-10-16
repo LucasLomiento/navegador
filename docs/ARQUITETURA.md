@@ -17,7 +17,7 @@ O Chrome 155 já tem abas verticais nativas (Views, C++): `chrome/browser/ui/vie
 2. **Visual do Dia por cima do nativo**: cores num mixer de cores nosso (`ColorProvider`), medidas e raios nas constantes de layout, desenho próprio onde o Chrome não deixa configurar.
 3. **Partes que o Chrome não tem** (espaços, fixados e pastas, seletor de container, configurações, cabeçalho do menu lateral do Dia) como Views nossas em `navegador/`, encaixadas por ganchos pequenos.
 
-As medidas vêm das telas do Dia decodificadas (`docs/dia-medidas.md`) e, quando a máquina virtual com Windows estiver de pé, de capturas do Dia rodando, comparadas lado a lado com as nossas.
+As medidas da primeira versão vieram do Dia rodando, comparado lado a lado com o nosso; desde 15/10/2026 o desenho é o "Noite elétrica" do Resenha (cores, fontes e ícones em `cores.cc`, `navegador/app/fontes` e `navegador/icones`).
 
 ## O que o Chromium mudou de padrão no navegador
 

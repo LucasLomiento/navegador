@@ -707,7 +707,7 @@ std::unique_ptr<views::View> PaginaAparencia(BrowserWindowInterface* browser) {
               perfil))));
   janela->Adicionar(Linha(
       u"Barra na cor do site",
-      u"A barra de endereço pega a cor do topo da página, como no Dia.",
+      u"A barra de endereço pega a cor do topo da página aberta.",
       Interruptor(
           perfil->GetPrefs()->GetBoolean(espacos::kBarraNaCorDoSitePref),
           u"Barra na cor do site",
@@ -772,7 +772,7 @@ std::unique_ptr<views::View> PaginaLateral(BrowserWindowInterface* browser) {
   auto pagina = std::make_unique<Pagina>(
       u"Lateral",
       u"Escondida (Ctrl+S), a lateral aparece por cima da página quando o "
-      u"ponteiro encosta na borda esquerda, como o modo compacto do Zen.");
+      u"ponteiro encosta na borda esquerda.");
 
   Cartao* escondida = pagina->Secao(u"Lateral escondida");
   escondida->Adicionar(Linha(

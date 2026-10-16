@@ -28,7 +28,7 @@ TRAB=$(mktemp -d)
 trap 'rm -rf "$TRAB"' EXIT
 if ! gh repo view "$REPO" >/dev/null 2>&1; then
   gh repo create "$REPO" --public \
-    --description "Navegador (Chromium com espaços, containers e lateral): pacotes pro Arch Linux"
+    --description "Navegador (Chromium com espaços, containers e lateral): versões pro Arch Linux e Windows"
 fi
 gh repo clone "$REPO" "$TRAB/repo" -- -q 2>/dev/null || {
   mkdir -p "$TRAB/repo"; git -C "$TRAB/repo" init -q -b main
@@ -51,10 +51,13 @@ cp "$PKG" "$TRAB/pub/"
 [[ -z "$NOTAS" ]] && NOTAS="Navegador $VERSAO."
 NOTAS="$NOTAS
 
-**Instalar ou atualizar:** veja o [README](https://github.com/$REPO#readme) (repositório do pacman ou o arquivo .pkg.tar.zst abaixo)."
+**Instalar ou atualizar:** veja o [README](https://github.com/$REPO#readme) (Arch e derivados: repositório do pacman ou o .pkg.tar.zst; Windows: o .exe)."
+# O instalador do Windows da mesma versão (tools/windows.sh pacote), se houver.
+ARQUIVOS=("$TRAB/pub/$(basename "$PKG")" "$TRAB/pub/navegador.db"
+          "$TRAB/pub/navegador.files" "$TRAB/pub/navegador.db.tar.gz"
+          "$TRAB/pub/navegador.files.tar.gz")
+WINDOWS="$RAIZ/pacote/navegador-$VERSAO-windows-x64.exe"
+[[ -f "$WINDOWS" ]] && ARQUIVOS+=("$WINDOWS")
 gh release create "$TAG" --repo "$REPO" --title "Navegador $VERSAO" \
-  --notes "$NOTAS" --latest \
-  "$TRAB/pub/$(basename "$PKG")" "$TRAB/pub/navegador.db" \
-  "$TRAB/pub/navegador.files" "$TRAB/pub/navegador.db.tar.gz" \
-  "$TRAB/pub/navegador.files.tar.gz"
+  --notes "$NOTAS" --latest "${ARQUIVOS[@]}"
 echo "Publicado: https://github.com/$REPO/releases/tag/$TAG"

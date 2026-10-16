@@ -82,7 +82,7 @@ namespace navegador::espacos {
 
 namespace {
 
-// Medidas do seletor de espaços do Dia (docs/dia-medidas.md, seção 3).
+// Medidas do seletor de espaços (como o do Dia).
 constexpr int kAlturaFaixa = 38;
 constexpr int kLarguraMaximaTitulo = 160;
 constexpr int kEspacoEntreBolinhas = 3;

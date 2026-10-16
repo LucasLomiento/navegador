@@ -1,6 +1,6 @@
 // Medidas do visual do Dia aplicadas no Chromium.
 //
-// Os números vêm de docs/dia-medidas.md (telas do Dia decodificadas). O
+// Medidas tiradas do Dia rodando, ao lado do nosso. O
 // Chromium pergunta as medidas dele pra GetLayoutConstant/GetLayoutInsets
 // (chrome/browser/ui/layout_constants.cc); o gancho lá consulta este arquivo
 // primeiro, e o que não está aqui fica como o Chromium faz.
@@ -20,7 +20,7 @@ namespace navegador::visual {
 
 // Cartão do conteúdo: a barra de navegação e a página juntas, com margem até
 // a borda da janela e cantos arredondados (medido no Dia rodando: margem ~6,
-// cantos ~8; docs/dia-medidas.md, seção 15).
+// cantos ~8).
 inline constexpr int kCartaoMargem = 6;
 inline constexpr int kCartaoRaio = 8;
 

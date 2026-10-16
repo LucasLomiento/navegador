@@ -1,5 +1,5 @@
-// Cores do Dia (tema do WinUI que vem no pacote dele; docs/dia-medidas.md,
-// seção 13) por cima das do Chromium.
+// Cores do navegador por cima das do Chromium: o escuro é o "Noite
+// elétrica" do Resenha (grafite e azul elétrico); o claro, a mesma ideia.
 //
 // Compilado dentro do alvo //chrome/browser/ui/color:mixers. O gancho fica
 // no fim de AddChromeColorMixers, depois até do tema do GTK, pra que o

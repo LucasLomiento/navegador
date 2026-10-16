@@ -1,0 +1,20 @@
+# Compilação do Windows (cruzada, a partir do Linux; docs/win_cross.md do
+# Chromium): a mesma do pacote do Linux (tools/args-release.gn), pra x64.
+# As ferramentas da Microsoft vêm do tools/vm-ferramentas-windows.sh.
+target_os = "win"
+target_cpu = "x64"
+is_debug = false
+is_component_build = false
+symbol_level = 0
+blink_symbol_level = 0
+v8_symbol_level = 0
+dcheck_always_on = false
+treat_warnings_as_errors = false
+chrome_pgo_phase = 0
+use_remoteexec = false
+
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+enable_widevine = true
+
+use_official_google_api_keys = false

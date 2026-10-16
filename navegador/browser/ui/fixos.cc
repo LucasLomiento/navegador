@@ -90,7 +90,7 @@ namespace navegador::fixos {
 
 namespace {
 
-// Medidas das abas da lateral (docs/dia-medidas.md): destaque de 30, uma
+// Medidas das abas da lateral: destaque de 30, uma
 // linha a cada 35, cantos 8; ícone 16 a 8 da borda e texto a 32.
 constexpr int kAlturaLinha = 30;
 constexpr int kRaio = 8;

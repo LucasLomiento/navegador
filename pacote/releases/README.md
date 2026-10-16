@@ -1,8 +1,8 @@
 # Navegador
 
-Navegador baseado no Chromium, com as abas numa lateral que se esconde, **espaços** (cada um com as suas abas, sites fixados, pastas e favoritos), **containers** (cookies e logins separados dentro do mesmo perfil, como os do Firefox) e importação do Zen. Sem recursos de IA.
+Navegador baseado no Chromium, com as abas numa lateral que se esconde, **espaços** (cada um com as suas abas, sites fixados, pastas e favoritos), **containers** (cookies e logins separados dentro do mesmo perfil, como os do Firefox), **bloqueador de anúncios e rastreadores** e importação do Zen. Escuro, minimalista e sem recursos de IA. Código: [LucasLomiento/navegador](https://github.com/LucasLomiento/navegador).
 
-Pacotes para **Arch Linux (x86_64)**.
+Versões para **Arch Linux e derivados** (CachyOS, EndeavourOS, Manjaro), em x86_64.
 
 ## Instalar (atualiza junto com o sistema)
 
