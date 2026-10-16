@@ -23,20 +23,50 @@ index 3741ba7671..779be59085 100644
    }
  }
 diff --git i/chrome/browser/ui/views/frame/browser_view.cc w/chrome/browser/ui/views/frame/browser_view.cc
-index 63c3090b4c..90e49bd9c8 100644
+index 63c3090b4c..61ca9eeca7 100644
 --- i/chrome/browser/ui/views/frame/browser_view.cc
 +++ w/chrome/browser/ui/views/frame/browser_view.cc
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,11 @@
  
  #include "chrome/browser/ui/views/frame/browser_view.h"
  
 +#include "navegador/browser/ui/atalhos.h"
++#include "navegador/browser/ui/barra.h"
++#include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
 +#include "navegador/browser/ui/menu_do_logo.h"
 +
  #include <stdint.h>
  
  #include <algorithm>
-@@ -3191,6 +3194,10 @@ void BrowserView::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
+@@ -316,6 +321,8 @@
+ #include "ui/accessibility/platform/ax_mode_observer.h"
+ #include "ui/accessibility/platform/ax_platform.h"
+ #include "ui/base/accelerators/accelerator.h"
++#include "ui/base/dragdrop/drag_drop_types.h"
++#include "ui/base/dragdrop/drop_target_event.h"
+ #include "ui/base/dragdrop/os_exchange_data.h"
+ #include "ui/base/hit_test.h"
+ #include "ui/base/l10n/l10n_util.h"
+@@ -2344,6 +2351,9 @@ void BrowserView::SetFocusToLocationBar(bool is_user_initiated) {
+     return;
+   }
+ #endif
++  // navegador: com a barra escondida (Ctrl+Shift+S), o Ctrl+L e a nova aba
++  // mostram a barra até o foco sair dela.
++  navegador::barra::Espiar(this);
+   if (!IsLocationBarVisible()) {
+     return;
+   }
+@@ -3067,7 +3077,7 @@ bool BrowserView::IsToolbarVisible() const {
+               WindowFeatureController::WindowFeature::kFeatureToolbar) ||
+           WindowFeatureController::From(browser_)->SupportsWindowFeature(
+               WindowFeatureController::WindowFeature::kFeatureLocationBar)) &&
+-         toolbar_;
++         toolbar_ && !navegador::barra::Escondida(this);  // navegador
+ }
+ 
+ bool BrowserView::IsToolbarShowing() const {
+@@ -3191,6 +3201,10 @@ void BrowserView::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
  }
  
  void BrowserView::ShowAppMenu() {
@@ -47,7 +77,7 @@ index 63c3090b4c..90e49bd9c8 100644
    auto* control = ToolbarButtonProvider::From(browser_)->GetAppMenuControl();
    if (!control) {
      return;
-@@ -3255,6 +3262,14 @@ content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
+@@ -3255,6 +3269,14 @@ content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
      return result;
    }
  
@@ -62,6 +92,25 @@ index 63c3090b4c..90e49bd9c8 100644
    int id;
    if (!FindCommandIdForAccelerator(accelerator, &id)) {
      // |accelerator| is not a browser command, it may be handled by ash (e.g.
+@@ -3289,6 +3311,18 @@ content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
+ 
+ void BrowserView::PreHandleDragUpdate(const content::DropData& drop_data,
+                                       const gfx::PointF& point) {
++  // navegador: aba arrastada pelo DnD do sistema (compositor sem
++  // xdg-toplevel-drag, como o Hyprland) em cima da página. O arrasto é da
++  // aba: avisa o TabDragController como a lateral avisa, pra borda da página
++  // virar alvo de dividir a tela.
++  if (TabDragController::IsSystemDnDSessionRunning()) {
++    gfx::Point ponto = gfx::ToRoundedPoint(point);
++    views::View::ConvertPointToWidget(GetActiveContentsContainerView(), &ponto);
++    TabDragController::OnSystemDnDUpdated(ui::DropTargetEvent(
++        ui::OSExchangeData(), gfx::PointF(ponto), gfx::PointF(ponto),
++        ui::DragDropTypes::DRAG_MOVE));
++    return;
++  }
+   if (multi_contents_view_->IsDragAndDropEnabled()) {
+     // Read the split state from the active tab because when BrowserView is in
+     // full screen it may not be rendering a split, even though the active tab
 diff --git i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc w/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc
 index d69e4dd30f..29715bca1f 100644
 --- i/chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc

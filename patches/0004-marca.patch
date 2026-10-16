@@ -465,6 +465,24 @@ index 9551dab91d..4dbb252ae4 100644
 +LINE_TO, 8.16f, 8.16f,
 +LINE_TO, 11.84f, 11.84f,
 +CLOSE
+diff --git i/media/audio/pulse/pulse_util.cc w/media/audio/pulse/pulse_util.cc
+index fd1fea63ea..62307e4805 100644
+--- i/media/audio/pulse/pulse_util.cc
++++ w/media/audio/pulse/pulse_util.cc
+@@ -39,8 +39,11 @@ namespace {
+ constexpr char kBrowserDisplayName[] = "google-chrome";
+ #define PRODUCT_STRING "Google Chrome"
+ #else
+-constexpr char kBrowserDisplayName[] = "chromium-browser";
+-#define PRODUCT_STRING "Chromium"
++// navegador: o Norte no mixer de áudio (nome e ícone). O serviço de áudio roda
++// num processo à parte, onde o nome do produto (SetGlobalAppName) não chega:
++// valia este, "Chromium".
++constexpr char kBrowserDisplayName[] = "norte";
++#define PRODUCT_STRING "Norte"
+ #endif
+ 
+ #if defined(DLOPEN_PULSEAUDIO)
 diff --git i/ui/webui/resources/cr_elements/icons.html.ts w/ui/webui/resources/cr_elements/icons.html.ts
 index d3f4f9fb26..7fbd251412 100644
 --- i/ui/webui/resources/cr_elements/icons.html.ts

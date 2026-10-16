@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
+#include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
@@ -32,9 +33,12 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
+#include "components/split_tabs/split_tab_id.h"
+#include "components/split_tabs/split_tab_visual_data.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
+#include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
 #include "navegador/browser/containers/containers.h"
@@ -42,6 +46,7 @@
 #include "navegador/browser/containers/fixos.h"
 #include "navegador/browser/ui/abas/abas.h"
 #include "navegador/browser/ui/atalhos.h"
+#include "navegador/browser/ui/barra.h"
 #include "navegador/browser/ui/configuracoes.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/atualizador.h"
@@ -604,6 +609,40 @@ class FaixaDeEspacos : public views::View,
     lateral_->RemovePreTargetHandler(&na_lateral_);
   }
 
+  // Divisão de tela pelo teclado (Ctrl+Alt+V/H, como no Zen): divide a aba
+  // ativa com a outra selecionada (Ctrl+clique) ou com uma aba nova, que
+  // escolhe o que abrir. Já dividida: o mesmo atalho desfaz, o outro vira.
+  void Dividir(split_tabs::SplitTabLayout layout) {
+    TabStripModel* model = browser_->GetTabStripModel();
+    tabs::TabInterface* ativa = model->GetActiveTab();
+    if (!ativa) {
+      return;
+    }
+    if (std::optional<split_tabs::SplitTabId> divisao = ativa->GetSplit()) {
+      if (model->GetSplitData(*divisao)->visual_data()->split_layout() ==
+          layout) {
+        model->RemoveSplit(*divisao);
+      } else {
+        model->UpdateSplitLayout(*divisao, layout);
+        model->UpdateSplitRatio(*divisao, 0.5);
+      }
+      return;
+    }
+    std::vector<int> outras;
+    for (tabs::TabInterface* aba : model->selection_model().selected_tabs()) {
+      if (aba != ativa && !aba->IsSplit()) {
+        outras.push_back(model->GetIndexOfTab(aba));
+      }
+    }
+    if (outras.size() == 1) {
+      model->AddToNewSplit(outras, split_tabs::SplitTabVisualData(layout),
+                           split_tabs::SplitTabCreatedSource::kKeyboardShortcut);
+      return;
+    }
+    chrome::NewSplitTab(browser_, layout,
+                        split_tabs::SplitTabCreatedSource::kKeyboardShortcut);
+  }
+
   bool AcceleratorPressed(const ui::Accelerator& atalho) override {
     auto it = acoes_.find(atalho);
     if (it == acoes_.end()) {
@@ -612,6 +651,17 @@ class FaixaDeEspacos : public views::View,
     const std::string& acao = it->second;
     if (acao == "alternar_lateral") {
       chrome::ExecuteCommand(browser_, IDC_TOGGLE_VERTICAL_TABS_COLLAPSE);
+    } else if (acao == "alternar_barra") {
+      barra::Alternar(browser_);
+    } else if (acao == "dividir_lado") {
+      Dividir(split_tabs::SplitTabLayout::kSideBySide);
+    } else if (acao == "dividir_cima") {
+      Dividir(split_tabs::SplitTabLayout::kStacked);
+    } else if (acao == "trocar_lados") {
+      if (tabs::TabInterface* ativa = browser_->GetTabStripModel()->GetActiveTab();
+          ativa && ativa->GetSplit()) {
+        browser_->GetTabStripModel()->ReverseTabsInSplit(*ativa->GetSplit());
+      }
     } else if (acao == "proximo_espaco") {
       Girar(/*pra_frente=*/true);
     } else if (acao == "espaco_anterior") {
@@ -768,6 +818,13 @@ class FaixaDeEspacos : public views::View,
 
   void OnTabGroupWillBeRemoved(
       const tab_groups::TabGroupId& group_id) override {
+    // A janela inteira fechando: os grupos saem junto, mas continuam dos
+    // espaços (a sessão traz eles de volta). Desligar e reabrir o espaço com
+    // aba nova aqui estragava o "continuar de onde parou": o espaço em uso
+    // voltava só com uma "Nova guia".
+    if (model_->closing_all()) {
+      return;
+    }
     // A última aba do espaço fechou: como no Zen, a janela fica no espaço,
     // com uma aba nova.
     if (model_->GetFocusedGroup() == group_id && model_->count() > 1) {
@@ -877,7 +934,7 @@ class FaixaDeEspacos : public views::View,
           base::Milliseconds(150));
       return;
     }
-    if (!model_->group_model() || model_->empty()) {
+    if (!model_->group_model() || model_->empty() || model_->closing_all()) {
       return;
     }
     Profile* perfil = Perfil();
@@ -1190,7 +1247,11 @@ void AdicionarFaixa(views::View* lateral, BrowserWindowInterface* browser) {
         }));
   }
   // Espaçador: ocupa o que sobra embaixo das abas e empurra a faixa pro pé.
+  // No KDE e no GNOME ele é barra de título: a barra de cima é quase toda
+  // endereço, e a janela precisa de onde ser arrastada. Sem receber eventos,
+  // o VerticalTabStripRegionView::IsPositionInWindowCaption não conta com ele.
   auto* espacador = lateral->AddChildView(std::make_unique<views::View>());
+  espacador->SetCanProcessEventsWithinSubtree(!JanelasPeloMouse());
   espacador->SetProperty(
       views::kFlexBehaviorKey,
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,

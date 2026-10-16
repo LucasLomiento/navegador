@@ -72,13 +72,7 @@ std::string NovoId() {
 
 }  // namespace
 
-namespace {
-
-// Botões da janela por padrão, menos num gerenciador por atalho (Hyprland,
-// Sway, i3), onde a janela fecha pelo atalho do sistema e eles só ocupam
-// espaço. No KDE, no GNOME e no Windows sem eles não dava pra fechar com o
-// mouse.
-bool BotoesPorPadrao() {
+bool JanelasPeloMouse() {
 #if BUILDFLAG(IS_LINUX)
   std::unique_ptr<base::Environment> ambiente = base::Environment::Create();
   return !ambiente->HasVar("HYPRLAND_INSTANCE_SIGNATURE") &&
@@ -86,6 +80,16 @@ bool BotoesPorPadrao() {
 #else
   return true;
 #endif
+}
+
+namespace {
+
+// Botões da janela por padrão, menos num gerenciador por atalho (Hyprland,
+// Sway, i3), onde a janela fecha pelo atalho do sistema e eles só ocupam
+// espaço. No KDE, no GNOME e no Windows sem eles não dava pra fechar com o
+// mouse.
+bool BotoesPorPadrao() {
+  return JanelasPeloMouse();
 }
 
 }  // namespace
@@ -99,6 +103,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(kBotoesDaJanelaPref, BotoesPorPadrao());
   registry->RegisterIntegerPref(kMolduraPref, kMolduraPadrao);
   registry->RegisterBooleanPref(kBarraNaCorDoSitePref, true);
+  registry->RegisterBooleanPref(kBarraEscondidaPref, false);
   registry->RegisterBooleanPref(kBarraNaTelaCheiaPref, true);
   registry->RegisterIntegerPref(kFlutuanteOpacidadePref,
                                 kFlutuanteOpacidadePadrao);
@@ -250,6 +255,8 @@ const std::vector<Atalho>& Atalhos() {
   static const base::NoDestructor<std::vector<Atalho>> atalhos(
       std::vector<Atalho>{
           {"alternar_lateral", u"Mostrar ou ocultar a lateral", "Ctrl+S"},
+          {"alternar_barra", u"Mostrar ou ocultar a barra de endereço",
+           "Ctrl+Shift+S"},
           {"proximo_espaco", u"Próximo espaço", "Ctrl+Alt+Right"},
           {"espaco_anterior", u"Espaço anterior", "Ctrl+Alt+Left"},
           {"novo_espaco", u"Novo espaço", "Ctrl+Alt+N"},
@@ -258,6 +265,10 @@ const std::vector<Atalho>& Atalhos() {
           {"espaco_3", u"Ir pro espaço 3", "Ctrl+Alt+3"},
           {"espaco_4", u"Ir pro espaço 4", "Ctrl+Alt+4"},
           {"espaco_5", u"Ir pro espaço 5", "Ctrl+Alt+5"},
+          // Divisão de tela: os do Zen.
+          {"dividir_lado", u"Dividir a tela lado a lado", "Ctrl+Alt+V"},
+          {"dividir_cima", u"Dividir a tela em cima e embaixo", "Ctrl+Alt+H"},
+          {"trocar_lados", u"Trocar as abas da divisão de lado", "Ctrl+Alt+X"},
           {"configuracoes", u"Configurações do Norte", "Ctrl+Comma"},
           {"containers", u"Gerenciar containers", ""},
       });

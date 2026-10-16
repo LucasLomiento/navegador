@@ -1,5 +1,5 @@
 diff --git i/chrome/browser/ui/tabs/tab_strip_model.cc w/chrome/browser/ui/tabs/tab_strip_model.cc
-index 01f863a9f4..07fb19cbc2 100644
+index 01f863a9f4..8ce4af925e 100644
 --- i/chrome/browser/ui/tabs/tab_strip_model.cc
 +++ w/chrome/browser/ui/tabs/tab_strip_model.cc
 @@ -4,6 +4,8 @@
@@ -11,7 +11,71 @@ index 01f863a9f4..07fb19cbc2 100644
  #include <algorithm>
  #include <cstddef>
  #include <cstdint>
-@@ -1114,15 +1116,24 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
+@@ -163,6 +165,63 @@ bool ShouldForgetOpenersForTransition(ui::PageTransition transition) {
+                                       ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+ }
+ 
++// navegador: fechar a última aba do espaço em uso (o grupo focado) ou da
++// janela não troca de espaço nem fecha a janela: como no Zen, entra uma aba
++// nova no fim do grupo antes (no container do espaço, que a aba nova pega do
++// grupo focado: browser_navigator.cc). Fechar a janela inteira e excluir o
++// espaço vêm por outro caminho (CloseAllTabs, CloseAllTabsInGroup).
++// Devolve a aba nova, pra ativar depois de fechar (NavegadorAtivar).
++tabs::TabHandle NavegadorManterEspaco(
++    TabStripModel* model,
++    const std::vector<tabs::TabInterface*>& fechando) {
++  if (fechando.empty() || model->closing_all() || !model->delegate()) {
++    return tabs::TabHandle();
++  }
++  const auto fecha = [&fechando](tabs::TabInterface* aba) {
++    return std::ranges::find(fechando, aba) != fechando.end();
++  };
++  const std::optional<tab_groups::TabGroupId> grupo =
++      model->GetFocusedGroup();
++  int index = -1;
++  if (grupo && model->group_model() &&
++      model->group_model()->ContainsTabGroup(*grupo)) {
++    const gfx::Range abas =
++        model->group_model()->GetTabGroup(*grupo)->ListTabs();
++    for (size_t i = abas.start(); i < abas.end(); ++i) {
++      if (!fecha(model->GetTabAtIndex(static_cast<int>(i)))) {
++        return tabs::TabHandle();
++      }
++    }
++    index = static_cast<int>(abas.end());
++  } else {
++    for (int i = 0; i < model->count(); ++i) {
++      if (!fecha(model->GetTabAtIndex(i))) {
++        return tabs::TabHandle();
++      }
++    }
++  }
++  model->delegate()->AddTabAt(GURL(), index, /*foreground=*/false, grupo);
++  tabs::TabInterface* nova =
++      model->GetTabAtIndex(index == -1 ? model->count() - 1 : index);
++  return nova && nova->GetGroup() == grupo ? nova->GetHandle()
++                                           : tabs::TabHandle();
++}
++
++// Depois de fechar: se a aba ativa foi junto, a aba nova do espaço fica ativa
++// (o Chromium podia escolher uma aba de outro espaço, a de quem abriu).
++void NavegadorAtivar(TabStripModel* model,
++                     tabs::TabHandle nova,
++                     bool fechou_a_ativa) {
++  tabs::TabInterface* aba = nova.Get();
++  if (!fechou_a_ativa || !aba) {
++    return;
++  }
++  const int index = model->GetIndexOfTab(aba);
++  if (index != TabStripModel::kNoTab && index != model->active_index()) {
++    model->ActivateTabAt(index);
++  }
++}
++
+ }  // namespace
+ 
+ TabGroupModelFactory::TabGroupModelFactory() {
+@@ -1114,15 +1173,24 @@ void TabStripModel::ActivateTab(tabs::TabInterface* tab,
  
    // If this tab was activated, eg. by an extension, but is not in the focused
    // group, unfocus the focused group (unless it is a pinned tab).
@@ -37,7 +101,23 @@ index 01f863a9f4..07fb19cbc2 100644
    SetSelection(
        new_model,
        user_gesture.type != TabStripUserGestureDetails::GestureType::kNone
-@@ -2815,6 +2826,11 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
+@@ -1424,7 +1492,15 @@ void TabStripModel::CloseWebContents(content::WebContents* contents,
+ 
+   CHECK(contents);
+   CHECK_NE(GetIndexOfWebContents(contents), kNoTab);
++  // navegador: a última aba do espaço não leva o espaço (nem a janela) junto.
++  tabs::TabInterface* aba = GetTabForWebContents(contents);
++  const bool era_a_ativa = aba == GetActiveTab();
++  const tabs::TabHandle nova = NavegadorManterEspaco(this, {aba});
++  base::WeakPtr<TabStripModel> ref = weak_factory_.GetWeakPtr();
+   CloseTabs({contents}, close_types);
++  if (ref) {
++    NavegadorAtivar(this, nova, era_a_ativa);
++  }
+ }
+ 
+ void TabStripModel::CloseWebContentsAt(int index, uint32_t close_types) {
+@@ -2815,6 +2891,11 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
      }
  
      case CommandTogglePinned: {
@@ -49,7 +129,30 @@ index 01f863a9f4..07fb19cbc2 100644
        base::UmaHistogramCounts1000(
            "Tab.ContextMenu.TogglePinned.SelectedTabsCount",
            selection_model_.size());
-@@ -5027,12 +5043,21 @@ void TabStripModel::MoveTabsToIndexImpl(
+@@ -3340,6 +3421,10 @@ void TabStripModel::ExecuteCloseTabsCommand(
+         get_tabs_to_close,
+     bool delete_groups) {
+   std::vector<tabs::TabInterface*> tabs_to_close = get_tabs_to_close.Run();
++  // navegador: a última aba do espaço não leva o espaço (nem a janela) junto.
++  const bool fecha_a_ativa =
++      std::ranges::find(tabs_to_close, GetActiveTab()) != tabs_to_close.end();
++  const tabs::TabHandle nova = NavegadorManterEspaco(this, tabs_to_close);
+   std::vector<tab_groups::TabGroupId> groups_to_delete =
+       GetGroupsDestroyedFromRemovingTabs(get_tabs_to_close.Run());
+ 
+@@ -3363,7 +3448,11 @@ void TabStripModel::ExecuteCloseTabsCommand(
+     delegate_->OnGroupsDestruction(groups_to_delete, std::move(close_callback),
+                                    delete_groups);
+   } else {
++    base::WeakPtr<TabStripModel> ref = weak_factory_.GetWeakPtr();
+     std::move(close_callback).Run();
++    if (ref) {
++      NavegadorAtivar(this, nova, fecha_a_ativa);
++    }
+   }
+ }
+ 
+@@ -5027,12 +5116,21 @@ void TabStripModel::MoveTabsToIndexImpl(
    CHECK(all_tabs_pinned || all_tabs_unpinned);
    CHECK(std::ranges::is_sorted(tab_indices));
  
@@ -236,3 +339,45 @@ index cd90578d55..443553a45e 100644
    // Place the tabs separator if visible.
    gfx::Rect separator_bounds;
    if (should_show_separator) {
+diff --git i/components/saved_tab_groups/internal/tab_group_sync_service_impl.cc w/components/saved_tab_groups/internal/tab_group_sync_service_impl.cc
+index b86cb48d44..f92af93f24 100644
+--- i/components/saved_tab_groups/internal/tab_group_sync_service_impl.cc
++++ w/components/saved_tab_groups/internal/tab_group_sync_service_impl.cc
+@@ -1121,7 +1121,10 @@ void TabGroupSyncServiceImpl::ConnectLocalTabGroup(
+     // This can happen in cases where a group was deleted remotely before
+     // startup.
+     // See crbug.com/392174867 for more details.
+-    coordinator_->OnTabGroupRemoved(local_id, TriggerSource::REMOTE);
++    // navegador: sem sincronizar com ninguém, o grupo some da lista de salvos
++    // porque os espaços tiram ele de lá (grupos_salvos.h), não porque foi
++    // apagado em outro aparelho. Fechar o grupo aberto aqui levava as abas do
++    // espaço no "continuar de onde parou": ele fica como está.
+   }
+ }
+ 
+diff --git i/ui/ozone/platform/wayland/host/wayland_screen.cc w/ui/ozone/platform/wayland/host/wayland_screen.cc
+index bd66860972..184b4920a8 100644
+--- i/ui/ozone/platform/wayland/host/wayland_screen.cc
++++ w/ui/ozone/platform/wayland/host/wayland_screen.cc
+@@ -35,6 +35,7 @@
+ #include "ui/ozone/platform/wayland/host/org_kde_kwin_idle.h"
+ #include "ui/ozone/platform/wayland/host/wayland_buffer_manager_host.h"
+ #include "ui/ozone/platform/wayland/host/wayland_connection.h"
++#include "ui/ozone/platform/wayland/host/wayland_data_drag_controller.h"
+ #include "ui/ozone/platform/wayland/host/wayland_cursor_position.h"
+ #include "ui/ozone/platform/wayland/host/wayland_idle_notify.h"
+ #include "ui/ozone/platform/wayland/host/wayland_output.h"
+@@ -397,6 +398,13 @@ gfx::AcceleratedWidget WaylandScreen::GetAcceleratedWidgetAtScreenPoint(
+   // point or not.
+   auto* window =
+       connection_->window_manager()->GetCurrentPointerOrTouchFocusedWindow();
++  // navegador: arrastando uma aba pelo DnD do sistema (compositor sem
++  // xdg-toplevel-drag, como o Hyprland), o ponteiro fica sem foco: vale a
++  // janela em que o arrasto está. Sem isso a aba não achava a janela debaixo
++  // do ponteiro (nem a borda da página, pra dividir a tela).
++  if (!window && connection_->data_drag_controller()) {
++    window = connection_->data_drag_controller()->entered_window();
++  }
+   if (window && window->GetBoundsInDIP().Contains(point))
+     return window->GetWidget();
+   return gfx::kNullAcceleratedWidget;

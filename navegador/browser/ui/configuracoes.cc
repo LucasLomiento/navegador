@@ -37,6 +37,7 @@
 #include "navegador/browser/containers/espacos_dados.h"
 #include "navegador/browser/ui/atalhos.h"
 #include "navegador/browser/ui/atualizador.h"
+#include "navegador/browser/ui/barra.h"
 #include "navegador/browser/ui/bloqueador.h"
 #include "navegador/browser/ui/containers/containers_ui.h"
 #include "navegador/browser/ui/containers/gerenciador.h"
@@ -718,6 +719,18 @@ std::unique_ptr<views::View> PaginaAparencia(BrowserWindowInterface* browser) {
                 perfil->GetPrefs()->SetBoolean(espacos::kBarraNaCorDoSitePref,
                                                ligado);
                 RefazerJanelas(perfil);
+              },
+              perfil))));
+  janela->Adicionar(Linha(
+      u"Esconder a barra de endereço",
+      u"A página ocupa o cartão inteiro. O Ctrl+L e a nova aba mostram a "
+      u"barra enquanto você digita o endereço.",
+      Interruptor(
+          perfil->GetPrefs()->GetBoolean(espacos::kBarraEscondidaPref),
+          u"Esconder a barra de endereço",
+          base::BindRepeating(
+              [](Profile* perfil, bool ligado) {
+                barra::Definir(perfil, ligado);
               },
               perfil))));
 

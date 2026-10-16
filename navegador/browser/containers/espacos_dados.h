@@ -50,6 +50,9 @@ inline constexpr char kBarraNaTelaCheiaPref[] =
     "navegador.janela.barra_na_tela_cheia";
 // Barra de navegação na cor do topo da página (como o Dia).
 inline constexpr char kBarraNaCorDoSitePref[] = "navegador.barra.cor_do_site";
+// Barra de navegação escondida (Ctrl+Shift+S): o Ctrl+L mostra enquanto se
+// digita o endereço (navegador/browser/ui/barra.h).
+inline constexpr char kBarraEscondidaPref[] = "navegador.barra.escondida";
 // Lateral escondida que aparece por cima da página (como o modo compacto do
 // Zen): opacidade do fundo (0-100), desfoque do que está atrás (px), tempo
 // até esconder depois que o ponteiro sai (ms) e se aparece ao encostar o
@@ -143,6 +146,9 @@ void RestaurarAtalhos(Profile* profile);
 
 bool MostrarQuadroDeFavoritos(Profile* profile);
 bool MostrarBotoesDaJanela(Profile* profile);
+// Janelas movidas e fechadas pelo mouse (KDE, GNOME, Windows), e não por um
+// gerenciador por atalho (Hyprland, Sway, i3).
+bool JanelasPeloMouse();
 int Moldura(const Profile* profile);
 bool MostrarNaBorda(const Profile* profile);
 bool AbrirInteira(const Profile* profile);
